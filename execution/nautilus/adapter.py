@@ -21,8 +21,8 @@ try:
 
     HAS_NAUTILUS = True
 except ImportError:
-    NautilusBacktestEngine = object  # type: ignore
-    Strategy = object  # type: ignore
+    NautilusBacktestEngine: Any = object
+    Strategy: Any = object
 
 
 class NautilusAdapter:

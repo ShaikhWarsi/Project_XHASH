@@ -124,8 +124,12 @@ class SwarmStore:
         with open(path) as f:
             for line in f:
                 line = line.strip()
-                if line:
+                if not line:
+                    continue
+                try:
                     events.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
         return events
 
     @staticmethod

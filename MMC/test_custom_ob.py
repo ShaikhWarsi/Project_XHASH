@@ -35,7 +35,7 @@ def visualize_custom_ob(symbol="BTC-USD", period="1mo", interval="1h"):
         chart.candle_style(up_color='#089981', down_color='#f23645',
                            border_up_color='#089981', border_down_color='#f23645',
                            wick_up_color='#089981', wick_down_color='#f23645')
-    except:
+    except Exception:
         pass
     
     chart.set(df)
@@ -120,7 +120,7 @@ def visualize_custom_ob(symbol="BTC-USD", period="1mo", interval="1h"):
                 color='rgba(0,0,0,0)', # No border for overlap
                 fill_color=fill_color
             )
-        except:
+        except Exception:
             pass
 
     print("Showing chart...")

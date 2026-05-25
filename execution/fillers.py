@@ -1,13 +1,15 @@
 from __future__ import annotations
+from abc import ABC, abstractmethod
 
 MAXINT = 2**31 - 1
 
 
-class FillerBase:
+class FillerBase(ABC):
     """Base class for fill volume limiters, ported from Backtrader."""
 
+    @abstractmethod
     def __call__(self, order, price: float, ago: int) -> int:
-        raise NotImplementedError
+        ...
 
 
 class FixedSize(FillerBase):

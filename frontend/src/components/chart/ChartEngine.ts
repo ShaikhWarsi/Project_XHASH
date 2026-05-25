@@ -1,4 +1,4 @@
-import { createChart, CandlestickSeries, HistogramSeries, type IChartApi, type ISeriesApi, type Time, type CandlestickData, type HistogramData } from 'lightweight-charts'
+import { createChart, CandlestickSeries, HistogramSeries, LineSeries, type IChartApi, type ISeriesApi, type Time, type CandlestickData, type HistogramData, type LineData, type SeriesType } from 'lightweight-charts'
 import { CoordMapper } from './CoordMapper'
 import { DrawingManager } from './drawings/DrawingManager'
 import type { ToolType, IndicatorConfig } from './DrawingTypes'
@@ -25,11 +25,13 @@ export class ChartEngine {
   private container: HTMLDivElement
   private overlayCanvas: HTMLCanvasElement
   private overlayCtx: CanvasRenderingContext2D
-  private resizeObserver: ResizeObserver
+  private resizeObserver: ResizeObserver | null = null
+  private resizeRAF = 0
   private animationFrameId = 0
   private callbacks: ChartCallbacks = {}
   private mainSeries: ISeriesApi<'Candlestick'> | null = null
   private volumeSeries: ISeriesApi<'Histogram'> | null = null
+  private indicatorSeries: Map<string, ISeriesApi<SeriesType>> = new Map()
   private _symbol: string
   private _interval: string
 
@@ -83,15 +85,19 @@ export class ChartEngine {
     this.container.appendChild(this.overlayCanvas)
     this.overlayCtx = this.overlayCanvas.getContext('2d')!
 
-    // Set up resize observer
+    // Set up resize observer with RAF debounce
     this.resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const { width, height } = entry.contentRect
-        this.chart.resize(width, height)
-        this.overlayCanvas.width = width
-        this.overlayCanvas.height = height
-        this.requestRender()
-      }
+      if (this.resizeRAF) cancelAnimationFrame(this.resizeRAF)
+      this.resizeRAF = requestAnimationFrame(() => {
+        for (const entry of entries) {
+          const { width, height } = entry.contentRect
+          if (width === 0 || height === 0) continue
+          this.chart.resize(width, height)
+          this.overlayCanvas.width = width
+          this.overlayCanvas.height = height
+          this.requestRender()
+        }
+      })
     })
     this.resizeObserver.observe(options.container)
 
@@ -286,21 +292,40 @@ export class ChartEngine {
     this.chart.timeScale().fitContent()
   }
 
-  addIndicator(_config: IndicatorConfig) {
-    // TODO: Phase 3 - indicator pane support
+  addIndicator(config: IndicatorConfig) {
+    if (this.indicatorSeries.has(config.id)) return
+    const color = config.style?.color ?? '#3b82f6'
+    if (config.type === 'line') {
+      const series = this.chart.addSeries(LineSeries, {
+        color, lineWidth: 1, priceScaleId: config.paneId || undefined,
+      })
+      if (config.data) series.setData(config.data as LineData[])
+      this.indicatorSeries.set(config.id, series)
+    } else if (config.type === 'histogram') {
+      const series = this.chart.addSeries(HistogramSeries, {
+        color, priceScaleId: config.paneId || undefined,
+      })
+      if (config.data) series.setData(config.data as any)
+      this.indicatorSeries.set(config.id, series)
+    }
   }
 
-  removeIndicator(_id: string) {
-    // TODO: Phase 3 - indicator pane support
+  removeIndicator(id: string) {
+    const series = this.indicatorSeries.get(id)
+    if (series) {
+      this.chart.removeSeries(series)
+      this.indicatorSeries.delete(id)
+    }
   }
 
   get symbol() { return this._symbol }
   get interval() { return this._interval }
 
   destroy() {
-    this.resizeObserver.disconnect()
+    if (this.resizeObserver) this.resizeObserver.disconnect()
+    if (this.resizeRAF) cancelAnimationFrame(this.resizeRAF)
     this.chart.remove()
-    this.drawingManager.saveToStorage()
+    this.drawingManager.destroy()
     if (this.animationFrameId) {
       cancelAnimationFrame(this.animationFrameId)
     }

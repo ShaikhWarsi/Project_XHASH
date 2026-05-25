@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useBacktestStore } from '../store/backtest'
 import { fetchOHLCV } from '../api/client'
+import { useToastStore } from '../store/toast'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import CacheStatsPanel from '../components/CacheStatsPanel'
@@ -66,6 +67,7 @@ const ENGINE_LEVERAGE_DEFAULTS: Record<string, number> = {
 }
 
 export default function Backtest() {
+  const addToast = useToastStore((s) => s.addToast)
   const { result, running, error, engines, config, setConfig, run, clear, loadEngines } = useBacktestStore()
   const [showCache, setShowCache] = useState(false)
   const [tab, setTab] = useState<'run' | 'compare'>('run')
@@ -94,7 +96,10 @@ export default function Backtest() {
           )
         }
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.warn('Backtest: fetchOHLCV SPY failed', err)
+        addToast('Failed to load SPY benchmark data', 'error')
+      })
   }, [result])
 
   const handleEngineChange = (engine: string) => {

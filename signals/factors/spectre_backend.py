@@ -14,7 +14,7 @@ try:
 
     HAS_SPECTRE = True
 except ImportError:
-    spectre = None  # type: ignore
+    spectre: Any = None
 
 
 class SpectreBackend:

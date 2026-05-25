@@ -79,7 +79,8 @@ def _load_orders():
         if _ORDERS_FILE.exists():
             with open(_ORDERS_FILE, "r") as f:
                 _orders = json.load(f)
-    except Exception:
+    except Exception as e:
+        logger.warning("Failed to load orders file: %s", e)
         _orders = []
 
 

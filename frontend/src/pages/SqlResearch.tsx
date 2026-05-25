@@ -4,8 +4,10 @@ import Badge from '../components/ui/Badge'
 import CorrelationHeatmap from '../components/CorrelationHeatmap'
 import { fetchTables, runQuery, fetchDailyReturns, fetchCorrelation } from '../api/research'
 import type { TableInfo, QueryResult, DailyReturns } from '../api/research'
+import { useToastStore } from '../store/toast'
 
 export default function SqlResearch() {
+  const addToast = useToastStore((s) => s.addToast)
   const [tables, setTables] = useState<TableInfo[]>([])
   const [query, setQuery] = useState('SELECT * FROM market_data LIMIT 10')
   const [result, setResult] = useState<QueryResult | null>(null)
@@ -17,7 +19,10 @@ export default function SqlResearch() {
   const [tab, setTab] = useState<'query' | 'correlation' | 'daily'>('query')
 
   useEffect(() => {
-    fetchTables().then((res) => setTables(res.tables)).catch(() => {})
+    fetchTables().then((res) => setTables(res.tables)).catch((err) => {
+      console.warn('SqlResearch: fetchTables failed', err)
+      addToast('Failed to load tables', 'error')
+    })
   }, [])
 
   const handleQuery = useCallback(async () => {
@@ -79,7 +84,7 @@ export default function SqlResearch() {
                   onClick={() => setQuery(`SELECT * FROM ${t.name} LIMIT 10`)}
                   className="px-2 py-0.5 text-[9px] font-mono cursor-pointer rounded-sm bg-hover border border-default text-secondary"
                 >
-                  {t.name} ({t.columns.length} cols)
+                  {t.name} ({(t.columns || []).length} cols)
                 </button>
               ))}
             </div>

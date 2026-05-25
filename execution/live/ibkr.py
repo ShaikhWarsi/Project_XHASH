@@ -88,14 +88,15 @@ class IBKRBroker(ExecutionProvider):
             self._app.placeOrder(order_id, contract, ib_order)
             return Fill(order_id=str(order_id), symbol=order.symbol, quantity=abs(order.quantity), price=order.price or 0.0, timestamp=datetime.utcnow())
         except Exception as e:
-            log.error(f"IBKR submit_order failed: {e}")
+            log.error("IBKR submit_order failed: %s", e)
             return None
 
     def cancel_order(self, order_id: str) -> bool:
         try:
             self._app.cancelOrder(int(order_id))
             return True
-        except Exception:
+        except Exception as e:
+            log.error("IBKR cancel_order failed: %s", e)
             return False
 
     def get_open_orders(self) -> list[Order]:

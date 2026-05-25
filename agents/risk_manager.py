@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import logging
+
 import numpy as np
 import pandas as pd
 
 from core.enums import AgentRole
+
+logger = logging.getLogger(__name__)
 from core.types import AnalystSignal, PortfolioState, RiskLimits, SignalMatrix
 
 from .base import TradingAgent
@@ -60,8 +64,8 @@ class RiskManagerAgent(TradingAgent):
                 returns_df = pd.DataFrame(returns_by_ticker).dropna(how="any")
                 if returns_df.shape[1] >= 2 and returns_df.shape[0] >= 5:
                     correlation_matrix = returns_df.corr()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Correlation matrix calc failed: %s", e)
 
         active_positions = {
             t for t, pos in portfolio.positions.items()

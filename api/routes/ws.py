@@ -36,7 +36,12 @@ async def _refresh_price_cache():
 async def ws_prices(websocket: WebSocket):
     await manager.connect("prices", websocket)
     try:
-        while True:
+        _ws_max_iter = 1000000
+        for _ in range(_ws_max_iter):
+            try:
+                await asyncio.wait_for(websocket.receive_text(), timeout=0.001)
+            except asyncio.TimeoutError:
+                pass
             await _refresh_price_cache()
             async with _price_cache_lock:
                 prices = dict(_price_cache)
@@ -52,6 +57,7 @@ async def ws_prices(websocket: WebSocket):
                     "timestamp": time.time()
                 })
             await asyncio.sleep(2)
+        logger.warning("ws_prices hit max iterations")
     except WebSocketDisconnect:
         await manager.disconnect("prices", websocket)
     except Exception:
@@ -62,7 +68,12 @@ async def ws_prices(websocket: WebSocket):
 async def ws_portfolio(websocket: WebSocket):
     await manager.connect("portfolio", websocket)
     try:
-        while True:
+        _ws_max_iter = 1000000
+        for _ in range(_ws_max_iter):
+            try:
+                await asyncio.wait_for(websocket.receive_text(), timeout=0.001)
+            except asyncio.TimeoutError:
+                pass
             snapshot = await app_state.async_snapshot()
             await websocket.send_json({
                 "type": "portfolio",
@@ -70,6 +81,7 @@ async def ws_portfolio(websocket: WebSocket):
                 "timestamp": time.time()
             })
             await asyncio.sleep(5)
+        logger.warning("ws_portfolio hit max iterations")
     except WebSocketDisconnect:
         await manager.disconnect("portfolio", websocket)
     except Exception:
@@ -80,7 +92,12 @@ async def ws_portfolio(websocket: WebSocket):
 async def ws_orders(websocket: WebSocket):
     await manager.connect("orders", websocket)
     try:
-        while True:
+        _ws_max_iter = 1000000
+        for _ in range(_ws_max_iter):
+            try:
+                await asyncio.wait_for(websocket.receive_text(), timeout=0.001)
+            except asyncio.TimeoutError:
+                pass
             orders = await app_state.async_get_open_orders() if hasattr(app_state, 'async_get_open_orders') else []
             await websocket.send_json({
                 "type": "orders",
@@ -88,6 +105,7 @@ async def ws_orders(websocket: WebSocket):
                 "timestamp": time.time()
             })
             await asyncio.sleep(1)
+        logger.warning("ws_orders hit max iterations")
     except WebSocketDisconnect:
         await manager.disconnect("orders", websocket)
     except Exception:
@@ -98,7 +116,12 @@ async def ws_orders(websocket: WebSocket):
 async def ws_orderbook(websocket: WebSocket, symbol: str):
     await manager.connect(f"orderbook:{symbol}", websocket)
     try:
-        while True:
+        _ws_max_iter = 1000000
+        for _ in range(_ws_max_iter):
+            try:
+                await asyncio.wait_for(websocket.receive_text(), timeout=0.001)
+            except asyncio.TimeoutError:
+                pass
             await _refresh_price_cache()
             async with _price_cache_lock:
                 base_price = _price_cache.get(symbol.upper(), 100)
@@ -120,6 +143,7 @@ async def ws_orderbook(websocket: WebSocket, symbol: str):
                 "timestamp": time.time()
             })
             await asyncio.sleep(0.5)
+        logger.warning("ws_orderbook hit max iterations")
     except WebSocketDisconnect:
         await manager.disconnect(f"orderbook:{symbol}", websocket)
     except Exception:
@@ -130,7 +154,12 @@ async def ws_orderbook(websocket: WebSocket, symbol: str):
 async def ws_trades(websocket: WebSocket, symbol: str):
     await manager.connect(f"trades:{symbol}", websocket)
     try:
-        while True:
+        _ws_max_iter = 1000000
+        for _ in range(_ws_max_iter):
+            try:
+                await asyncio.wait_for(websocket.receive_text(), timeout=0.001)
+            except asyncio.TimeoutError:
+                pass
             await _refresh_price_cache()
             async with _price_cache_lock:
                 base_price = _price_cache.get(symbol.upper(), 100)
@@ -151,6 +180,7 @@ async def ws_trades(websocket: WebSocket, symbol: str):
                 "timestamp": time.time()
             })
             await asyncio.sleep(random.uniform(0.3, 1.5))
+        logger.warning("ws_trades hit max iterations")
     except WebSocketDisconnect:
         await manager.disconnect(f"trades:{symbol}", websocket)
     except Exception:
@@ -161,8 +191,9 @@ async def ws_trades(websocket: WebSocket, symbol: str):
 async def ws_social_signals(websocket: WebSocket):
     await manager.connect("signals", websocket)
     try:
-        while True:
-            data = await websocket.receive_json()
+        _ws_max_iter = 1000000
+        for _ in range(_ws_max_iter):
+            data = await asyncio.wait_for(websocket.receive_json(), timeout=60)
             if data.get("type") == "signal":
                 broadcast = {
                     "type": "signal",
@@ -173,7 +204,8 @@ async def ws_social_signals(websocket: WebSocket):
                         await conn.send_json(broadcast)
                     except Exception:
                         pass
-    except WebSocketDisconnect:
+        logger.warning("ws_social_signals hit max iterations")
+    except (WebSocketDisconnect, asyncio.TimeoutError):
         await manager.disconnect("signals", websocket)
     except Exception:
         await manager.disconnect("signals", websocket)

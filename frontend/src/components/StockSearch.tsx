@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, TrendingUp, Loader2, Plus } from 'lucide-react'
 import { searchStocks, addToWatchlist } from '../api/client'
+import { useToastStore } from '../store/toast'
 
 interface StockSearchProps {
   onSelect?: (symbol: string) => void
@@ -75,7 +76,7 @@ export default function StockSearch({ onSelect, label = 'Search stocks...', rend
   const handleAddToWatchlist = async (symbol: string, description: string) => {
     try {
       await addToWatchlist(symbol, description, 'default')
-    } catch (err) { console.warn('[StockSearch] Failed to add to watchlist:', err) }
+    } catch (err) { console.warn('[StockSearch] Failed to add to watchlist:', err); useToastStore.getState().addToast('Failed to add to watchlist', 'error') }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

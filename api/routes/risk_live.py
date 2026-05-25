@@ -16,7 +16,8 @@ router = APIRouter(tags=["risk"])
 
 async def risk_event_generator(request: Request):
     try:
-        while True:
+        _max_iter = 1000000
+        for _ in range(_max_iter):
             if await request.is_disconnected():
                 break
 
@@ -65,6 +66,8 @@ async def risk_event_generator(request: Request):
 
             yield f"data: {json.dumps(data, default=str)}\n\n"
             await asyncio.sleep(5)
+        else:
+            logger.warning("risk_event_generator hit max iterations")
     except asyncio.CancelledError:
         pass
 

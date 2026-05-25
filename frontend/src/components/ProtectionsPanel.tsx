@@ -26,7 +26,7 @@ export default function ProtectionsPanel() {
   useEffect(() => {
     fetchAvailableProtections()
       .then((r) => setAvailable(r.protections))
-      .catch(() => {})
+      .catch((err) => { console.warn('ProtectionsPanel: available protections failed', err); addToast('Failed to load protections', 'error') })
   }, [])
 
   const runCheck = async () => {

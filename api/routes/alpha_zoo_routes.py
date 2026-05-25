@@ -102,6 +102,21 @@ async def bench_alphas(req: BenchRequest):
     return result
 
 
+@router.get("/{alpha_id}/bench")
+async def get_alpha_bench(alpha_id: str):
+    reg = get_default_registry()
+    try:
+        alpha = reg.get(alpha_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Alpha {alpha_id} not found")
+    return {
+        "alpha_id": alpha_id,
+        "zoo": alpha.zoo,
+        "status": "not_benchmarked",
+        "metrics": {},
+    }
+
+
 @router.get("/health")
 async def registry_health():
     reg = get_default_registry()

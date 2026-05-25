@@ -12,10 +12,10 @@ export default function TimeMachine({ data, onSeek, currentIndex, disabled }: Ti
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(1)
   const playRef = useRef<number | null>(null)
-  const indexRef = useRef(currentIndex ?? data.length - 1)
+  const indexRef = useRef(currentIndex ?? Math.max(0, data.length - 1))
 
   useEffect(() => {
-    indexRef.current = currentIndex ?? data.length - 1
+    indexRef.current = currentIndex ?? Math.max(0, data.length - 1)
   }, [currentIndex, data.length])
 
   const SPEEDS = [1, 2, 5, 10, 25]
@@ -58,8 +58,8 @@ export default function TimeMachine({ data, onSeek, currentIndex, disabled }: Ti
 
   if (data.length === 0 || disabled) return null
 
-  const lastTime = data[data.length - 1].time
-  const curIdx = currentIndex ?? data.length - 1
+  const lastTime = data[data.length - 1]?.time
+  const curIdx = currentIndex != null ? Math.min(currentIndex, data.length - 1) : data.length - 1
   const curTime = data[curIdx]?.time ?? lastTime
   const pct = ((curIdx) / (data.length - 1)) * 100
 

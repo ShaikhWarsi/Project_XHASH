@@ -85,8 +85,10 @@ async def get_technical_analysis_get(
     provider: str = Query("yfinance"),
     indicators: str = Query("{}"),
 ):
-    import json
-    ind_dict = json.loads(indicators)
+    try:
+        ind_dict = json.loads(indicators)
+    except json.JSONDecodeError:
+        ind_dict = {}
     df = _fetch_data(symbol, interval, period_days, provider)
     if df is None or df.empty:
         raise HTTPException(status_code=404, detail=f"No data found for {symbol}")

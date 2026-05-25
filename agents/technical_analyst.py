@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
 import math
 
 import numpy as np
 import pandas as pd
 
 from core.enums import AgentRole
+
+logger = logging.getLogger(__name__)
 from core.types import AnalystSignal, PortfolioState, RiskLimits, SignalMatrix
 
 from .base import TradingAgent
@@ -248,5 +251,6 @@ class TechnicalAnalystAgent(TradingAgent):
             tau = [max(1e-8, np.sqrt(np.std(np.subtract(price_series[lag:].values, price_series[:-lag].values)))) for lag in lags]
             reg = np.polyfit(np.log(lags), np.log(tau), 1)
             return float(reg[0])
-        except Exception:
+        except Exception as e:
+            logger.debug("Hurst exponent calc failed: %s", e)
             return 0.5

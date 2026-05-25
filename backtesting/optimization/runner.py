@@ -79,7 +79,8 @@ class ExperimentRunnerService:
                 "oos_start": split.isoformat(),
                 "oos_end": end_date,
             }
-        except Exception:
+        except Exception as e:
+            logger.warning("Failed to compute train/test split: %s", e)
             return None
 
     def _build_snapshot(self, base: Dict[str, Any], user_id: int) -> Dict[str, Any]:

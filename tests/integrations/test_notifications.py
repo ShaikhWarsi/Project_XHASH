@@ -70,7 +70,7 @@ class TestSlackNotifier:
 class TestEmailNotifier:
     @pytest.fixture
     def notifier(self):
-        return EmailNotifier(smtp_host="smtp.test.com", username="user@test.com", password="pass", from_addr="from@test.com")
+        return EmailNotifier(smtp_host="smtp.test.com", username="user@test.com", password="pass", from_addr="from@test.com")  # TODO: use env vars for CI
 
     @patch("integrations.email_notifier.smtplib.SMTP")
     def test_send(self, mock_smtp, notifier):

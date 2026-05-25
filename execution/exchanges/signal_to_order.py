@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, Optional, Tuple
 
 from execution.exchanges.base import BaseRestClient, LiveOrderResult, LiveTradingError
+
+logger = logging.getLogger(__name__)
 
 
 def normalize_symbol(symbol: str, market_type: str = "swap") -> str:
@@ -81,13 +84,15 @@ def quote_amount_from_base_qty(client: BaseRestClient, *, symbol: str, base_qty:
         return float(base_qty or 0.0)
     try:
         ticker = client.get_ticker(symbol=symbol)
-    except Exception:
+    except Exception as e:
+        logger.warning("get_ticker failed for %s: %s", symbol, e)
         return float(base_qty or 0.0)
     if not isinstance(ticker, dict):
         return float(base_qty or 0.0)
     try:
         price = float(ticker.get("last") or ticker.get("lastPr") or ticker.get("lastPrice") or ticker.get("price") or 0.0)
-    except Exception:
+    except Exception as e:
+        logger.warning("Failed to parse ticker price for %s: %s", symbol, e)
         price = 0.0
     if price <= 0:
         return float(base_qty or 0.0)

@@ -18,23 +18,12 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'dupont', label: 'DuPont' },
 ]
 
-const btnStyle: React.CSSProperties = {
-  padding: '8px 16px',
-  borderRadius: 'var(--radius-md)',
-  fontSize: 'var(--text-sm)',
-  fontWeight: 500,
-  background: 'var(--accent-blue)',
-  color: '#ffffff',
-  border: 'none',
-  cursor: 'pointer',
-}
-
 function NumberInput({ label, value, onChange, step }: {
   label: string; value: number; onChange: (v: number) => void; step?: number
 }) {
   return (
     <div>
-      <label style={{ display: 'block', fontSize: 'var(--text-xs)', marginBottom: 2, color: 'var(--text-secondary)' }}>
+      <label className="block text-xs text-secondary mb-0.5">
         {label}
       </label>
       <input
@@ -42,16 +31,7 @@ function NumberInput({ label, value, onChange, step }: {
         value={value}
         step={step ?? 0.01}
         onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-        style={{
-          width: '100%',
-          padding: '6px 8px',
-          borderRadius: 'var(--radius-md)',
-          fontSize: 'var(--text-sm)',
-          background: 'var(--bg-hover)',
-          border: '1px solid var(--input-border)',
-          color: 'var(--text-primary)',
-          outline: 'none',
-        }}
+        className="w-full px-2 py-1.5 rounded-md text-sm bg-hover border border-input text-primary outline-none"
         onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent-blue)'}
         onBlur={(e) => e.currentTarget.style.borderColor = 'var(--input-border)'}
       />
@@ -66,17 +46,17 @@ export default function CfaAnalytics() {
   const [error, setError] = useState('')
 
   const renderResult = () => {
-    if (loading) return <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', padding: '16px 0' }}>Calculating...</div>
-    if (error) return <div style={{ fontSize: 'var(--text-sm)', color: 'var(--accent-red)', padding: '16px 0' }}>{error}</div>
-    if (!result) return <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', padding: '16px 0' }}>Enter values and calculate</div>
+    if (loading) return <div className="text-sm text-muted py-4">Calculating...</div>
+    if (error) return <div className="text-sm text-down py-4">{error}</div>
+    if (!result) return <div className="text-sm text-muted py-4">Enter values and calculate</div>
     return (
-      <div className="space-y-1" style={{ fontSize: 'var(--text-sm)', maxHeight: 384, overflowY: 'auto' }}>
+      <div className="space-y-1 text-sm max-h-96 overflow-y-auto">
         {Object.entries(result).map(([k, v]) => (
           <div key={k} className="flex justify-between py-1" style={{ borderBottom: '1px solid color-mix(in srgb, var(--border-color) 50%, transparent)' }}>
-            <span style={{ color: 'var(--text-secondary)', textTransform: 'capitalize' }}>
+            <span className="text-secondary capitalize">
               {k.replace(/_/g, ' ')}
             </span>
-            <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+            <span className="text-primary font-mono">
               {typeof v === 'number' ? (Math.abs(v) > 1 ? v.toFixed(4) : v.toFixed(6)) : String(v)}
             </span>
           </div>
@@ -94,7 +74,7 @@ export default function CfaAnalytics() {
 
   return (
     <div className="space-y-6">
-      <h1 style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: 'var(--text-primary)' }}>
+      <h1 className="text-2xl font-bold text-primary">
         CFA Analytics
       </h1>
 
@@ -103,15 +83,11 @@ export default function CfaAnalytics() {
           <button
             key={t.key}
             onClick={() => { setTab(t.key); setResult(null); setError('') }}
+            className="px-3 py-1.5 rounded-md text-sm cursor-pointer"
             style={{
-              padding: '6px 12px',
-              borderRadius: 'var(--radius-md)',
-              fontSize: 'var(--text-sm)',
               background: tab === t.key ? 'color-mix(in srgb, var(--accent-blue) 15%, transparent)' : 'var(--bg-secondary)',
               color: tab === t.key ? 'var(--accent-blue)' : 'var(--text-secondary)',
               border: `1px solid ${tab === t.key ? 'var(--accent-blue)' : 'var(--border-color)'}`,
-              cursor: 'pointer',
-              transition: 'background 0.2s ease',
             }}
           >
             {t.label}
@@ -197,7 +173,7 @@ function WaccForm({ onCalculate }: { onCalculate: () => void }) {
         <NumberInput label="Market Val Equity" value={mve} onChange={setMve} step={10000} />
         <NumberInput label="Market Val Debt" value={mvd} onChange={setMvd} step={10000} />
       </div>
-      <button onClick={onCalculate} style={btnStyle}>Calculate WACC</button>
+      <button onClick={onCalculate} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate WACC</button>
     </div>
   )
 }
@@ -212,7 +188,7 @@ function DcfForm({ onCalculate }: { onCalculate: () => void }) {
   const [shares, setShares] = useState(1000000)
   return (
     <div className="space-y-3">
-      <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+      <p className="text-xs text-muted">
         Projected free cash flows & terminal growth. Uses default WACC params from the WACC tab.
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -224,7 +200,7 @@ function DcfForm({ onCalculate }: { onCalculate: () => void }) {
         <NumberInput label="Terminal Growth" value={tg} onChange={setTg} />
         <NumberInput label="Shares Outstanding" value={shares} onChange={setShares} step={10000} />
       </div>
-      <button onClick={onCalculate} style={btnStyle}>Calculate DCF</button>
+      <button onClick={onCalculate} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate DCF</button>
     </div>
   )
 }
@@ -240,7 +216,7 @@ function CompsForm({ onCalculate }: { onCalculate: () => void }) {
   const [cash, setCash] = useState(200000)
   return (
     <div className="space-y-3">
-      <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+      <p className="text-xs text-muted">
         Calculates P/E, EV/EBITDA, P/B, P/S multiples from company financials.
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -253,7 +229,7 @@ function CompsForm({ onCalculate }: { onCalculate: () => void }) {
         <NumberInput label="Total Debt" value={debt} onChange={setDebt} step={10000} />
         <NumberInput label="Cash" value={cash} onChange={setCash} step={10000} />
       </div>
-      <button onClick={onCalculate} style={btnStyle}>Calculate Comps</button>
+      <button onClick={onCalculate} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate Comps</button>
     </div>
   )
 }
@@ -267,7 +243,7 @@ function StartupForm({ onCalculate }: { onCalculate: () => void }) {
   const [maxVal, setMaxVal] = useState(5000000)
   return (
     <div className="space-y-3">
-      <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+      <p className="text-xs text-muted">
         Berkus method startup valuation based on qualitative factors (0–1 each).
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -278,7 +254,7 @@ function StartupForm({ onCalculate }: { onCalculate: () => void }) {
         <NumberInput label="Sales Traction" value={sales} onChange={setSales} />
         <NumberInput label="Max Value ($)" value={maxVal} onChange={setMaxVal} step={100000} />
       </div>
-      <button onClick={onCalculate} style={btnStyle}>Calculate Berkus</button>
+      <button onClick={onCalculate} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate Berkus</button>
     </div>
   )
 }
@@ -291,7 +267,7 @@ function BondsForm({ onCalculate }: { onCalculate: () => void }) {
   const [freq, setFreq] = useState(2)
   return (
     <div className="space-y-3">
-      <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+      <p className="text-xs text-muted">
         Bond pricing from YTM, face value, coupon rate, term, and payment frequency.
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -301,7 +277,7 @@ function BondsForm({ onCalculate }: { onCalculate: () => void }) {
         <NumberInput label="Years to Mat" value={years} onChange={setYears} />
         <NumberInput label="Frequency" value={freq} onChange={setFreq} />
       </div>
-      <button onClick={onCalculate} style={btnStyle}>Calculate Bond Price</button>
+      <button onClick={onCalculate} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate Bond Price</button>
     </div>
   )
 }
@@ -314,7 +290,7 @@ function OptionsForm({ onCalculate }: { onCalculate: () => void }) {
   const [vol, setVol] = useState(0.2)
   return (
     <div className="space-y-3">
-      <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+      <p className="text-xs text-muted">
         Black-Scholes option pricing with Greeks.
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -324,7 +300,7 @@ function OptionsForm({ onCalculate }: { onCalculate: () => void }) {
         <NumberInput label="Risk Free Rate" value={rf} onChange={setRf} />
         <NumberInput label="Volatility" value={vol} onChange={setVol} />
       </div>
-      <button onClick={onCalculate} style={btnStyle}>Calculate Option Price</button>
+      <button onClick={onCalculate} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate Option Price</button>
     </div>
   )
 }
@@ -336,7 +312,7 @@ function VcForm({ onCalculate }: { onCalculate: () => void }) {
   const [target, setTarget] = useState(0.3)
   return (
     <div className="space-y-3">
-      <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+      <p className="text-xs text-muted">
         Venture Capital Method: estimates post-money valuation based on terminal value and target return.
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -345,7 +321,7 @@ function VcForm({ onCalculate }: { onCalculate: () => void }) {
         <NumberInput label="Exit Year" value={exit} onChange={setExit} />
         <NumberInput label="Target Return" value={target} onChange={setTarget} />
       </div>
-      <button onClick={onCalculate} style={btnStyle}>Calculate VC Method</button>
+      <button onClick={onCalculate} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate VC Method</button>
     </div>
   )
 }
@@ -358,7 +334,7 @@ function YtmForm({ onCalculate }: { onCalculate: () => void }) {
   const [freq, setFreq] = useState(2)
   return (
     <div className="space-y-3">
-      <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+      <p className="text-xs text-muted">
         Calculate yield-to-maturity from bond price, face value, coupon, and term.
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -368,7 +344,7 @@ function YtmForm({ onCalculate }: { onCalculate: () => void }) {
         <NumberInput label="Years to Mat" value={years} onChange={setYears} />
         <NumberInput label="Frequency" value={freq} onChange={setFreq} />
       </div>
-      <button onClick={onCalculate} style={btnStyle}>Calculate YTM</button>
+      <button onClick={onCalculate} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate YTM</button>
     </div>
   )
 }
@@ -381,7 +357,7 @@ function GreeksForm({ onCalculate }: { onCalculate: () => void }) {
   const [vol, setVol] = useState(0.2)
   return (
     <div className="space-y-3">
-      <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+      <p className="text-xs text-muted">
         Black-Scholes Greeks: Delta, Gamma, Vega, Theta, Rho.
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -391,7 +367,7 @@ function GreeksForm({ onCalculate }: { onCalculate: () => void }) {
         <NumberInput label="Risk Free Rate" value={rf} onChange={setRf} />
         <NumberInput label="Volatility" value={vol} onChange={setVol} />
       </div>
-      <button onClick={onCalculate} style={btnStyle}>Calculate Greeks</button>
+      <button onClick={onCalculate} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate Greeks</button>
     </div>
   )
 }
@@ -403,7 +379,7 @@ function DuPontForm({ onCalculate }: { onCalculate: () => void }) {
   const [te, setTe] = useState(400000)
   return (
     <div className="space-y-3">
-      <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+      <p className="text-xs text-muted">
         DuPont analysis decomposes ROE into profit margin × asset turnover × equity multiplier.
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -412,7 +388,7 @@ function DuPontForm({ onCalculate }: { onCalculate: () => void }) {
         <NumberInput label="Total Assets" value={ta} onChange={setTa} step={10000} />
         <NumberInput label="Total Equity" value={te} onChange={setTe} step={10000} />
       </div>
-      <button onClick={onCalculate} style={btnStyle}>Calculate DuPont</button>
+      <button onClick={onCalculate} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate DuPont</button>
     </div>
   )
 }
@@ -430,7 +406,7 @@ function RatiosForm({ onCalculate }: { onCalculate: () => void }) {
   const [cogs, setCogs] = useState(400000)
   return (
     <div className="space-y-3">
-      <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+      <p className="text-xs text-muted">
         Comprehensive financial ratio analysis from balance sheet data.
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -445,7 +421,7 @@ function RatiosForm({ onCalculate }: { onCalculate: () => void }) {
         <NumberInput label="Interest Exp" value={ie} onChange={setIe} step={1000} />
         <NumberInput label="COGS" value={cogs} onChange={setCogs} step={10000} />
       </div>
-      <button onClick={onCalculate} style={btnStyle}>Calculate Ratios</button>
+      <button onClick={onCalculate} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate Ratios</button>
     </div>
   )
 }

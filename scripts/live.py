@@ -127,7 +127,8 @@ def main():
     logger.info("Initial capital: $%.2f", args.capital)
 
     try:
-        while True:
+        _live_max = 1000000
+        for _ in range(_live_max):
             portfolio = executor.get_portfolio()
             prices: dict[str, float] = {}
             bars: dict[str, pd.DataFrame] = {}

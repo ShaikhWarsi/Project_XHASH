@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Optional
 
 import pandas as pd
 import yfinance as yf
+
+logger = logging.getLogger(__name__)
 
 from .evaluator import ConditionGroup
 
@@ -65,7 +68,8 @@ class Scanner:
             df = df.drop(columns=["dividend", "split"], errors="ignore")
             self._cache[cache_key] = df
             return df
-        except Exception:
+        except Exception as e:
+            logger.debug("Failed to fetch data for %s: %s", symbol, e)
             return None
 
     def clear_cache(self):

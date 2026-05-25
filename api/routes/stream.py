@@ -51,7 +51,8 @@ async def event_generator(request: Request):
     try:
         heartbeat_interval = 15
         ticks = 0
-        while True:
+        _max_iter = 1000000
+        for _ in range(_max_iter):
             if await request.is_disconnected():
                 break
 
@@ -64,6 +65,8 @@ async def event_generator(request: Request):
 
             await asyncio.sleep(1)
             ticks += 1
+        else:
+            logger.warning("event_generator hit max iterations")
     except asyncio.CancelledError:
         pass
 

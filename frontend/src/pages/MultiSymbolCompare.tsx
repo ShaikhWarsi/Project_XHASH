@@ -4,9 +4,9 @@ import type { BarData } from '../api/types'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import Spinner from '../components/Spinner'
-import { createChart, ColorType, LineSeries } from 'lightweight-charts'
+import { createChart, ColorType, LineSeries, CandlestickSeries, HistogramSeries } from 'lightweight-charts'
 
-function ComparisonChart({ series }: { series: { symbol: string; data: { time: string; value: number }[]; color: string }[] }) {
+function ComparisonChart({ series, showCandles }: { series: { symbol: string; data: { time: string; value: number }[]; candles?: { time: string; open: number; high: number; low: number; close: number; volume: number }[]; color: string }[]; showCandles: boolean }) {
   const chartRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!chartRef.current || series.length === 0) return
@@ -22,12 +22,21 @@ function ComparisonChart({ series }: { series: { symbol: string; data: { time: s
       rightPriceScale: { borderColor: chartBorder },
       timeScale: { borderColor: chartBorder },
     })
-    series.forEach((s) => {
-      chart.addSeries(LineSeries, { color: s.color, lineWidth: 2 }).setData(s.data)
-    })
+    if (showCandles && series[0]?.candles) {
+      const candleSeries = chart.addSeries(CandlestickSeries, { upColor: '#26a69a', downColor: '#ef5350' })
+      candleSeries.setData(series[0].candles as any)
+      const volData = series[0].candles.map((c) => ({ time: c.time, value: c.close > c.open ? c.volume : -c.volume, color: c.close > c.open ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)' }))
+      const volSeries = chart.addSeries(HistogramSeries, { priceFormat: { type: 'volume' }, priceScaleId: '' })
+      chart.priceScale('').applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } })
+      volSeries.setData(volData)
+    } else {
+      series.forEach((s) => {
+        chart.addSeries(LineSeries, { color: s.color, lineWidth: 2 }).setData(s.data)
+      })
+    }
     chart.timeScale().fitContent()
     return () => chart.remove()
-  }, [series])
+  }, [series, showCandles])
   return <div ref={chartRef} />
 }
 
@@ -44,6 +53,7 @@ export default function MultiSymbolCompare() {
   const [interval, setInterval] = useState('1d')
   const [range, setRange] = useState('6mo')
   const [normalize, setNormalize] = useState(true)
+  const [showCandles, setShowCandles] = useState(false)
 
   const loadData = useCallback(async () => {
     if (symbols.length === 0) return
@@ -88,6 +98,10 @@ export default function MultiSymbolCompare() {
           time: typeof b.time === 'string' ? b.time.split('T')[0] : String(b.time),
           value: b.close / firstClose,
         })),
+      candles: i === 0 ? bars.filter((b) => b.time).map((b) => ({
+        time: typeof b.time === 'string' ? b.time.split('T')[0] : String(b.time),
+        open: b.open, high: b.high, low: b.low, close: b.close, volume: b.volume || 0,
+      })) : undefined,
     }
   })
 
@@ -138,7 +152,11 @@ export default function MultiSymbolCompare() {
         </select>
         <label className="flex items-center gap-1 text-[10px] font-mono-data text-muted cursor-pointer">
           <input type="checkbox" checked={normalize} onChange={(e) => setNormalize(e.target.checked)} className="accent-accent-cyan" />
-          Normalize to 1
+          Normalize
+        </label>
+        <label className="flex items-center gap-1 text-[10px] font-mono-data text-muted cursor-pointer">
+          <input type="checkbox" checked={showCandles} onChange={(e) => setShowCandles(e.target.checked)} className="accent-accent-cyan" />
+          Candles
         </label>
         <button onClick={loadData} disabled={loading}
           className="bg-accent-cyan text-black font-mono-data text-[10px] px-2 py-1 rounded-sm cursor-pointer disabled:opacity-50 border-none">
@@ -166,7 +184,7 @@ export default function MultiSymbolCompare() {
         {loading ? (
           <div className="flex items-center justify-center py-4"><Spinner label="Loading data..." /></div>
         ) : chartSeries.some((s) => s.data.length > 0) ? (
-          <ComparisonChart series={chartSeries.filter((s) => s.data.length > 0)} />
+          <ComparisonChart series={chartSeries.filter((s) => s.data.length > 0)} showCandles={showCandles} />
         ) : (
           <div className="text-[11px] font-mono-data text-muted text-center py-4">No data available</div>
         )}

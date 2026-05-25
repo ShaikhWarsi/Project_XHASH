@@ -53,7 +53,7 @@ def visualize_pac(symbol="BTC-USD", period="1mo", interval="1h"):
             )
             # Add text label manually via marker since trend_line doesn't support text easily
             chart.marker(time=ms['time'], text=label, color=color, shape='arrow_up' if ms['trend'] == 1 else 'arrow_down', position='below' if ms['trend'] == 1 else 'above')
-        except:
+        except Exception:
             pass
 
     # 2. Plot Swing Market Structure
@@ -69,7 +69,7 @@ def visualize_pac(symbol="BTC-USD", period="1mo", interval="1h"):
                 color
             )
             chart.marker(time=ms['time'], text=label, color=color, shape='arrow_up' if ms['trend'] == 1 else 'arrow_down', position='below' if ms['trend'] == 1 else 'above')
-        except:
+        except Exception:
             pass
 
     # 3. Plot Order Blocks
@@ -84,7 +84,7 @@ def visualize_pac(symbol="BTC-USD", period="1mo", interval="1h"):
                 format_time(ob['end_time']), ob['bottom'],
                 color
             )
-        except:
+        except Exception:
             # Fallback
             t1, t2 = format_time(ob['start_time']), format_time(ob['end_time'])
             v1, v2 = ob['top'], ob['bottom']
@@ -104,7 +104,7 @@ def visualize_pac(symbol="BTC-USD", period="1mo", interval="1h"):
                 format_time(fvg['end_time']), fvg['bottom'],
                 color
             )
-        except:
+        except Exception:
             pass
 
     print("Showing chart...")

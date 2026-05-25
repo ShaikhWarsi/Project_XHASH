@@ -50,6 +50,7 @@ from .routes.signals_stream import router as signals_stream_router
 from .routes.risk_live import router as risk_live_router
 from .routes.portfolio_whatif import router as portfolio_whatif_router
 from .routes.strategy_clone import router as strategy_clone_router
+from .routes.llm import router as llm_router
 from persistence import init_db, close_db
 from persistence.database import _engine as db_engine
 
@@ -150,6 +151,7 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
     app.include_router(risk_live_router)
     app.include_router(portfolio_whatif_router)
     app.include_router(strategy_clone_router)
+    app.include_router(llm_router)
 
     @app.get("/")
     async def root():

@@ -88,7 +88,8 @@ async def geo_analysis(req: GeoAnalysisRequest):
 
     try:
         news = yf.Search(req.symbol, news_count=20).news or []
-    except Exception:
+    except Exception as e:
+        logger.warning("Failed to fetch news for %s: %s", req.symbol, e)
         news = []
 
     detections: list[dict[str, Any]] = []

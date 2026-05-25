@@ -71,11 +71,14 @@ class BaseRestClient(ABC):
     def get_balance(self) -> Dict[str, Any]:
         ...
 
+    @abstractmethod
     def cancel_order(self, order_id: str) -> bool:
-        raise NotImplementedError
+        ...
 
+    @abstractmethod
     def get_open_orders(self, symbol: Optional[str] = None) -> list:
-        raise NotImplementedError
+        ...
 
+    @abstractmethod
     def get_positions(self) -> list:
-        raise NotImplementedError
+        ...

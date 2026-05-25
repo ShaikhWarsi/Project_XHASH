@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from datetime import date, datetime, timedelta
-from typing import List, Optional, Set
+from typing import Any, List, Optional, Set
 
 import pandas as pd
 
@@ -14,7 +14,7 @@ try:
 
     HAS_EXCHANGE_CALENDARS = True
 except ImportError:
-    ec = None  # type: ignore
+    ec: Any = None
 
 
 EXCHANGE_MAP = {

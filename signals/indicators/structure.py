@@ -62,7 +62,8 @@ class MarketStructureEngine(SignalEngine):
             ohlc["high"] == ohlc["high"].shift(-(sl // 2)).rolling(sl).max(), 1,
             np.where(ohlc["low"] == ohlc["low"].shift(-(sl // 2)).rolling(sl).min(), -1, np.nan),
         )
-        while True:
+        _swing_max = 10000
+        for _ in range(_swing_max):
             positions = np.where(~np.isnan(swing))[0]
             if len(positions) < 2:
                 break

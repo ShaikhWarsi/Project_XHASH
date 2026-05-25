@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import logging
 import math
 from typing import Any, Optional
 
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 from .ast import (
     ArrayExpr, AssignStmt, BinaryExpr, BinOp, BoolExpr, BreakStmt, BuyStmt,
@@ -228,7 +231,7 @@ class Interpreter:
                 })
         elif isinstance(stmt, PrintStmt):
             val = self._eval_expr(stmt.expression, scope)
-            print(f"[FinScript] {val}")
+            logger.info("FinScript: %s", val)
         elif isinstance(stmt, SwitchStmt):
             value = self._eval_expr(stmt.value, scope)
             matched = False
@@ -345,7 +348,8 @@ class Interpreter:
                 args = [self._eval_expr(a, scope) for a in expr.args]
                 try:
                     return fn(*args)
-                except Exception:
+                except Exception as e:
+                    logger.debug("FinScript fn call failed: %s", e)
                     return NAN
             return NAN
         if isinstance(expr, MethodCallExpr):

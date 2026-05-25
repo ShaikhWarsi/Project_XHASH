@@ -108,7 +108,7 @@ async def update_flow(flow_id: int, request: FlowUpdateRequest, db: AsyncSession
             flow.tickers = json.dumps([_validate_node_data(n.data).get("ticker") for n in request.nodes if _validate_node_data(n.data).get("ticker")])
             flow.agents = json.dumps([_validate_node_data(n.data).get("agent_key") for n in request.nodes if _validate_node_data(n.data).get("agent_key")])
         if request.nodes is not None or request.edges is not None or request.viewport is not None or request.data is not None:
-            config = json.loads(flow.config_json) if flow.config_json else {}
+            config = _safe_json(flow.config_json)
             if request.nodes is not None:
                 config["nodes"] = [n.model_dump() for n in request.nodes]
             if request.edges is not None:
@@ -138,8 +138,17 @@ async def delete_flow(flow_id: int, db: AsyncSession = Depends(get_session)):
     return {"message": "Flow deleted"}
 
 
+def _safe_json(val):
+    if not val:
+        return {}
+    try:
+        return json.loads(val)
+    except (json.JSONDecodeError, TypeError):
+        return {}
+
+
 def _flow_to_response(flow: HedgeFundFlow) -> FlowResponse:
-    config = json.loads(flow.config_json) if flow.config_json else {}
+    config = _safe_json(flow.config_json)
     return FlowResponse(
         id=flow.id,
         name=flow.name,

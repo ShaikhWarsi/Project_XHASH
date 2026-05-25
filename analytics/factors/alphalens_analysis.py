@@ -15,7 +15,7 @@ try:
 
     HAS_ALPHALENS = True
 except ImportError:
-    al = None  # type: ignore
+    al: Any = None
 
 
 class FactorAnalysis:

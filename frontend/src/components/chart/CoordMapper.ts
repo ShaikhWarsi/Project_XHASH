@@ -64,7 +64,13 @@ export class CoordMapper {
 
   /** Get the price scale's height for a given pane. */
   getPaneHeight(paneIndex = 0): number {
-    // lightweight-charts doesn't expose this directly, we approximate
-    return (this.chart.priceScale(paneIndex === 0 ? 'right' : `pane_${paneIndex}`) as any)?.height() ?? 300
+    try {
+      const id = paneIndex === 0 ? 'right' : `pane_${paneIndex}`
+      const scale = this.chart.priceScale(id)
+      if (scale && typeof (scale as any).height === 'function') {
+        return (scale as any).height() ?? 300
+      }
+    } catch { /* lightweight-charts may not expose height */ }
+    return 300
   }
 }

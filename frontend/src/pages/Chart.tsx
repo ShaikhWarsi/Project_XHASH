@@ -17,6 +17,7 @@ import { ChartSettings } from '../components/chart/ui/ChartSettings'
 import { LayoutBuilder } from '../components/chart/ui/LayoutBuilder'
 import OpenBBChart from '../components/chart/plotly/OpenBBChart'
 import TAIndicatorPanel from '../components/chart/plotly/TAIndicatorPanel'
+import ErrorBoundary from '../components/ErrorBoundary'
 import TimeMachine from '../components/chart/TimeMachine'
 import LayerPanel from '../components/chart/LayerPanel'
 import type { ChartLayer } from '../components/chart/LayerPanel'
@@ -64,10 +65,24 @@ export default function ChartPage() {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<ChartEngine | null>(null)
   const chartInitialized = useRef(false)
+  const dataRef = useRef<BarData[]>([])
 
   // WebSocket for live prices
   const wsUrl = `/ws/prices?symbols=${symbol}`
   const { lastData: wsPriceData, connected: wsConnected } = useWebSocket<any>(wsUrl)
+
+  const setChartData = useCallback((bars: BarData[]) => {
+    if (!chartRef.current) return
+    const chartData = bars.map((bar) => ({
+      time: bar.time as any,
+      open: bar.open,
+      high: bar.high,
+      low: bar.low,
+      close: bar.close,
+      volume: bar.volume,
+    }))
+    chartRef.current.setMainSeries(chartData)
+  }, [])
 
   // Load data
   useEffect(() => {
@@ -76,24 +91,16 @@ export default function ChartPage() {
     fetchOHLCV(symbol, interval)
       .then((d) => {
         setData(d)
+        dataRef.current = d
         setLoading(false)
-        if (chartRef.current) {
-          const chartData = d.map((bar) => ({
-            time: bar.time as any,
-            open: bar.open,
-            high: bar.high,
-            low: bar.low,
-            close: bar.close,
-            volume: bar.volume,
-          }))
-          chartRef.current.setMainSeries(chartData)
-        }
+        setChartData(d)
       })
       .catch((e) => {
         setError(e?.message ?? 'Failed to load data')
+        addToast(e?.message ?? 'Failed to load chart data', 'error')
         setLoading(false)
       })
-  }, [symbol, interval])
+  }, [symbol, interval, setChartData])
 
   // Initialize chart
   useEffect(() => {
@@ -112,45 +119,31 @@ export default function ChartPage() {
 
     chartRef.current = engine
 
-    // Update undo/redo state periodically
-    const updateInterval = setInterval(() => {
+    // Event-driven undo/redo state updates
+    engine.drawingManager.setOnChanged(() => {
       setCanUndo(engine.drawingManager.canUndo())
       setCanRedo(engine.drawingManager.canRedo())
       setDrawingsCount(engine.drawingManager.getDrawings().length)
-    }, 200)
+    })
 
     return () => {
-      clearInterval(updateInterval)
       engine.destroy()
       chartRef.current = null
       chartInitialized.current = false
     }
   }, [])
 
-  // Update chart data when data changes
-  useEffect(() => {
-    if (!chartRef.current || data.length === 0) return
-    const chartData = data.map((bar) => ({
-      time: bar.time as any,
-      open: bar.open,
-      high: bar.high,
-      low: bar.low,
-      close: bar.close,
-      volume: bar.volume,
-    }))
-    chartRef.current.setMainSeries(chartData)
-  }, [data])
-
   // Handle live bar update from WebSocket
   useEffect(() => {
-    if (!wsPriceData || !chartRef.current || data.length === 0) return
-    // wsPriceData format: { price, time, volume }
+    if (!wsPriceData || !chartRef.current) return
+    const bars = dataRef.current
+    if (bars.length === 0) return
     const price = wsPriceData.price ?? wsPriceData.close
     const time = wsPriceData.time ?? Math.floor(Date.now() / 1000)
     if (price == null) return
 
-    const lastBar = data[data.length - 1]
-    const barTime = Math.floor(time / 60) * 60 // snap to minute
+    const lastBar = bars[bars.length - 1]
+    const barTime = Math.floor(time / 60) * 60
     const isNewBar = barTime !== lastBar.time
 
     if (isNewBar) {
@@ -293,6 +286,7 @@ export default function ChartPage() {
       setFigureJSON(result.figure_json)
     } catch (e: any) {
       console.error('TA chart failed:', e)
+      addToast(e?.message || 'TA chart generation failed', 'error')
     }
     setAnalysisLoading(false)
   }, [symbol, interval])
@@ -580,10 +574,23 @@ export default function ChartPage() {
               const file = (e.target as HTMLInputElement).files?.[0]
               if (!file || !chartRef.current) return
               try {
-                const drawings = JSON.parse(await file.text())
-                drawings.forEach((d: any) => chartRef.current!.drawingManager.addDrawing(d))
+                const raw = await file.text()
+                const parsed = JSON.parse(raw)
+                if (!Array.isArray(parsed) && (!parsed.type || !parsed.points)) {
+                  addToast('Invalid file format: expected array of drawings or a single drawing object', 'error')
+                  return
+                }
+                const drawings = Array.isArray(parsed) ? parsed : [parsed]
+                let imported = 0
+                drawings.forEach((d: any) => {
+                  const result = chartRef.current!.drawingManager.addDrawingFromJSON(d)
+                  if (result) imported++
+                })
                 setDrawingsCount(chartRef.current!.drawingManager.getDrawings().length)
-              } catch { addToast('Failed to import drawings', 'error') }
+                addToast(`Imported ${imported} drawing(s)`, 'success')
+              } catch {
+                addToast('Failed to import drawings: file may be corrupt or wrong format', 'error')
+              }
             }
             input.click()
           }}
@@ -627,7 +634,9 @@ export default function ChartPage() {
               <button onClick={() => setShowAnalysis(false)} className="bg-transparent cursor-pointer text-muted text-xs">✕</button>
             </div>
             <div className="flex-1 flex overflow-hidden">
-              <TAIndicatorPanel onIndicatorsChange={handleTAIndicatorsChange} key={taChartKey} />
+              <ErrorBoundary category="widget" componentName="TA Indicators">
+                <TAIndicatorPanel onIndicatorsChange={handleTAIndicatorsChange} key={taChartKey} />
+              </ErrorBoundary>
               <div className="flex-1 relative">
                 {analysisLoading ? (
                   <div className="flex items-center justify-center h-full text-[11px] text-muted">

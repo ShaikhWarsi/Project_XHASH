@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import logging
 from typing import Optional
 
 from fastapi import APIRouter, Query
+
+logger = logging.getLogger(__name__)
 
 from data.heatmap import generate_heatmap_data
 from data.swr_cache import cached_or_compute, invalidate, clear_cache
@@ -57,7 +60,8 @@ async def market_news(limit: int = Query(20, le=50)):
                                 "summary": item.get("summary", ""),
                                 "timestamp": item.get("providerPublishTime"),
                             })
-                except Exception:
+                except Exception as e:
+                    logger.debug("Failed to parse news item: %s", e)
                     continue
             news_items.sort(key=lambda x: x.get("timestamp", 0), reverse=True)
             return news_items[:limit]

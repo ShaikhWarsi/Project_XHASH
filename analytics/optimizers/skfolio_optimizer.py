@@ -19,7 +19,7 @@ try:
 
     HAS_SKFOLIO = True
 except ImportError:
-    skfolio = None  # type: ignore
+    skfolio: Any = None
 
 
 class SkfolioOptimizer:

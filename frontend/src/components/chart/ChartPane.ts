@@ -64,10 +64,14 @@ export class ChartPane {
   }
 
   syncTimeScale(mainTimeScale: any) {
-    // Sync this pane's time scale with the main chart
-    const range = mainTimeScale.getVisibleRange()
-    if (range) {
-      this.chart.timeScale().setVisibleRange(range)
+    try {
+      if (!mainTimeScale || typeof mainTimeScale.getVisibleRange !== 'function') return
+      const range = mainTimeScale.getVisibleRange()
+      if (range) {
+        this.chart.timeScale().setVisibleRange(range)
+      }
+    } catch {
+      // Time scale sync failed silently — non-critical
     }
   }
 

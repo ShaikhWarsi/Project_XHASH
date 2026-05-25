@@ -36,9 +36,10 @@ export default function AdvancedCharts() {
 
   const initChart = useCallback(() => {
     if (!containerRef.current || chartRef.current) return
+    const h = containerRef.current.clientHeight || 500
     const chart = createChart(containerRef.current, {
       width: containerRef.current.clientWidth,
-      height: 500,
+      height: h,
       layout: {
         background: { color: '#0a0e14' },
         textColor: '#5d6b7e',
@@ -89,7 +90,8 @@ export default function AdvancedCharts() {
     initChart()
     const handleResize = () => {
       if (containerRef.current && chartRef.current) {
-        chartRef.current.resize(containerRef.current.clientWidth, 500)
+        const h = containerRef.current.clientHeight || 500
+        chartRef.current.resize(containerRef.current.clientWidth, h)
       }
     }
     window.addEventListener('resize', handleResize)
@@ -152,8 +154,8 @@ export default function AdvancedCharts() {
           ))}
         </div>
       </div>
-      <div style={{ flex: 1, border: '1px solid var(--border-color)', borderRadius: 4, overflow: 'hidden' }}>
-        <div ref={containerRef} style={{ width: '100%', height: 500 }} />
+      <div style={{ flex: 1, border: '1px solid var(--border-color)', borderRadius: 4, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div ref={containerRef} style={{ width: '100%', height: '100%', minHeight: 400 }} />
         <div style={{ padding: '6px 8px', ...FONT, fontSize: 10, color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', background: 'var(--bg-card)' }}>
           Multi-layer chart compositing — toggle layers on/off, reorder, and customize each layer's appearance
         </div>

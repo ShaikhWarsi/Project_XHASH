@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { api } from '../api/client'
+import { useToastStore } from '../store/toast'
 import { Database, Shield, Filter, Cpu } from 'lucide-react'
 import Spinner from '../components/Spinner'
 
 type Tab = 'providers' | 'mcp' | 'cache' | 'protections' | 'pairlists'
 
 export default function Infrastructure() {
+  const addToast = useToastStore((s) => s.addToast)
   const [tab, setTab] = useState<Tab>('providers')
   const [providers, setProviders] = useState<any[]>([])
   const [mcpTools, setMcpTools] = useState<any[]>([])
@@ -15,9 +17,9 @@ export default function Infrastructure() {
   useEffect(() => {
     setLoading(true)
     Promise.all([
-      api.get('/providers/').then(r => setProviders(r.data.providers || [])).catch(() => {}),
-      api.get('/mcp/tools').then(r => setMcpTools(r.data.tools || [])).catch(() => {}),
-      api.get('/backtest-cache/stats').then(r => setCacheStats(r.data)).catch(() => {}),
+      api.get('/providers/').then(r => setProviders(r.data.providers || [])).catch((err) => { console.warn('Infrastructure: providers failed', err); addToast('Failed to load providers', 'error') }),
+      api.get('/mcp/tools').then(r => setMcpTools(r.data.tools || [])).catch((err) => { console.warn('Infrastructure: mcp tools failed', err); addToast('Failed to load MCP tools', 'error') }),
+      api.get('/backtest-cache/stats').then(r => setCacheStats(r.data)).catch((err) => { console.warn('Infrastructure: cache stats failed', err); addToast('Failed to load cache stats', 'error') }),
     ]).finally(() => setLoading(false))
   }, [])
 

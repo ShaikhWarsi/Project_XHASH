@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import logging
+import threading
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -17,20 +21,23 @@ router = APIRouter(prefix="/v1/market", tags=["market-data"])
 
 _finnhub: FinnhubDataSource | None = None
 _yfinance: YFinanceDataSource | None = None
+_market_lock = threading.Lock()
 
 
 def _get_finnhub() -> FinnhubDataSource:
     global _finnhub
-    if _finnhub is None:
-        _finnhub = FinnhubDataSource()
-    return _finnhub
+    with _market_lock:
+        if _finnhub is None:
+            _finnhub = FinnhubDataSource()
+        return _finnhub
 
 
 def _get_yfinance() -> YFinanceDataSource:
     global _yfinance
-    if _yfinance is None:
-        _yfinance = YFinanceDataSource()
-    return _yfinance
+    with _market_lock:
+        if _yfinance is None:
+            _yfinance = YFinanceDataSource()
+        return _yfinance
 
 
 @router.get("/search")
@@ -50,8 +57,8 @@ async def get_quote(symbol: str):
     try:
         quote = _get_finnhub().get_quote(symbol)
         return quote
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Finnhub quote failed: %s", e)
     try:
         return _get_yfinance().get_quote(symbol)
     except Exception as e:
@@ -65,7 +72,8 @@ async def get_quotes(symbols: str = "SPY,QQQ"):
     import pandas as pd
     try:
         df = await asyncio.to_thread(lambda: yf.download(" ".join(sym_list), period="1d", group_by="ticker", progress=False))
-    except Exception:
+    except Exception as e:
+        logger.warning("yfinance download failed: %s", e)
         df = pd.DataFrame()
     import math
     result = {}
@@ -87,7 +95,8 @@ async def get_quotes(symbols: str = "SPY,QQQ"):
                     return 0.0
                 return float(v)
             result[sym] = {"c": sf(price), "d": sf(chg), "dp": sf(pct), "h": sf(high), "l": sf(low), "o": sf(price - chg), "pc": sf(price - chg)}
-        except Exception:
+        except Exception as e:
+            logger.debug("Failed to fetch price for %s: %s", sym, e)
             result[sym] = None
     return result
 
@@ -106,7 +115,8 @@ async def get_news(symbol: str):
     try:
         news = _get_finnhub().get_news(symbol)
         return {"articles": news}
-    except Exception:
+    except Exception as e:
+        logger.warning("Finnhub news failed: %s", e)
         return {"articles": []}
 
 

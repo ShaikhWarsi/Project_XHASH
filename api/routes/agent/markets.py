@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from typing import Optional
 
 from fastapi import Depends, HTTPException, Query
+
+logger = logging.getLogger(__name__)
 
 from api.auth.agent_scopes import SCOPE_R
 from api.auth.agent_auth import agent_required, AgentTokenData, market_allowed, instrument_allowed
@@ -53,8 +56,8 @@ async def search_symbols(
                     if sym not in seen:
                         seen.add(sym)
                         symbols.append(s)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Provider search_symbols failed: %s", e)
 
     return {"market": market, "symbols": symbols[:limit], "total": len(symbols[:limit])}
 
@@ -92,7 +95,8 @@ async def get_klines(
                 if bars is not None and not bars.empty:
                     data = bars.tail(limit).to_dict(orient="records")
                     return {"market": market, "symbol": symbol, "timeframe": timeframe, "klines": data, "total": len(data)}
-        except Exception:
+        except Exception as e:
+            logger.debug("Provider fetch_bars failed for %s: %s", provider_name, e)
             continue
 
     raise HTTPException(status_code=404, detail="No data available")
@@ -117,7 +121,8 @@ async def get_price(
                 ticker = provider.fetch_ticker(symbol=symbol)
                 if ticker:
                     return {"market": market, "symbol": symbol, "price": ticker}
-        except Exception:
+        except Exception as e:
+            logger.debug("Provider fetch_ticker failed for %s: %s", provider_name, e)
             continue
 
     raise HTTPException(status_code=404, detail="No price data available")

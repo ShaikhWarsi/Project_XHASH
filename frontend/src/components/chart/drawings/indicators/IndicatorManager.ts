@@ -14,9 +14,6 @@ export class IndicatorManager {
   private indicators: Map<string, IndicatorResult> = new Map()
 
   addIndicator(config: IndicatorConfig): IndicatorResult | null {
-    const fn = (compute as any)[config.name.toLowerCase().replace(/\s+/g, '_')]
-    if (!fn) return null
-
     const result = this.compute(config.name, config.params)
     if (!result) return null
 
@@ -41,11 +38,12 @@ export class IndicatorManager {
     if (!config) return null
 
     const mergedParams = { ...config.defaultParams, ...params }
-    const fn = (compute as any)[config.computeFn]
-    if (!fn) return null
+    const fn = (compute as Record<string, Function>)[config.computeFn]
+    if (!fn || typeof fn !== 'function') return null
 
-    const data = [] as IndicatorInput[]
+    const data: IndicatorInput[] = []
     const result = fn(data, ...Object.values(mergedParams))
+    if (!result) return null
     return {
       id: config.id,
       name: config.name,

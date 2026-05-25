@@ -4,12 +4,14 @@ import Badge from './ui/Badge'
 import Skeleton from './Skeleton'
 import { fetchChinaStocks, fetchChinaIndices } from '../api/china'
 import type { ChinaMarketData } from '../api/china'
+import { useToastStore } from '../store/toast'
 
 const FONT_SM = { fontFamily: "'JetBrains Mono', monospace", fontSize: 10 }
 const FONT_DATA = { fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }
 const FONT_LABEL = { fontSize: 9, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.05em' }
 
 export default function ChinaMarketsPanel() {
+  const addToast = useToastStore((s) => s.addToast)
   const [stocks, setStocks] = useState<ChinaMarketData[]>([])
   const [indices, setIndices] = useState<ChinaMarketData[]>([])
   const [loading, setLoading] = useState(true)
@@ -17,8 +19,8 @@ export default function ChinaMarketsPanel() {
   useEffect(() => {
     setLoading(true)
     Promise.all([
-      fetchChinaStocks().then((r) => setStocks(r.stocks)).catch(() => {}),
-      fetchChinaIndices().then((r) => setIndices(r.indices)).catch(() => {}),
+      fetchChinaStocks().then((r) => setStocks(r.stocks)).catch((err) => { console.warn('ChinaMarkets: stocks failed', err); addToast('Failed to load China stocks', 'error') }),
+      fetchChinaIndices().then((r) => setIndices(r.indices)).catch((err) => { console.warn('ChinaMarkets: indices failed', err); addToast('Failed to load China indices', 'error') }),
     ]).finally(() => setLoading(false))
   }, [])
 

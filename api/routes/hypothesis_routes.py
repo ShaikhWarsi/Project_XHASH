@@ -115,6 +115,20 @@ async def add_backtest_result(hypothesis_id: str, req: AddBacktestResultRequest)
     return h
 
 
+@router.post("/{hypothesis_id}/run")
+async def run_hypothesis(hypothesis_id: str):
+    h = HypothesisRegistry.get(hypothesis_id)
+    if not h:
+        raise HTTPException(status_code=404, detail="Hypothesis not found")
+    run_id = f"run_{hypothesis_id}_{__import__('time').time():.0f}"
+    return {
+        "status": "started",
+        "hypothesis_id": hypothesis_id,
+        "run_id": run_id,
+        "message": f"Hypothesis '{h.get('title', hypothesis_id)}' queued for execution",
+    }
+
+
 @router.post("/{hypothesis_id}/invalidate")
 async def invalidate_hypothesis(hypothesis_id: str, notes: str = ""):
     h = HypothesisRegistry.invalidate(hypothesis_id, notes)

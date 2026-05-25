@@ -15,18 +15,17 @@ interface Plugin {
   stars?: number
 }
 
-const AVAILABLE_PLUGINS: Plugin[] = [
-  { id: 'p1', name: 'Ichimoku Cloud', version: '1.0.0', author: 'community', description: 'Complete Ichimoku Kinko Hyo indicator with cloud, span, and chikou span', type: 'indicator', enabled: false, installed: false, stars: 42 },
-  { id: 'p2', name: 'Order Flow Imbalance', version: '0.9.0', author: 'core', description: 'Real-time order flow imbalance analysis from tick data', type: 'indicator', enabled: false, installed: false, stars: 38 },
-  { id: 'p3', name: 'Mean Reversion Strategy', version: '2.1.0', author: 'community', description: 'Bollinger Band mean reversion with Z-score entry', type: 'strategy', enabled: false, installed: false, stars: 87 },
-  { id: 'p4', name: 'Coinbase Pro Source', version: '1.0.0', author: 'core', description: 'Real-time cryptocurrency data from Coinbase Pro WebSocket', type: 'data_source', enabled: false, installed: false, stars: 25 },
-  { id: 'p5', name: 'Social Sentiment Signal', version: '0.5.0', author: 'community', description: 'Twitter/Reddit sentiment analysis for signal generation', type: 'signal', enabled: false, installed: false, stars: 64 },
-  { id: 'p6', name: 'VWAP + Volume Profile', version: '1.2.0', author: 'core', description: 'Volume Weighted Average Price with Volume Profile overlay', type: 'indicator', enabled: false, installed: false, stars: 55 },
-  { id: 'p7', name: 'Futures Spread Trading', version: '1.0.0', author: 'community', description: 'Calendar spread and inter-commodity spread strategy', type: 'strategy', enabled: false, installed: false, stars: 31 },
-  { id: 'p8', name: 'Polygon.io Data Feed', version: '0.8.0', author: 'core', description: 'Unified data feed from Polygon.io for stocks and options', type: 'data_source', enabled: false, installed: false, stars: 19 },
-]
+const AVAILABLE_PLUGINS: Plugin[] = []
 
 const INSTALLED_PLUGINS: Plugin[] = [
+  { id: 'p1', name: 'Ichimoku Cloud', version: '1.0.0', author: 'community', description: 'Complete Ichimoku Kinko Hyo indicator with cloud, span, and chikou span', type: 'indicator', enabled: true, installed: true, stars: 42 },
+  { id: 'p2', name: 'Order Flow Imbalance', version: '0.9.0', author: 'core', description: 'Real-time order flow imbalance analysis from tick data', type: 'indicator', enabled: true, installed: true, stars: 38 },
+  { id: 'p3', name: 'Mean Reversion Strategy', version: '2.1.0', author: 'community', description: 'Bollinger Band mean reversion with Z-score entry', type: 'strategy', enabled: true, installed: true, stars: 87 },
+  { id: 'p4', name: 'Coinbase Pro Source', version: '1.0.0', author: 'core', description: 'Real-time cryptocurrency data from Coinbase Pro WebSocket', type: 'data_source', enabled: true, installed: true, stars: 25 },
+  { id: 'p5', name: 'Social Sentiment Signal', version: '0.5.0', author: 'community', description: 'Twitter/Reddit sentiment analysis for signal generation', type: 'signal', enabled: true, installed: true, stars: 64 },
+  { id: 'p6', name: 'VWAP + Volume Profile', version: '1.2.0', author: 'core', description: 'Volume Weighted Average Price with Volume Profile overlay', type: 'indicator', enabled: true, installed: true, stars: 55 },
+  { id: 'p7', name: 'Futures Spread Trading', version: '1.0.0', author: 'community', description: 'Calendar spread and inter-commodity spread strategy', type: 'strategy', enabled: true, installed: true, stars: 31 },
+  { id: 'p8', name: 'Polygon.io Data Feed', version: '0.8.0', author: 'core', description: 'Unified data feed from Polygon.io for stocks and options', type: 'data_source', enabled: true, installed: true, stars: 19 },
   { id: 'i1', name: 'Fibonacci Tools', version: '1.0.0', author: 'core', description: 'Fibonacci retracement, extension, and time zone drawing tools', type: 'indicator', enabled: true, installed: true },
   { id: 'i2', name: 'Pine Script Converter', version: '0.5.0', author: 'core', description: 'Convert TradingView Pine Script indicators to FinScript', type: 'indicator', enabled: true, installed: true },
 ]

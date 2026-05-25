@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
+
+logger = logging.getLogger(__name__)
 from datetime import datetime
 from typing import Callable, Optional
 
@@ -166,12 +169,13 @@ class BacktestEngine:
                     else:
                         self.matching_engine.sell(bt_order)
 
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Failed to process order in backtest: %s", e)
 
             self.matching_engine.next()
 
-            while True:
+            _notif_max = 100000
+            for _ in range(_notif_max):
                 notif = self.matching_engine.get_notification()
                 if notif is None:
                     break

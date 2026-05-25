@@ -185,7 +185,8 @@ async def write_audit_log(
             try:
                 body = await request_obj.json()
                 req_summary["json"] = _redact(body)
-            except Exception:
+            except Exception as e:
+                logger.warning("Failed to read request body: %s", e)
                 req_summary["json"] = "<unreadable>"
 
         audit = AgentAudit(

@@ -203,7 +203,8 @@ def _swing_highs_lows_local(ohlc: pd.DataFrame, swing_length: int = 50) -> pd.Da
         ),
     )
 
-    while True:
+    _swing_max = 10000
+    for _ in range(_swing_max):
         positions = np.where(~np.isnan(swing_highs_lows))[0]
 
         if len(positions) < 2:

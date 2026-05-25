@@ -5,9 +5,9 @@ import Skeleton from './Skeleton'
 import { useWorkflowStore } from '../store/workflows'
 import { useToastStore } from '../store/toast'
 
-const FONT_SM = { fontFamily: "'JetBrains Mono', monospace", fontSize: 10 }
-const FONT_DATA = { fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }
-const FONT_LABEL = { fontSize: 9, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.05em' }
+const TEXT_SM = "font-mono-data text-[10px]"
+const TEXT_DATA = "font-mono-data text-[11px]"
+const TEXT_LABEL = "text-[9px] font-mono-data tracking-wider"
 
 function formatTime(ts: string): string {
   try {
@@ -62,10 +62,10 @@ export default function WorkflowPanel() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div className="flex flex-col gap-1.5">
         <Card title="WORKFLOW ORCHESTRATION">
           {[1, 2, 3].map((i) => (
-            <div key={i} style={{ marginBottom: 6 }}>
+            <div key={i} className="mb-1.5">
               <Skeleton width={140} height={14} />
               <Skeleton width={200} height={10} style={{ marginTop: 4 }} />
             </div>
@@ -78,7 +78,7 @@ export default function WorkflowPanel() {
   if (!loading && workflows.length === 0) {
     return (
       <Card title="WORKFLOW ORCHESTRATION">
-        <div className="py-6 text-center text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>
+        <div className="py-6 text-center text-[11px] font-mono text-muted">
           No workflows configured yet
         </div>
       </Card>
@@ -86,67 +86,67 @@ export default function WorkflowPanel() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div className="flex flex-col gap-1.5">
       <Card title={`WORKFLOW ORCHESTRATION (${workflows.length})`}>
-        <div className="flex items-center gap-2 mb-2" style={{ ...FONT_SM, color: 'var(--text-muted)' }}>
+        <div className="flex items-center gap-2 mb-2 text-muted font-mono-data text-[10px]">
           {activeRuns > 0 && (
             <Badge label={`${activeRuns} active`} variant="warning" />
           )}
           <span className="text-[9px]">Polling every 5s</span>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div className="flex flex-col gap-1">
           {workflows.map((wf) => {
             const runs = runsMap[wf.id]
             const isRunning = runningId === wf.id
             const hasActiveRun = runs?.some((r) => r.status === 'running')
             return (
-              <div key={wf.id} style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)' }}>
+              <div key={wf.id} className="border border-default rounded-sm">
                 <div
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', cursor: 'pointer' }}
+                  className="flex items-center gap-1.5 px-2 py-1.5 cursor-pointer"
                   onClick={() => toggleExpand(wf.id)}
                 >
-                  <span style={{ color: 'var(--text-muted)', fontSize: 9 }}>&#9654;</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ ...FONT_DATA, fontWeight: 600, color: 'var(--text-primary)' }}>{wf.name}</span>
+                  <span className="text-muted text-[9px]">&#9654;</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono-data text-[11px] font-semibold text-primary">{wf.name}</span>
                       <Badge label={`${wf.steps.length} steps`} variant="info" />
                       <Badge label={wf.enabled ? 'ENABLED' : 'DISABLED'} variant={wf.enabled ? 'success' : 'error'} />
                       {hasActiveRun && (
-                        <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--accent-green)' }} />
+                        <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse bg-up" />
                       )}
                     </div>
-                    {wf.description && <div style={{ ...FONT_SM, color: 'var(--text-muted)', marginTop: 1 }}>{wf.description}</div>}
+                    {wf.description && <div className="font-mono-data text-[10px] text-muted mt-0.5">{wf.description}</div>}
                   </div>
                   <button
                     onClick={(e) => { e.stopPropagation(); handleRun(wf.id, wf.name) }}
                     disabled={isRunning || !wf.enabled}
+                    className="text-black border-none font-mono-data text-[10px] font-semibold px-3 py-0.5 rounded-sm whitespace-nowrap"
                     style={{
-                      background: 'var(--accent-cyan)', color: '#000', border: 'none', ...FONT_SM, fontWeight: 600,
-                      padding: '3px 12px', cursor: isRunning || !wf.enabled ? 'not-allowed' : 'pointer',
+                      background: 'var(--accent-cyan)',
+                      cursor: isRunning || !wf.enabled ? 'not-allowed' : 'pointer',
                       opacity: isRunning ? 0.6 : 1,
-                      borderRadius: 'var(--radius-sm)', whiteSpace: 'nowrap',
                     }}
                   >
                     {isRunning ? 'RUNNING...' : 'RUN'}
                   </button>
                 </div>
                 {runs && (
-                  <div style={{ borderTop: '1px solid var(--border-color)', padding: '6px 8px 6px 24px' }}>
-                    <div style={{ ...FONT_LABEL, color: 'var(--text-muted)', marginBottom: 4 }}>RECENT RUNS</div>
+                  <div className="border-t border-default px-2 py-1.5 pl-6">
+                    <div className="text-muted text-[9px] font-mono-data tracking-wider mb-1">RECENT RUNS</div>
                     {runs.length === 0 ? (
-                      <div style={{ ...FONT_SM, color: 'var(--text-muted)' }}>No runs yet</div>
+                      <div className="font-mono-data text-[10px] text-muted">No runs yet</div>
                     ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 200, overflowY: 'auto' }}>
+                      <div className="flex flex-col gap-0.5 max-h-[200px] overflow-y-auto">
                         {runs.slice(0, 15).map((run) => (
-                          <div key={run.id} style={{ display: 'flex', alignItems: 'center', gap: 6, ...FONT_SM, color: 'var(--text-secondary)' }}>
+                          <div key={run.id} className="flex items-center gap-1.5 font-mono-data text-[10px] text-secondary">
                             <Badge
                               label={run.status}
                               variant={run.status === 'completed' ? 'success' : run.status === 'failed' ? 'error' : 'warning'}
                               size="sm"
                             />
-                            <span style={{ color: 'var(--text-muted)', fontSize: 9 }}>{formatTime(run.started_at)}</span>
-                            {run.completed_at && <span style={{ color: 'var(--text-muted)', fontSize: 9 }}>&rarr; {formatTime(run.completed_at)}</span>}
+                            <span className="text-muted text-[9px]">{formatTime(run.started_at)}</span>
+                            {run.completed_at && <span className="text-muted text-[9px]">&rarr; {formatTime(run.completed_at)}</span>}
                           </div>
                         ))}
                       </div>

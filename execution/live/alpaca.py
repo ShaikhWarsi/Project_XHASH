@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from typing import Optional
 
 from core.enums import OrderSide, OrderType
 from core.types import Fill, Order, PortfolioState, Position
 from execution.interfaces import ExecutionProvider
+
+logger = logging.getLogger(__name__)
 
 
 class AlpacaExecutor(ExecutionProvider):
@@ -28,7 +31,8 @@ class AlpacaExecutor(ExecutionProvider):
             self._client = TradingClient(self._api_key, self._secret_key, paper=self._paper)
             self._connected = True
             return True
-        except Exception:
+        except Exception as e:
+            logger.warning("Alpaca connect failed: %s", e)
             self._connected = False
             return False
 
@@ -69,7 +73,8 @@ class AlpacaExecutor(ExecutionProvider):
                 price=float(resp.filled_avg_price or resp.limit_price or 0.0),
                 timestamp=datetime.utcnow(),
             )
-        except Exception:
+        except Exception as e:
+            logger.warning("Alpaca submit_order failed: %s", e)
             return None
 
     def cancel_order(self, order_id: str) -> bool:
@@ -78,7 +83,8 @@ class AlpacaExecutor(ExecutionProvider):
         try:
             self._client.cancel_order_by_id(order_id)
             return True
-        except Exception:
+        except Exception as e:
+            logger.warning("Alpaca cancel_order failed: %s", e)
             return False
 
     def get_open_orders(self) -> list[Order]:

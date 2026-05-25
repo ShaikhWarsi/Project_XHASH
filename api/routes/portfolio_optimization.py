@@ -123,5 +123,6 @@ async def optimization_status():
             import skfolio
             return {"available": True, "version": skfolio.__version__}
         return {"available": False, "version": None}
-    except Exception:
+    except Exception as e:
+        logger.warning("Skfolio check failed: %s", e)
         return {"available": False, "version": None}

@@ -60,8 +60,7 @@ def compute(panel):
 
     left = rank(h - ts_min(h, 2))
     right = rank(ts_corr(vw, ts_mean(v, 120), 6))
-    out = signed_power(left, 1.0) * 0  # placeholder to load library
-    # We compute left ** right with NaN safety.
+    # Compute left ** right with NaN safety.
     arr_l = left.to_numpy(dtype=np.float64, na_value=np.nan)
     arr_r = right.to_numpy(dtype=np.float64, na_value=np.nan)
     arr = np.power(arr_l, arr_r)

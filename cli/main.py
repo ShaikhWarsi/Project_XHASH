@@ -227,7 +227,11 @@ def optimize(method: str = typer.Argument("mean_variance", help="mean_variance, 
         return
     try:
         import pandas as pd
-        data = json.loads(input_data)
+        try:
+            data = json.loads(input_data)
+        except json.JSONDecodeError:
+            console.print("[red]Invalid JSON input[/]")
+            return
         df = pd.DataFrame(data)
         if method == "mean_variance":
             from analytics.optimizers import MeanVarianceOptimizer

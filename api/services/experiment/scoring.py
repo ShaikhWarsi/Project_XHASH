@@ -52,10 +52,11 @@ class StrategyScoringService:
 
     @staticmethod
     def _bounded_score(value: float, target: float, max_ratio: float = 3.0) -> float:
-        ratio = value / target if target != 0 else (1.0 if value == 0 else 0)
-        if value < 0:
+        eps = 1e-12
+        ratio = value / target if abs(target) > eps else (1.0 if abs(value) < eps else 0)
+        if value < -eps:
             return 0.0
-        if value == 0:
+        if abs(value) < eps:
             return 10.0
         if ratio >= 2.0:
             return 100.0

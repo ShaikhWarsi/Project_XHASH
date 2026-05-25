@@ -76,7 +76,7 @@ export default function StrategyBuilder({ onRunBacktest }: StrategyBuilderProps)
   const [tickers, setTickers] = useState('')
   const [timeframe, setTimeframe] = useState('1d')
   const [savedStrategies, setSavedStrategies] = useState<Strategy[]>(() => {
-    try { return JSON.parse(localStorage.getItem('te_strategies') || '[]') } catch (err) { console.warn('[StrategyBuilder] Failed to load strategies:', err); return [] }
+    try { return JSON.parse(localStorage.getItem('te_strategies') || '[]') } catch (err) { console.warn('[StrategyBuilder] Failed to load strategies:', err); addToast('Failed to load saved strategies', 'error'); return [] }
   })
 
   const persist = (strategies: Strategy[]) => {
@@ -169,39 +169,22 @@ export default function StrategyBuilder({ onRunBacktest }: StrategyBuilderProps)
     onRunBacktest?.(strategy)
   }
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    background: 'var(--bg-primary)',
-    border: '1px solid var(--border-color)',
-    borderRadius: 'var(--radius-sm)',
-    padding: '6px 8px',
-    fontSize: '12px',
-    color: 'var(--text-primary)',
-    outline: 'none',
-  }
+  const inputClass = "w-full bg-[var(--bg-primary)] border border-default rounded-sm px-2 py-1.5 text-xs text-primary outline-none"
 
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)' }} className="overflow-hidden">
-      <div style={{ padding: 'var(--card-padding)', borderBottom: '1px solid var(--border-color)' }}>
-        <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Strategy Builder</h3>
+    <div className="bg-card border border-default rounded-lg overflow-hidden">
+      <div className="p-5 border-b border-default">
+        <h3 className="text-sm font-semibold text-primary">Strategy Builder</h3>
       </div>
 
-      <div style={{ padding: 'var(--card-padding)' }} className="space-y-4">
+      <div className="p-5 space-y-4">
         <div className="flex gap-2 flex-wrap">
           {PRESET_STRATEGIES.map((ps) => (
             <button
               key={ps.name}
               onClick={() => loadPreset(ps)}
               title={ps.description}
-              style={{
-                background: 'var(--bg-hover)',
-                border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '4px 10px',
-                fontSize: '10px',
-                color: 'var(--text-secondary)',
-                cursor: 'pointer',
-              }}
+              className="bg-hover border border-default rounded-sm px-2.5 py-1 text-[10px] text-secondary cursor-pointer"
             >
               <FileCode className="w-3 h-3 inline mr-1" />
               {ps.name}
@@ -211,12 +194,12 @@ export default function StrategyBuilder({ onRunBacktest }: StrategyBuilderProps)
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Strategy Name</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Golden Cross" style={inputStyle} />
+            <label className="text-[10px] text-muted">Strategy Name</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Golden Cross" className={inputClass} />
           </div>
           <div>
-            <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Timeframe</label>
-            <select value={timeframe} onChange={(e) => setTimeframe(e.target.value)} style={inputStyle}>
+            <label className="text-[10px] text-muted">Timeframe</label>
+            <select value={timeframe} onChange={(e) => setTimeframe(e.target.value)} className={inputClass}>
               {['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1wk', '1mo'].map((tf) => (
                 <option key={tf} value={tf}>{tf}</option>
               ))}
@@ -225,23 +208,24 @@ export default function StrategyBuilder({ onRunBacktest }: StrategyBuilderProps)
         </div>
 
         <div>
-          <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Description</label>
-          <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Strategy description..." style={inputStyle} />
+          <label className="text-[10px] text-muted">Description</label>
+          <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Strategy description..." className={inputClass} />
         </div>
 
         <div>
-          <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Tickers (comma-separated)</label>
-          <input value={tickers} onChange={(e) => setTickers(e.target.value)} placeholder="SPY, QQQ, AAPL" style={inputStyle} />
+          <label className="text-[10px] text-muted">Tickers (comma-separated)</label>
+          <input value={tickers} onChange={(e) => setTickers(e.target.value)} placeholder="SPY, QQQ, AAPL" className={inputClass} />
         </div>
 
-        <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: 12 }}>
+        <div className="border-t border-default pt-3">
           <div className="flex items-center justify-between mb-2">
-            <h4 style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
-              Entry Conditions <span style={{ color: 'var(--accent-green)' }}>●</span>
+            <h4 className="text-xs font-semibold text-primary">
+              Entry Conditions <span className="text-up">●</span>
             </h4>
             <button
               onClick={addEntryCondition}
-              style={{ background: 'rgba(34,197,94,0.15)', color: 'var(--accent-green)', border: 'none', borderRadius: 'var(--radius-sm)', padding: '4px 8px', fontSize: '10px', cursor: 'pointer' }}
+              style={{ background: 'rgba(34,197,94,0.15)' }}
+              className="text-up border-none rounded-sm px-2 py-1 text-[10px] cursor-pointer"
             >
               <Plus className="w-3 h-3 inline mr-1" />Add Condition
             </button>
@@ -258,21 +242,22 @@ export default function StrategyBuilder({ onRunBacktest }: StrategyBuilderProps)
               />
             ))}
             {entryConditions.length === 0 && (
-              <div style={{ padding: 12, textAlign: 'center', color: 'var(--text-muted)', fontSize: '11px', border: '1px dashed var(--border-color)', borderRadius: 'var(--radius-sm)' }}>
+              <div className="p-3 text-center text-muted text-[11px] border border-dashed border-default rounded-sm">
                 No entry conditions — strategy will never trigger
               </div>
             )}
           </div>
         </div>
 
-        <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: 12 }}>
+        <div className="border-t border-default pt-3">
           <div className="flex items-center justify-between mb-2">
-            <h4 style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
-              Exit Conditions <span style={{ color: 'var(--accent-red)' }}>●</span>
+            <h4 className="text-xs font-semibold text-primary">
+              Exit Conditions <span className="text-down">●</span>
             </h4>
             <button
               onClick={addExitCondition}
-              style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--accent-red)', border: 'none', borderRadius: 'var(--radius-sm)', padding: '4px 8px', fontSize: '10px', cursor: 'pointer' }}
+              style={{ background: 'rgba(239,68,68,0.15)' }}
+              className="text-down border-none rounded-sm px-2 py-1 text-[10px] cursor-pointer"
             >
               <Plus className="w-3 h-3 inline mr-1" />Add Condition
             </button>
@@ -289,7 +274,7 @@ export default function StrategyBuilder({ onRunBacktest }: StrategyBuilderProps)
               />
             ))}
             {exitConditions.length === 0 && (
-              <div style={{ padding: 12, textAlign: 'center', color: 'var(--text-muted)', fontSize: '11px', border: '1px dashed var(--border-color)', borderRadius: 'var(--radius-sm)' }}>
+              <div className="p-3 text-center text-muted text-[11px] border border-dashed border-default rounded-sm">
                 No exit conditions — position held indefinitely
               </div>
             )}
@@ -299,40 +284,39 @@ export default function StrategyBuilder({ onRunBacktest }: StrategyBuilderProps)
         <div className="flex gap-2">
           <button
             onClick={saveStrategy}
-            className="flex items-center gap-1.5"
-            style={{ background: 'var(--accent-blue)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', padding: '8px 16px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+            className="flex items-center gap-1.5 rounded-sm px-4 py-2 text-xs font-semibold cursor-pointer text-white border-none"
+            style={{ background: 'var(--accent-blue)' }}
           >
             <Save className="w-4 h-4" /> Save Strategy
           </button>
           <button
             onClick={runStrategy}
-            className="flex items-center gap-1.5"
-            style={{ background: 'var(--accent-green)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', padding: '8px 16px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+            className="flex items-center gap-1.5 rounded-sm px-4 py-2 text-xs font-semibold cursor-pointer text-white border-none"
+            style={{ background: 'var(--accent-green)' }}
           >
             <Play className="w-4 h-4" /> Run Backtest
           </button>
         </div>
 
         {savedStrategies.length > 0 && (
-          <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: 12 }}>
-            <h4 style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
+          <div className="border-t border-default pt-3">
+            <h4 className="text-xs font-semibold text-primary mb-2">
               <FolderOpen className="w-3.5 h-3.5 inline mr-1" /> Saved Strategies
             </h4>
             <div className="space-y-1">
               {savedStrategies.map((s) => (
                 <div
                   key={s.id}
-                  className="flex items-center justify-between p-2 rounded-lg"
-                  style={{ background: 'var(--bg-hover)' }}
+                  className="flex items-center justify-between p-2 rounded-lg bg-hover"
                 >
                   <div>
-                    <div style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-primary)' }}>{s.name}</div>
-                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                    <div className="text-xs font-medium text-primary">{s.name}</div>
+                    <div className="text-[10px] text-muted">
                       {s.entryConditions.length} entry / {s.exitConditions.length} exit · {s.timeframe} · {new Date(s.createdAt).toLocaleDateString()}
                     </div>
                   </div>
                   <div className="flex gap-1">
-                    <button onClick={() => loadStrategy(s)} style={{ background: 'none', border: 'none', color: 'var(--accent-blue)', cursor: 'pointer', padding: 4, fontSize: '10px' }} title="Load">
+                    <button onClick={() => loadStrategy(s)} className="bg-none border-none text-accent-blue cursor-pointer p-1 text-[10px]" title="Load">
                       <Settings2 className="w-3.5 h-3.5" />
                     </button>
                     <button onClick={() => {
@@ -348,10 +332,10 @@ export default function StrategyBuilder({ onRunBacktest }: StrategyBuilderProps)
                       }
                       persist([...savedStrategies, clone])
                       addToast(`Duplicated "${s.name}"`, 'success')
-                    }} style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', cursor: 'pointer', padding: 4, fontSize: '10px' }} title="Duplicate">
+                    }} className="bg-none border-none text-accent-cyan cursor-pointer p-1 text-[10px]" title="Duplicate">
                       <Copy className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={() => deleteStrategy(s.id)} style={{ background: 'none', border: 'none', color: 'var(--accent-red)', cursor: 'pointer', padding: 4, fontSize: '10px' }} title="Delete">
+                    <button onClick={() => deleteStrategy(s.id)} className="bg-none border-none text-down cursor-pointer p-1 text-[10px]" title="Delete">
                       ✕
                     </button>
                   </div>

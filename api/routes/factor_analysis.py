@@ -56,7 +56,8 @@ def _serialize_df(df):
         return None
     try:
         return df.reset_index().to_dict(orient="records")
-    except Exception:
+    except Exception as e:
+        logger.warning("Factor analysis query failed: %s", e)
         return None
 
 
@@ -130,5 +131,6 @@ async def factor_status():
             import alphalens
             return {"available": True, "version": alphalens.__version__}
         return {"available": False, "version": None}
-    except Exception:
+    except Exception as e:
+        logger.warning("Alphalens check failed: %s", e)
         return {"available": False, "version": None}

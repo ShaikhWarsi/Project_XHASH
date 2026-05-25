@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from typing import Optional
 
 from core.enums import OrderSide, OrderType
 from core.types import Fill, Order, PortfolioState, Position
 from execution.interfaces import ExecutionProvider
+
+logger = logging.getLogger(__name__)
 
 
 class CCXTExecutor(ExecutionProvider):
@@ -30,7 +33,8 @@ class CCXTExecutor(ExecutionProvider):
                 self._connected = True
                 return True
             return False
-        except Exception:
+        except Exception as e:
+            logger.error("CCXT connect failed: %s", e)
             self._connected = False
             return False
 
@@ -65,7 +69,8 @@ class CCXTExecutor(ExecutionProvider):
                 price=avg_price,
                 timestamp=datetime.utcnow(),
             )
-        except Exception:
+        except Exception as e:
+            logger.error("CCXT submit_order failed: %s", e)
             return None
 
     def cancel_order(self, order_id: str) -> bool:
@@ -74,7 +79,8 @@ class CCXTExecutor(ExecutionProvider):
         try:
             self._exchange.cancel_order(order_id)
             return True
-        except Exception:
+        except Exception as e:
+            logger.error("CCXT cancel_order failed: %s", e)
             return False
 
     def get_open_orders(self) -> list[Order]:
@@ -108,7 +114,8 @@ class CCXTExecutor(ExecutionProvider):
             try:
                 ticker = self._exchange.fetch_ticker(f"{currency}/USDT")
                 price = float(ticker["last"])
-            except Exception:
+            except Exception as e:
+                logger.warning("CCXT fetch_ticker failed for %s: %s", currency, e)
                 price = 0.0
             positions[currency] = Position(
                 symbol=currency,

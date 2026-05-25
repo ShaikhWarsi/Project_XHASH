@@ -1,9 +1,12 @@
+import logging
 from typing import Optional
 
 import numpy as np
 import pandas as pd
 
 from core.enums import AgentRole
+
+logger = logging.getLogger(__name__)
 from core.types import AnalystSignal, PortfolioState
 
 from .base import RenaissanceAgent
@@ -101,7 +104,8 @@ class ExecutionQuantAgent(RenaissanceAgent):
             high_low = (df["high"] - df["low"]).values
             spread = np.median(high_low[-20:]) / df["close"].iloc[-1] if df["close"].iloc[-1] > 0 else None
             return float(spread) if spread else None
-        except Exception:
+        except Exception as e:
+            logger.debug("Failed to estimate spread: %s", e)
             return None
 
 

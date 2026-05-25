@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { fetchCompanyNews } from '../api/client'
+import { useToastStore } from '../store/toast'
 
 interface NewsItem {
   title: string
@@ -43,7 +44,10 @@ export default function BreakingNewsBanner() {
           timestamp: new Date(a.datetime * 1000).toISOString(),
         })))
       }
-    }).catch((err) => console.warn('[BreakingNewsBanner] Failed to fetch company news:', err))
+    }).catch((err) => {
+      console.warn('[BreakingNewsBanner] Failed to fetch company news:', err)
+      useToastStore.getState().addToast('Failed to load news', 'error')
+    })
   }, [])
 
   const activeItems = items.filter((_, i) => !dismissed.has(i))

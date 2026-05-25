@@ -140,7 +140,8 @@ async def run_backtest(config: dict, session: AsyncSession = Depends(get_session
                             orders.append(Order(symbol=symbol, side=OrderSide.BUY, quantity=10, order_type=OrderType.MARKET, price=last_close))
                         elif sig.direction.value < 0 and pos is not None and pos.quantity > 0:
                             orders.append(Order(symbol=symbol, side=OrderSide.SELL, quantity=pos.quantity, order_type=OrderType.MARKET, price=last_close))
-                except Exception:
+                except Exception as e:
+                    logger.warning("Failed to process signal for %s: %s", getattr(sig, 'symbol', '?'), e)
                     continue
             return orders
 
@@ -216,12 +217,19 @@ async def get_backtest(backtest_id: int, session: AsyncSession = Depends(get_ses
     run = await BacktestRepository.get_run(session, backtest_id)
     if not run:
         raise HTTPException(status_code=404, detail="Backtest not found")
+    def _safe_json(val):
+        if val is None:
+            return {}
+        try:
+            return json.loads(val)
+        except (json.JSONDecodeError, TypeError):
+            return {}
     return {
         "id": run.id,
         "timestamp": run.timestamp.isoformat() if hasattr(run.timestamp, "isoformat") else str(run.timestamp),
-        "config": json.loads(run.config_json),
-        "metrics": json.loads(run.metrics_json),
-        "equity_curve": json.loads(run.equity_curve_json),
+        "config": _safe_json(run.config_json),
+        "metrics": _safe_json(run.metrics_json),
+        "equity_curve": _safe_json(run.equity_curve_json),
         "total_return": run.total_return,
         "sharpe_ratio": run.sharpe_ratio,
         "max_drawdown": run.max_drawdown,

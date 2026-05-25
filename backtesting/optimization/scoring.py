@@ -194,5 +194,6 @@ class StrategyScoringService:
     def _as_float(value: Any) -> float:
         try:
             return float(value or 0.0)
-        except Exception:
+        except Exception as e:
+            logger.debug("Failed to convert to float: %s", e)
             return 0.0

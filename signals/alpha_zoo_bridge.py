@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 from core.enums import SignalDir, SignalType
 from core.types import QuantSignal
@@ -31,7 +34,8 @@ class AlphaZooBridgeEngine(SignalEngine):
         registry = get_default_registry()
         try:
             factor_df = registry.compute(self._alpha_id, panel)
-        except Exception:
+        except Exception as e:
+            logger.warning("Alpha compute failed for %s: %s", self._alpha_id, e)
             return []
         signals = []
         for symbol in factor_df.columns:

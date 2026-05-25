@@ -12,9 +12,18 @@ export default function OpenBBChart({ figureJSON, style }: OpenBBChartProps) {
   useEffect(() => {
     if (!containerRef.current || !figureJSON) return
 
+    let cancelled = false
+    let plotlyImport: any = null
+
     async function render() {
-      // @ts-ignore
-      const Plotly = await import('plotly.js-dist-min')
+      try {
+        // @ts-ignore
+        plotlyImport = await import('plotly.js-dist-min')
+      } catch {
+        return
+      }
+      if (cancelled || !containerRef.current) return
+      const Plotly = plotlyImport
       const fig = figureJSON!
 
       const layout = {
@@ -81,16 +90,29 @@ export default function OpenBBChart({ figureJSON, style }: OpenBBChartProps) {
 
     render()
 
-    const handleResize = () => {
-      if (plotlyRef.current && containerRef.current) {
+    const handleResize = async () => {
+      if (!plotlyRef.current || !containerRef.current) return
+      try {
+        const Plotly = plotlyImport || await import('plotly.js-dist-min')
         // @ts-ignore
-        import('plotly.js-dist-min').then((Plotly) => {
-          Plotly.Plots.resize(containerRef.current)
-        })
-      }
+        Plotly.Plots.resize(containerRef.current)
+      } catch { /* ignore resize errors */ }
     }
     window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
+
+    return () => {
+      cancelled = true
+      window.removeEventListener('resize', handleResize)
+      if (plotlyRef.current) {
+        try {
+          // @ts-ignore
+          import('plotly.js-dist-min').then((Plotly) => {
+            Plotly.purge(containerRef.current)
+          })
+        } catch { /* ignore purge errors */ }
+        plotlyRef.current = null
+      }
+    }
   }, [figureJSON])
 
   return (

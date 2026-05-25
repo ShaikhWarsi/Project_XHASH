@@ -33,6 +33,7 @@ class ConnectionManager:
                 if ws.client_state.name == 'DISCONNECTED':
                     dead.append(ws)
             except Exception:
+                logger.debug("WS client state check failed, marking dead")
                 dead.append(ws)
         return dead
 
@@ -44,6 +45,7 @@ class ConnectionManager:
             try:
                 await ws.send_json(data)
             except Exception:
+                logger.debug("WS broadcast send failed, marking dead")
                 dead.append(ws)
         if dead:
             async with self._lock:
@@ -62,6 +64,7 @@ class ConnectionManager:
             try:
                 await ws.send_json(data)
             except Exception:
+                logger.debug("WS broadcast_all send failed, marking dead")
                 dead.append(ws)
         if dead:
             async with self._lock:
@@ -83,7 +86,7 @@ class ConnectionManager:
                         if ws.client_state.name != 'DISCONNECTED':
                             alive.append(ws)
                     except Exception:
-                        pass
+                        logger.debug("WS cleanup_zombies check failed")
                 if alive:
                     self._connections[channel] = alive
                 else:

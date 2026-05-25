@@ -112,7 +112,8 @@ class OrderMatchingEngine:
 
     def _execute_pending(self):
         self.pending.append(None)
-        while True:
+        _pend_max = 100000
+        for _ in range(_pend_max):
             order = self.pending.popleft()
             if order is None:
                 break

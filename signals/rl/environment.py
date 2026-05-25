@@ -15,11 +15,11 @@ try:
 
     HAS_RL = True
 except ImportError:
-    gym = None  # type: ignore
-    spaces = None  # type: ignore
+    gym: Any = None
+    spaces: Any = None
 
 
-class TradingEnv(gym.Env if HAS_RL else object):  # type: ignore
+class TradingEnv(gym.Env if HAS_RL else object):
     metadata = {"render_modes": ["human"]}
 
     def __init__(

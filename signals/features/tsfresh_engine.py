@@ -16,8 +16,8 @@ try:
 
     HAS_TSFRESH = True
 except ImportError:
-    extract_features = None  # type: ignore
-    select_features = None  # type: ignore
+    extract_features: Any = None
+    select_features: Any = None
 
 
 class TSFreshEngine:

@@ -16,7 +16,7 @@ try:
 
     HAS_VECTORBT = True
 except ImportError:
-    vbt = None  # type: ignore
+    vbt: Any = None
 
 
 class VectorBTEngine:

@@ -20,13 +20,13 @@ try:
 
     HAS_SB3 = True
 except ImportError:
-    PPO = None  # type: ignore
-    SAC = None  # type: ignore
-    DDPG = None  # type: ignore
-    A2C = None  # type: ignore
-    BaseCallback = None  # type: ignore
-    EvalCallback = None  # type: ignore
-    DummyVecEnv = None  # type: ignore
+    PPO: Any = None
+    SAC: Any = None
+    DDPG: Any = None
+    A2C: Any = None
+    BaseCallback: Any = None
+    EvalCallback: Any = None
+    DummyVecEnv: Any = None
 
 
 ALGO_MAP = {

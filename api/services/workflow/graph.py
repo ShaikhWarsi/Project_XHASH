@@ -131,8 +131,8 @@ class WorkflowGraph:
             if p.is_file():
                 with open(p) as f:
                     return json.load(f)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to load workflow %s: %s", workflow_id, e)
         return None
 
     @staticmethod
@@ -147,7 +147,8 @@ class WorkflowGraph:
                 with open(p) as f:
                     results.append(json.load(f))
             return sorted(results, key=lambda x: x.get("created_at", ""), reverse=True)
-        except Exception:
+        except Exception as e:
+            logger.warning("Failed to list workflows: %s", e)
             return []
 
 

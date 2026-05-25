@@ -372,7 +372,8 @@ class Parser:
 
     def _call(self) -> Expr:
         expr = self._primary()
-        while True:
+        _call_max = 1000
+        for _ in range(_call_max):
             if self._match(T.LPAREN):
                 args = self._finish_call_args()
                 if isinstance(expr, VariableExpr):

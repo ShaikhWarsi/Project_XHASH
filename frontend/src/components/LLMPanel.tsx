@@ -6,7 +6,7 @@ import { fetchLLMModels, llmComplete } from '../api/llm'
 import type { LLMModel } from '../api/llm'
 import { useToastStore } from '../store/toast'
 
-const FONT_SM = { fontFamily: "'JetBrains Mono', monospace", fontSize: 10 }
+const TEXT_SM = "font-mono-data text-[10px]"
 
 interface Message {
   role: 'user' | 'assistant'
@@ -78,7 +78,7 @@ export default function LLMPanel() {
     return (
       <Card title="LLM CAPABILITIES">
         <Skeleton width={120} height={14} />
-        <div style={{ marginTop: 8 }}><Skeleton width="100%" height={60} /></div>
+        <div className="mt-2"><Skeleton width="100%" height={60} /></div>
       </Card>
     )
   }
@@ -86,7 +86,7 @@ export default function LLMPanel() {
   if (error && models.length === 0) {
     return (
       <Card title="LLM CAPABILITIES">
-        <div style={{ ...FONT_SM, color: 'var(--accent-red)', padding: '8px 0' }}>{error}</div>
+        <div className={TEXT_SM + " text-down py-2"}>{error}</div>
       </Card>
     )
   }
@@ -95,45 +95,48 @@ export default function LLMPanel() {
     <Card
       title={`LLM CAPABILITIES (${models.length} models)`}
       actions={
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div className="flex gap-1">
           {messages.length > 0 && (
-            <button onClick={clearHistory} style={{ background: 'none', border: '1px solid var(--border-color)', color: 'var(--text-muted)', ...FONT_SM, padding: '2px 8px', cursor: 'pointer', borderRadius: 'var(--radius-sm)' }}>
+            <button onClick={clearHistory} className="bg-transparent border border-default text-muted font-mono-data text-[10px] px-2 py-0.5 cursor-pointer rounded-sm">
               CLEAR
             </button>
           )}
-          <button onClick={() => setShowSettings(!showSettings)} style={{ background: showSettings ? 'var(--bg-hover)' : 'none', border: '1px solid var(--border-color)', color: 'var(--text-muted)', ...FONT_SM, padding: '2px 8px', cursor: 'pointer', borderRadius: 'var(--radius-sm)' }}>
+          <button onClick={() => setShowSettings(!showSettings)}
+            className="border border-default text-muted font-mono-data text-[10px] px-2 py-0.5 cursor-pointer rounded-sm"
+            style={{ background: showSettings ? 'var(--bg-hover)' : 'transparent' }}>
             SETTINGS
           </button>
         </div>
       }
     >
       {showSettings && (
-        <div style={{ marginBottom: 8, padding: 6, background: 'var(--bg-hover)', borderRadius: 'var(--radius-sm)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ ...FONT_SM, color: 'var(--text-muted)' }}>Temp: {temperature.toFixed(1)}</span>
+        <div className="mb-2 p-1.5 bg-hover rounded-sm">
+          <div className="flex items-center gap-2">
+            <span className={TEXT_SM + " text-muted"}>Temp: {temperature.toFixed(1)}</span>
             <input
               type="range" min="0" max="2" step="0.1" value={temperature}
               onChange={(e) => setTemperature(parseFloat(e.target.value))}
-              style={{ flex: 1, accentColor: 'var(--accent-cyan)' }}
+              className="flex-1"
+              style={{ accentColor: 'var(--accent-cyan)' }}
             />
           </div>
         </div>
       )}
 
       {models.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+        <div className="flex flex-wrap gap-1 mb-2">
           {models.map((m) => (
             <div
               key={m.id}
               onClick={() => setSelectedModel(m.id)}
+              className="px-2 py-1 rounded-sm cursor-pointer"
               style={{
-                padding: '4px 8px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
                 background: selectedModel === m.id ? 'rgba(59,130,246,0.2)' : 'var(--bg-hover)',
                 border: selectedModel === m.id ? '1px solid var(--accent-blue)' : '1px solid transparent',
               }}
             >
-              <div style={{ ...FONT_SM, fontWeight: 600, color: selectedModel === m.id ? 'var(--accent-blue)' : 'var(--text-secondary)' }}>{m.name}</div>
-              <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap', marginTop: 2 }}>
+              <div className={TEXT_SM + " font-semibold"} style={{ color: selectedModel === m.id ? 'var(--accent-blue)' : 'var(--text-secondary)' }}>{m.name}</div>
+              <div className="flex gap-0.5 flex-wrap mt-0.5">
                 {m.capabilities.map((cap) => (
                   <Badge key={cap} label={cap} variant="info" size="sm" />
                 ))}
@@ -143,51 +146,49 @@ export default function LLMPanel() {
         </div>
       )}
 
-      <div ref={responseRef} style={{ maxHeight: 300, overflowY: 'auto', marginBottom: 6 }}>
+      <div ref={responseRef} className="max-h-[300px] overflow-y-auto mb-1.5">
         {messages.length === 0 && (
-          <div style={{ ...FONT_SM, color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>
+          <div className={TEXT_SM + " text-muted text-center py-3"}>
             Send a message to start a conversation
           </div>
         )}
         {messages.map((msg, i) => (
-          <div key={i} style={{ marginBottom: 6 }}>
-            <div style={{ ...FONT_SM, fontWeight: 700, color: msg.role === 'user' ? 'var(--accent-cyan)' : 'var(--accent-green)', marginBottom: 2 }}>
+          <div key={i} className="mb-1.5">
+            <div className={TEXT_SM + " font-bold mb-0.5"} style={{ color: msg.role === 'user' ? 'var(--accent-cyan)' : 'var(--accent-green)' }}>
               {msg.role === 'user' ? '> YOU' : `> ${msg.model || 'ASSISTANT'}`}
             </div>
             {msg.reasoning && (
-              <div style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', padding: '4px 8px', marginBottom: 2, ...FONT_SM, color: 'var(--accent-cyan)', maxHeight: 80, overflowY: 'auto', whiteSpace: 'pre-wrap', opacity: 0.8 }}>
-                <div style={{ fontWeight: 600, color: 'var(--text-muted)', marginBottom: 2, fontSize: 8, letterSpacing: '0.05em' }}>REASONING</div>
+              <div className="bg-hover border border-default rounded-sm p-1 mb-0.5 font-mono-data text-[10px] text-accent-cyan max-h-20 overflow-y-auto whitespace-pre-wrap opacity-80">
+                <div className="font-semibold text-muted mb-0.5 text-[8px] tracking-wider">REASONING</div>
                 {msg.reasoning}
               </div>
             )}
-            <div style={{ ...FONT_SM, color: 'var(--text-primary)', whiteSpace: 'pre-wrap', padding: '2px 0' }}>
+            <div className={TEXT_SM + " text-primary whitespace-pre-wrap py-0.5"}>
               {msg.content}
             </div>
           </div>
         ))}
         {sending && (
-          <div style={{ ...FONT_SM, color: 'var(--text-muted)', fontStyle: 'italic' }}>Thinking...</div>
+          <div className={TEXT_SM + " text-muted italic"}>Thinking...</div>
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: 4 }}>
+      <div className="flex gap-1">
         <input
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
           placeholder="Enter prompt..."
-          style={{
-            flex: 1, background: 'var(--input-bg)', border: '1px solid var(--input-border)',
-            color: 'var(--input-text)', ...FONT_SM, padding: '4px 8px', outline: 'none',
-          }}
+          className="flex-1 bg-input border border-input text-primary font-mono-data text-[10px] px-2 py-1 outline-none"
         />
         <button
           onClick={handleSend}
           disabled={sending || !prompt.trim() || !selectedModel}
+          className="text-white border-none font-mono-data text-[10px] font-semibold px-3 py-1 rounded-sm"
           style={{
-            background: 'var(--accent-blue)', color: '#fff', border: 'none', ...FONT_SM, fontWeight: 600,
-            padding: '4px 14px', cursor: sending || !prompt.trim() || !selectedModel ? 'not-allowed' : 'pointer',
-            opacity: sending || !prompt.trim() || !selectedModel ? 0.6 : 1, borderRadius: 'var(--radius-sm)',
+            background: 'var(--accent-blue)',
+            cursor: sending || !prompt.trim() || !selectedModel ? 'not-allowed' : 'pointer',
+            opacity: sending || !prompt.trim() || !selectedModel ? 0.6 : 1,
           }}
         >
           {sending ? '...' : 'SEND'}

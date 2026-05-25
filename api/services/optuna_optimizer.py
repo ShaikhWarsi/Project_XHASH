@@ -79,8 +79,8 @@ class OptunaOptimizer:
             if hist.empty:
                 return -1.0
 
-            fast = int(params.get("sma_fast", 20))
-            slow = int(params.get("sma_slow", 50))
+            fast = round(params.get("sma_fast", 20))
+            slow = round(params.get("sma_slow", 50))
             hist["sma_fast"] = hist["Close"].rolling(fast).mean()
             hist["sma_slow"] = hist["Close"].rolling(slow).mean()
             hist["signal"] = 0
@@ -106,8 +106,8 @@ class OptunaOptimizer:
                 if hist.empty:
                     results[tf] = {"return": 0, "sharpe": 0}
                     continue
-                fast = int(params.get("sma_fast", 20))
-                slow = int(params.get("sma_slow", 50))
+                fast = round(params.get("sma_fast", 20))
+                slow = round(params.get("sma_slow", 50))
                 fast = min(fast, len(hist) // 2)
                 slow = min(slow, len(hist) // 2)
                 hist["sma_fast"] = hist["Close"].rolling(fast).mean()
@@ -117,7 +117,7 @@ class OptunaOptimizer:
                 hist["return"] = hist["Close"].pct_change() * hist["signal"].shift(1)
                 total_return = float(hist["return"].sum())
                 sharpe = float(hist["return"].mean() / hist["return"].std() * (252 ** 0.5)) if hist["return"].std() > 0 else 0
-                results[tf] = {"return": round(total_return * 100, 2), "sharpe": round(sharpe, 3), "trades": int(hist["signal"].diff().abs().sum())}
+                results[tf] = {"return": round(total_return * 100, 2), "sharpe": round(sharpe, 3), "trades": int(round(hist["signal"].diff().abs().sum()))}
             except Exception as e:
                 results[tf] = {"error": str(e)}
         return results

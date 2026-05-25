@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime
 from typing import Optional
 
@@ -13,6 +14,17 @@ from api.auth.agent_auth import agent_required, AgentTokenData, write_audit_log,
 from api.routes.agent import agent_v1
 from persistence.database import get_session
 from persistence.models import BacktestRun
+
+logger = logging.getLogger(__name__)
+
+
+def _safe_json(val):
+    if not val:
+        return {}
+    try:
+        return json.loads(val)
+    except (json.JSONDecodeError, TypeError):
+        return {}
 
 
 @agent_v1.get("/strategies")
@@ -31,7 +43,7 @@ async def list_strategies(
         "strategies": [
             {
                 "id": r.id,
-                "config": json.loads(r.config_json) if r.config_json else {},
+                "config": _safe_json(r.config_json),
                 "total_return": r.total_return,
                 "sharpe_ratio": r.sharpe_ratio,
                 "max_drawdown": r.max_drawdown,
@@ -55,8 +67,8 @@ async def get_strategy(
         raise HTTPException(status_code=404, detail="Strategy not found")
     return {
         "id": row.id,
-        "config": json.loads(row.config_json) if row.config_json else {},
-        "metrics": json.loads(row.metrics_json) if row.metrics_json else {},
+        "config": _safe_json(row.config_json),
+        "metrics": _safe_json(row.metrics_json),
         "total_return": row.total_return,
         "sharpe_ratio": row.sharpe_ratio,
         "max_drawdown": row.max_drawdown,

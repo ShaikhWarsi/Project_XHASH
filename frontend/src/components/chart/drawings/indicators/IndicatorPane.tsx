@@ -36,8 +36,6 @@ export function IndicatorPane({ indicator, data, onRemove, height = 120 }: Indic
       },
       timeScale: { visible: false },
       rightPriceScale: { borderColor: '#1a2332' },
-      handleScroll: false,
-      handleScale: false,
     })
 
     chartRef.current = chart

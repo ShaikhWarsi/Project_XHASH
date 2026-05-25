@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
@@ -17,10 +18,18 @@ async def cache_stats():
     return stats()
 
 
+def _safe_json(val):
+    if val is None:
+        return {}
+    try:
+        return json.loads(val)
+    except (json.JSONDecodeError, TypeError):
+        return {}
+
+
 @router.get("/lookup")
 async def cache_lookup(strategy: str, symbol: str, start: str, end: str, params: str = "{}"):
-    import json
-    p = json.loads(params)
+    p = _safe_json(params)
     cached = get_cached(strategy, p, symbol, start, end)
     if cached:
         return {"hit": True, "result": cached}
@@ -36,8 +45,7 @@ async def cache_store(
     result: dict[str, Any],
     params: str = "{}",
 ):
-    import json
-    p = json.loads(params)
+    p = _safe_json(params)
     key = set_cache(strategy, p, symbol, start, end, result)
     return {"key": key, "status": "cached"}
 

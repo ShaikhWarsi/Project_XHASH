@@ -237,7 +237,10 @@ if mcp is not None:
         """Run portfolio optimization. returns_json is a JSON string of {symbol: [returns]}."""
         import numpy as np
         import pandas as pd
-        data = json.loads(returns_json)
+        try:
+            data = json.loads(returns_json)
+        except json.JSONDecodeError as e:
+            return json.dumps({"error": f"Invalid JSON: {e}"})
         df = pd.DataFrame(data)
         if method == "mean_variance":
             from analytics.optimizers import MeanVarianceOptimizer

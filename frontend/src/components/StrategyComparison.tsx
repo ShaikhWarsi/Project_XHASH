@@ -4,9 +4,9 @@ import Card from './ui/Card'
 import type { BacktestResult } from '../api/types'
 import { useBacktestStore } from '../store/backtest'
 
-const FONT_DATA = { fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }
-const FONT_SM = { fontFamily: "'JetBrains Mono', monospace", fontSize: 10 }
-const FONT_LABEL = { fontSize: 9, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.05em' }
+const TEXT_DATA = "text-data"
+const TEXT_SM = "font-mono-data text-[10px]"
+const TEXT_LABEL = "text-[9px] font-mono-data tracking-wider"
 
 interface ComparisonEntry {
   label: string
@@ -73,8 +73,7 @@ export default function StrategyComparison() {
         <div className="flex items-center gap-2">
           <Badge label={viewTab === 'metrics' ? 'METRICS' : 'PARAMS'} variant="info" />
           <button onClick={() => setViewTab(viewTab === 'metrics' ? 'params' : 'metrics')}
-            className="px-2 py-0.5 text-[10px] font-mono font-semibold cursor-pointer rounded-sm"
-            style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
+            className="px-2 py-0.5 text-[10px] font-mono font-semibold cursor-pointer rounded-sm bg-hover border border-default text-secondary">
             {viewTab === 'metrics' ? 'VIEW PARAMS' : 'VIEW METRICS'}
           </button>
         </div>
@@ -82,11 +81,10 @@ export default function StrategyComparison() {
           <button
             onClick={addCurrent}
             disabled={!result}
-            className="px-3 py-0.5 text-[10px] font-mono cursor-pointer rounded-sm font-semibold"
+            className="px-3 py-0.5 text-[10px] font-mono cursor-pointer rounded-sm font-semibold border-none"
             style={{
               background: result ? 'var(--accent-blue)' : 'var(--bg-hover)',
               color: result ? '#fff' : 'var(--text-muted)',
-              border: 'none',
               opacity: result ? 1 : 0.5,
             }}
           >
@@ -95,41 +93,37 @@ export default function StrategyComparison() {
           {comparisonResults.length > 0 && (
             <button
               onClick={clearAll}
-              className="px-2.5 py-0.5 text-[10px] font-mono cursor-pointer rounded-sm"
-              style={{ background: 'none', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }}
+              className="px-2.5 py-0.5 text-[10px] font-mono cursor-pointer rounded-sm bg-transparent border border-default text-muted"
             >
               CLEAR ALL
             </button>
           )}
         </div>
         <div className="flex items-center gap-1">
-          <span className="text-[9px] font-mono" style={{ color: 'var(--text-muted)' }}>Label:</span>
+          <span className="text-[9px] font-mono text-muted">Label:</span>
           <input
             value={customLabel}
             onChange={(e) => setCustomLabel(e.target.value)}
-            className="w-24 px-1 py-0.5 text-[10px] font-mono outline-none rounded-sm"
-            style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--input-text)' }}
+            className="w-24 px-1 py-0.5 text-[10px] font-mono outline-none rounded-sm bg-input border border-input text-primary"
           />
         </div>
       </div>
 
       {all.length === 0 ? (
-        <div className="py-6 text-center text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>
+        <div className="py-6 text-center text-[11px] font-mono text-muted">
           Run a backtest, then click "+ Add Current" to compare strategies
         </div>
       ) : viewTab === 'metrics' ? (
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse" style={{ ...FONT_DATA }}>
+          <table className="w-full border-collapse text-data">
             <thead>
-              <tr style={{ borderBottom: '2px solid var(--border-color)' }}>
-                <th className="px-2.5 py-1.5 text-left" style={{ ...FONT_LABEL, color: 'var(--text-muted)' }}>Metric</th>
+              <tr className="border-b-2 border-default">
+                <th className="px-2.5 py-1.5 text-left text-muted text-[9px] font-mono-data tracking-wider">Metric</th>
                 {all.map((_, i) => (
-                  <th key={i} className="px-2.5 py-1.5 text-right" style={{ ...FONT_LABEL, color: 'var(--accent-cyan)' }}>
+                  <th key={i} className="px-2.5 py-1.5 text-right text-accent-cyan text-[9px] font-mono-data tracking-wider">
                     {i === 0 ? customLabel : `Run ${i}`}
                     {i > 0 && (
-                      <button onClick={() => remove(i - 1)}
-                        className="ml-1.5 text-[9px] cursor-pointer bg-none border-none"
-                        style={{ color: 'var(--accent-red)', background: 'none', border: 'none', padding: 0 }}>
+                      <button onClick={() => remove(i - 1)} className="ml-1.5 text-[9px] cursor-pointer bg-transparent border-none text-down p-0">
                         ✕
                       </button>
                     )}
@@ -144,8 +138,8 @@ export default function StrategyComparison() {
                   return typeof v === 'number' ? v : 0
                 })
                 return (
-                  <tr key={metric.key} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                    <td className="px-2.5 py-1" style={{ color: 'var(--text-secondary)', ...FONT_LABEL }}>
+                  <tr key={metric.key} className="border-b border-default">
+                    <td className="px-2.5 py-1 text-secondary text-[9px] font-mono-data tracking-wider">
                       {metric.label}
                     </td>
                     {values.map((v, i) => {
@@ -158,7 +152,7 @@ export default function StrategyComparison() {
                             background: i === 0 ? 'rgba(59,130,246,0.05)' : 'transparent',
                           }}>
                           {metric.format(v)}
-                          {winner === 2 && <span className="ml-1" style={{ color: 'var(--accent-green)' }}>✓</span>}
+                          {winner === 2 && <span className="ml-1 text-up">✓</span>}
                         </td>
                       )
                     })}
@@ -170,21 +164,21 @@ export default function StrategyComparison() {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse" style={{ ...FONT_DATA }}>
+          <table className="w-full border-collapse text-data">
             <thead>
-              <tr style={{ borderBottom: '2px solid var(--border-color)' }}>
-                <th className="px-2.5 py-1.5 text-left" style={{ ...FONT_LABEL, color: 'var(--text-muted)' }}>Parameter</th>
-                <th className="px-2.5 py-1.5 text-right" style={{ ...FONT_LABEL, color: 'var(--accent-cyan)' }}>{customLabel}</th>
-                <th className="px-2.5 py-1.5 text-right" style={{ ...FONT_LABEL, color: 'var(--accent-cyan)' }}>Run 1</th>
-                <th className="px-2.5 py-1.5 text-center" style={{ ...FONT_LABEL, color: 'var(--text-muted)' }}>Diff</th>
+              <tr className="border-b-2 border-default">
+                <th className="px-2.5 py-1.5 text-left text-muted text-[9px] font-mono-data tracking-wider">Parameter</th>
+                <th className="px-2.5 py-1.5 text-right text-accent-cyan text-[9px] font-mono-data tracking-wider">{customLabel}</th>
+                <th className="px-2.5 py-1.5 text-right text-accent-cyan text-[9px] font-mono-data tracking-wider">Run 1</th>
+                <th className="px-2.5 py-1.5 text-center text-muted text-[9px] font-mono-data tracking-wider">Diff</th>
               </tr>
             </thead>
             <tbody>
               {paramDiffs.map((d) => (
-                <tr key={d.param} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <td className="px-2.5 py-1" style={{ color: 'var(--text-secondary)', ...FONT_LABEL }}>{d.param}</td>
-                  <td className="px-2.5 py-1 text-right" style={{ color: 'var(--text-primary)' }}>{d.baseline}</td>
-                  <td className="px-2.5 py-1 text-right" style={{ color: 'var(--text-primary)' }}>{d.compare}</td>
+                <tr key={d.param} className="border-b border-default">
+                  <td className="px-2.5 py-1 text-secondary text-[9px] font-mono-data tracking-wider">{d.param}</td>
+                  <td className="px-2.5 py-1 text-right text-primary">{d.baseline}</td>
+                  <td className="px-2.5 py-1 text-right text-primary">{d.compare}</td>
                   <td className="px-2.5 py-1 text-center" style={{ color: d.baseline !== d.compare ? 'var(--accent-yellow)' : 'var(--text-muted)' }}>
                     {d.baseline !== d.compare ? '≠' : '='}
                   </td>
@@ -196,7 +190,7 @@ export default function StrategyComparison() {
       )}
 
       {all.length > 0 && (
-        <div className="mt-2 text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>
+        <div className="mt-2 text-[10px] font-mono text-muted">
           ✓ marks better values. First column (highlighted) is your baseline.
         </div>
       )}

@@ -524,7 +524,8 @@ def run_master_strategy(symbol="BTC-USD", period="1mo", interval="15m"):
                 chart.marker(time=t2, text='PK' if e2['type'] == 'TOP' else 'VY', 
                              color=C_ZIGZAG, shape='circle', 
                              position='above' if e2['type'] == 'TOP' else 'below')
-            except: continue
+            except Exception:
+                continue
 
     # ==========================================================================
     # LAYER 6 — Harmonic Patterns
@@ -541,7 +542,8 @@ def run_master_strategy(symbol="BTC-USD", period="1mo", interval="15m"):
                 v1, v2 = p1['p'], p2['p']
                 try:
                     chart.trend_line(t1, v1, t2, v2, color=C_HARMONIC, width=2)
-                except: continue
+                except Exception:
+                    continue
                 
             # Entry text at point D
             d_pt = pts[-1]

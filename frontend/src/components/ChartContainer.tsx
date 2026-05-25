@@ -53,8 +53,7 @@ export default function ChartContainer({
       },
       rightPriceScale: { borderColor: styles.getPropertyValue('--chart-border').trim() || '#2a2d3e' },
       timeScale: { borderColor: styles.getPropertyValue('--chart-border').trim() || '#2a2d3e', timeVisible: true, secondsVisible: false },
-      crosshair: { mode: 0 },
-      handleScroll: { vertTouchDrag: false },
+      crosshair: { mode: 0, vertLine: { color: '#3b82f6', width: 1, labelBackgroundColor: '#3b82f6' }, horzLine: { color: '#3b82f6', width: 1, labelBackgroundColor: '#3b82f6' } },
     })
     chartApiRef.current = chart
 

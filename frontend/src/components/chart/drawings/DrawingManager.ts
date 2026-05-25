@@ -50,9 +50,14 @@ export class DrawingManager {
   private onChanged: (() => void) | null = null
   private storageKey = ''
   private changeTimeout: ReturnType<typeof setTimeout> | null = null
+  private beforeUnloadHandler: (() => void) | null = null
 
   constructor(_chart: IChartApi, mapper: CoordMapper) {
     this.mapper = mapper
+    this.beforeUnloadHandler = () => this.saveToStorage()
+    if (typeof window !== 'undefined') {
+      window.addEventListener('beforeunload', this.beforeUnloadHandler)
+    }
   }
 
   setOnChanged(cb: (() => void) | null) { this.onChanged = cb }
@@ -260,6 +265,18 @@ export class DrawingManager {
       const data = this.drawings.map((d) => d.toJSON())
       localStorage.setItem(this.storageKey, JSON.stringify(data))
     } catch { /* localStorage full */ }
+  }
+
+  destroy() {
+    this.saveToStorage()
+    if (this.beforeUnloadHandler) {
+      window.removeEventListener('beforeunload', this.beforeUnloadHandler)
+      this.beforeUnloadHandler = null
+    }
+    if (this.changeTimeout) {
+      clearTimeout(this.changeTimeout)
+      this.changeTimeout = null
+    }
   }
 
   addDrawingFromJSON(data: DrawingData): DrawingTool | null {

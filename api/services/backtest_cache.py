@@ -77,7 +77,8 @@ def invalidate(strategy_name: str | None = None, symbol: str | None = None) -> i
                 continue
             os.remove(path)
             count += 1
-        except Exception:
+        except Exception as e:
+            logger.warning("Failed to remove backtest cache %s: %s", path.name if hasattr(path, 'name') else path, e)
             continue
     return count
 
@@ -93,6 +94,7 @@ def stats() -> dict:
             try:
                 total_size += os.path.getsize(path)
                 count += 1
-            except Exception:
+            except Exception as e:
+                logger.debug("Failed to stat cache file: %s", e)
                 continue
     return {"count": count, "size_bytes": total_size, "size_mb": round(total_size / 1024 / 1024, 2)}

@@ -107,7 +107,7 @@ def _load_optimizer(config: Dict[str, Any]) -> Optional[Callable]:
         mod = importlib.import_module(f"backtesting.optimizers.{opt_name}")
         return lambda ret, pos, dates: mod.optimize(ret, pos, dates, **opt_params)
     except (ImportError, AttributeError) as e:
-        print(f"[WARN] Failed to load optimizer '{opt_name}': {e}, falling back to equal weight")
+        logger.warning("Failed to load optimizer '%s': %s, falling back to equal weight", opt_name, e)
         return None
 
 
@@ -196,13 +196,13 @@ class BaseEngine(ABC):
             interval=interval,
         )
         if not data_map:
-            print(json.dumps({"error": "No data fetched"}))
+            logger.error("No data fetched")
             sys.exit(1)
 
         signal_map = signal_engine.generate(data_map)
         valid_codes = sorted(c for c in signal_map if c in data_map)
         if not valid_codes:
-            print(json.dumps({"error": "No valid signals generated"}))
+            logger.error("No valid signals generated")
             sys.exit(1)
 
         opt_fn = _load_optimizer(config)
@@ -482,7 +482,8 @@ class BaseEngine(ABC):
             })
             try:
                 hold_days = (t.exit_time - t.entry_time).days
-            except Exception:
+            except Exception as e:
+                logger.debug("Failed to compute hold_days: %s", e)
                 hold_days = 0
             trade_rows.append({
                 "timestamp": str(t.exit_time.date()) if hasattr(t.exit_time, "date") else str(t.exit_time),

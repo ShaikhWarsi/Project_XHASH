@@ -32,7 +32,8 @@ _progress_global_lock = threading.Lock()
 def _max_workers() -> int:
     try:
         return max(1, int(os.getenv("AGENT_JOBS_MAX_WORKERS", "4")))
-    except Exception:
+    except Exception as e:
+        logger.warning("Failed to read AGENT_JOBS_MAX_WORKERS: %s", e)
         return 4
 
 
@@ -198,7 +199,8 @@ async def stream_progress(
     last_seq = since_seq
     deadline = time.monotonic() + idle_timeout_s
 
-    while True:
+    _stream_max = 10000000
+    for _ in range(_stream_max):
         with lock:
             pending = [r for r in list(buf) if r["seq"] > last_seq]
         for rec in pending:
@@ -300,14 +302,21 @@ async def get_job(job_id: str, *, user_id: int, db: AsyncSession) -> Optional[di
     row = result.scalar_one_or_none()
     if not row:
         return None
+    def _safe_json(val):
+        if val is None:
+            return None
+        try:
+            return json.loads(val)
+        except (json.JSONDecodeError, TypeError):
+            return {}
     return {
         "job_id": row.job_id,
         "kind": row.kind,
         "status": row.status,
-        "request": json.loads(row.request) if row.request else {},
-        "result": json.loads(row.result) if row.result else None,
+        "request": _safe_json(row.request) or {},
+        "result": _safe_json(row.result),
         "error": row.error,
-        "progress": json.loads(row.progress) if row.progress else None,
+        "progress": _safe_json(row.progress),
         "created_at": row.created_at.isoformat() if row.created_at else None,
         "started_at": row.started_at.isoformat() if row.started_at else None,
         "finished_at": row.finished_at.isoformat() if row.finished_at else None,

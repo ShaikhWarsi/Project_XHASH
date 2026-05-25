@@ -103,7 +103,7 @@ export default function Dashboard() {
             .filter((h) => /^\d{4}-\d{2}-\d{2}/.test(h.timestamp))
             .map((h) => ({ time: h.timestamp.split(/[T ]/)[0], value: h.total_value }))
         )
-      }).catch(() => {}),
+      }).catch((err) => { console.warn('Dashboard: portfolio history failed', err); addToast('Failed to load portfolio history', 'error') }),
       fetchTrades().then((trades: Trade[]) => {
         setTradeMarkers(
           trades.map((t) => ({
@@ -112,7 +112,7 @@ export default function Dashboard() {
             price: t.price,
           }))
         )
-      }).catch(() => {}),
+      }).catch((err) => { console.warn('Dashboard: trades fetch failed', err); addToast('Failed to load trades', 'error') }),
     ]).finally(() => setLoading(false))
 
     const es = connectDashboardSSE(
@@ -150,7 +150,7 @@ export default function Dashboard() {
             }))
         )
       })
-      .catch(() => {})
+      .catch((err) => { console.warn('Dashboard: benchmark fetch failed', err); addToast('Failed to load benchmark', 'error') })
   }, [showBenchmark, benchmarkHistory.length])
 
   const effective = snapshot?.portfolio ?? portfolio

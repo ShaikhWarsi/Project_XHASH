@@ -77,5 +77,6 @@ async def rl_status():
         from signals.rl.environment import HAS_RL
         from signals.rl.trainer import HAS_SB3
         return {"gymnasium_available": HAS_RL, "stable_baselines3_available": HAS_SB3}
-    except Exception:
+    except Exception as e:
+        logger.warning("RL env check failed: %s", e)
         return {"gymnasium_available": False, "stable_baselines3_available": False}

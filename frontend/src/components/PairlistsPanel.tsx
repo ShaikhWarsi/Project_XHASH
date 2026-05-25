@@ -24,7 +24,7 @@ export default function PairlistsPanel() {
   useEffect(() => {
     fetchPairlistFilters()
       .then((r) => setFilters(r.filters))
-      .catch(() => {})
+      .catch((err) => { console.warn('PairlistsPanel: filters failed', err); addToast('Failed to load pairlist filters', 'error') })
   }, [])
 
   const run = async () => {

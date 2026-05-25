@@ -12,9 +12,13 @@ Market rules:
 
 from __future__ import annotations
 
+import logging
+
 import pandas as pd
 
 from backtesting.market_engines.base import BaseEngine
+
+logger = logging.getLogger(__name__)
 
 
 class ChinaAEngine(BaseEngine):
@@ -82,8 +86,8 @@ def _bar_date(bar: pd.Series):
                 return val.date()
             try:
                 return pd.Timestamp(val).date()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Failed to parse bar date: %s", e)
     if hasattr(bar, "name") and hasattr(bar.name, "date"):
         return bar.name.date()
     return None

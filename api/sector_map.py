@@ -47,7 +47,8 @@ def _lookup_sector(symbol: str) -> str:
             return "Unknown"
         sector = info.get("sector") or info.get("industry") or "Unknown"
         return sector
-    except Exception:
+    except Exception as e:
+        logger.debug("Failed to get sector for symbol: %s", e)
         return "Unknown"
 
 

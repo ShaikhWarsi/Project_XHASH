@@ -3,10 +3,13 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Optional
 
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 MARKET_BENCHMARKS: dict[str, Optional[str]] = {
     "us_equity":  "SPY",
@@ -39,7 +42,8 @@ def resolve_benchmark(
 
     try:
         bench_df = _fetch_benchmark(ticker, start_date, end_date, interval)
-    except Exception:
+    except Exception as e:
+        logger.warning("Failed to fetch benchmark %s: %s", ticker, e)
         return None
 
     if bench_df.empty or "close" not in bench_df.columns:
@@ -101,7 +105,8 @@ def _fetch_benchmark(
 
     try:
         df = yf.download(ticker, start=start_date, end=end_date, interval=interval, progress=False, auto_adjust=True)
-    except Exception:
+    except Exception as e:
+        logger.warning("yfinance download failed for benchmark %s: %s", ticker, e)
         return pd.DataFrame()
 
     if df.empty:

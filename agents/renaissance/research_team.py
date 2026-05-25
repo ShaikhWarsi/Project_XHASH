@@ -1,3 +1,4 @@
+import logging
 from itertools import chain
 from typing import Optional
 
@@ -5,6 +6,8 @@ import numpy as np
 import pandas as pd
 
 from core.enums import AgentRole
+
+logger = logging.getLogger(__name__)
 from core.types import AnalystSignal, PortfolioState
 
 from .base import RenaissanceAgent
@@ -104,7 +107,8 @@ class SignalScientistAgent(RenaissanceAgent):
                 return 0.5
             reg = np.polyfit(np.log(list(range(2, 2 + len(tau)))), np.log(tau), 1)
             return float(reg[0])
-        except Exception:
+        except Exception as e:
+            logger.debug("Hurst exponent calc failed: %s", e)
             return 0.5
 
     @staticmethod
@@ -121,7 +125,8 @@ class SignalScientistAgent(RenaissanceAgent):
                 return None
             half_life = -np.log(2) / reg[0]
             return float(half_life) if 0 < half_life < 1000 else None
-        except Exception:
+        except Exception as e:
+            logger.debug("Half-life calc failed: %s", e)
             return None
 
 

@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react'
 import { api } from '../api/client'
 import { Play, Square, RefreshCw, Activity, AlertCircle, CheckCircle, Clock } from 'lucide-react'
 
-const FONT = { fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }
+const FONT = "font-mono-data text-[11px]"
 
 interface Task {
   id: string
@@ -74,69 +74,66 @@ export default function TaskOrchestration() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 6 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
-        <span style={{ ...FONT, fontWeight: 700, color: 'var(--accent-green)' }}>TASK ORCHESTRATOR</span>
-        <span style={{ ...FONT, fontSize: 10, color: 'var(--text-muted)' }}>Run multiple tasks in parallel</span>
-        <div style={{ flex: 1 }} />
-        <span style={{ ...FONT, fontSize: 10, color: 'var(--text-muted)' }}>Parallel: </span>
+    <div className="flex flex-col h-full gap-1.5">
+      <div className="flex items-center gap-2 py-1">
+        <span className="font-mono-data text-[11px] font-bold text-up">TASK ORCHESTRATOR</span>
+        <span className="font-mono-data text-[10px] text-muted">Run multiple tasks in parallel</span>
+        <div className="flex-1" />
+        <span className="font-mono-data text-[10px] text-muted">Parallel: </span>
         <select value={parallelCount} onChange={(e) => setParallelCount(Number(e.target.value))}
-          style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', ...FONT, fontSize: 10, padding: '2px 4px', outline: 'none' }}>
+          className="bg-card border border-default text-primary font-mono-data text-[10px] px-1 py-0.5 outline-none">
           {[1, 2, 3, 5, 10].map((n) => <option key={n} value={n}>{n}</option>)}
         </select>
         <button onClick={runAll}
-          style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--accent-cyan)', color: '#000', border: 'none', ...FONT, fontWeight: 600, padding: '3px 10px', cursor: 'pointer' }}>
+          className="flex items-center gap-1 bg-[var(--accent-cyan)] text-black border-none font-mono-data text-[11px] font-semibold px-2.5 py-0.5 cursor-pointer">
           <Play size={12} /> RUN ALL
         </button>
         <button onClick={stopAll}
-          style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'var(--accent-red)', ...FONT, padding: '3px 10px', cursor: 'pointer' }}>
+          className="flex items-center gap-1 bg-card border border-default text-down font-mono-data text-[11px] px-2.5 py-0.5 cursor-pointer">
           <Square size={12} /> STOP ALL
         </button>
       </div>
-      <div style={{ display: 'flex', gap: 6, flex: 1, minHeight: 0 }}>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div className="flex gap-1.5 flex-1 min-h-0">
+        <div className="flex-1 flex flex-col gap-1">
           {tasks.map((task) => {
             const cfg = STATUS_CONFIG[task.status]
             const Icon = cfg.icon
             return (
-              <div key={task.id} style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 4, padding: '8px 10px', ...FONT, fontSize: 11 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div key={task.id} className="bg-card border border-default rounded p-2 font-mono-data text-[11px]">
+                <div className="flex items-center gap-1.5">
                   <Icon size={14} style={{ color: cfg.color }} />
-                  <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{task.name}</span>
-                  <span style={{ fontSize: 9, color: TYPE_COLORS[task.type], background: `${TYPE_COLORS[task.type]}22`, padding: '1px 5px', borderRadius: 3, textTransform: 'uppercase' }}>{task.type.replace('_', ' ')}</span>
-                  <div style={{ flex: 1 }} />
-                  <span style={{ fontSize: 9, color: cfg.color, textTransform: 'uppercase' }}>{task.status}</span>
-                  {task.startedAt && <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>{task.startedAt}</span>}
+                  <span className="font-semibold text-primary">{task.name}</span>
+                  <span className="text-[9px] uppercase px-1 rounded-sm" style={{ color: TYPE_COLORS[task.type], background: `${TYPE_COLORS[task.type]}22` }}>{task.type.replace('_', ' ')}</span>
+                  <div className="flex-1" />
+                  <span className="text-[9px] uppercase" style={{ color: cfg.color }}>{task.status}</span>
+                  {task.startedAt && <span className="text-[9px] text-muted">{task.startedAt}</span>}
                   {task.status === 'idle' && (
-                    <button onClick={() => startTask(task.id)}
-                      style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', cursor: 'pointer', ...FONT, fontSize: 10, padding: '2px 6px' }}>RUN</button>
+                    <button onClick={() => startTask(task.id)} className="bg-transparent border-none text-accent-cyan cursor-pointer font-mono-data text-[10px] px-1.5 py-0.5">RUN</button>
                   )}
                   {task.status === 'running' && (
-                    <button onClick={() => stopTask(task.id)}
-                      style={{ background: 'none', border: 'none', color: 'var(--accent-red)', cursor: 'pointer', ...FONT, fontSize: 10, padding: '2px 6px' }}>STOP</button>
+                    <button onClick={() => stopTask(task.id)} className="bg-transparent border-none text-down cursor-pointer font-mono-data text-[10px] px-1.5 py-0.5">STOP</button>
                   )}
                   {task.status === 'failed' && (
-                    <button onClick={() => startTask(task.id)}
-                      style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', cursor: 'pointer', ...FONT, fontSize: 10, padding: '2px 6px' }}>RETRY</button>
+                    <button onClick={() => startTask(task.id)} className="bg-transparent border-none text-accent-cyan cursor-pointer font-mono-data text-[10px] px-1.5 py-0.5">RETRY</button>
                   )}
                   {task.status === 'completed' && (
-                    <RefreshCw size={12} style={{ color: 'var(--text-muted)', cursor: 'pointer' }} onClick={() => startTask(task.id)} />
+                    <RefreshCw size={12} className="text-muted cursor-pointer" onClick={() => startTask(task.id)} />
                   )}
                 </div>
                 {(task.status === 'running' || task.status === 'failed') && (
-                  <div style={{ marginTop: 6, height: 4, background: 'var(--bg-app)', borderRadius: 2, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${task.progress}%`, background: task.status === 'running' ? '#22c55e' : '#ef4444', borderRadius: 2, transition: 'width 0.5s' }} />
+                  <div className="mt-1.5 h-1 bg-[var(--bg-app)] rounded overflow-hidden">
+                    <div className="h-full rounded transition-all duration-500" style={{ width: `${task.progress}%`, background: task.status === 'running' ? '#22c55e' : '#ef4444' }} />
                   </div>
                 )}
               </div>
             )
           })}
         </div>
-        <div style={{ width: 300, border: '1px solid var(--border-color)', borderRadius: 4, padding: 8, overflow: 'auto', ...FONT, fontSize: 10, background: 'var(--bg-card)' }}>
-          <div style={{ fontWeight: 700, color: 'var(--accent-green)', marginBottom: 4, fontSize: 10 }}>TASK LOGS</div>
-          {logs.length === 0 && <div style={{ color: 'var(--text-muted)' }}>No logs yet. Run a task to see output.</div>}
+        <div className="w-[300px] border border-default rounded p-2 overflow-auto font-mono-data text-[10px] bg-card">
+          <div className="font-bold text-up mb-1 text-[10px]">TASK LOGS</div>
+          {logs.length === 0 && <div className="text-muted">No logs yet. Run a task to see output.</div>}
           {logs.map((log, i) => (
-            <div key={i} style={{ color: 'var(--text-secondary)', padding: '1px 0', borderBottom: '1px solid var(--border-color)' }}>{log}</div>
+            <div key={i} className="text-secondary py-0.5 border-b border-default">{log}</div>
           ))}
         </div>
       </div>

@@ -126,9 +126,14 @@ async def dcf_sensitivity(
     import json
     dcf = DCFModel()
     balance_sheet = {"cash": cash, "debt": debt}
+    try:
+        growth = json.loads(growth_rates)
+        tg_scenarios = json.loads(terminal_growth_scenarios)
+        wacc = json.loads(wacc_scenarios)
+    except json.JSONDecodeError as e:
+        raise HTTPException(400, f"Invalid JSON parameter: {e}")
     return dcf.sensitivity_analysis(
-        base_fcf, json.loads(growth_rates),
-        json.loads(terminal_growth_scenarios), json.loads(wacc_scenarios),
+        base_fcf, growth, tg_scenarios, wacc,
         balance_sheet, shares_outstanding,
     )
 
@@ -235,7 +240,10 @@ async def bond_ytw(
     """Calculate yield to worst (minimum of YTM and all YTCs)."""
     import json
     pricer = BondPricer()
-    call_schedule = json.loads(call_schedule_json) if call_schedule_json else None
+    try:
+        call_schedule = json.loads(call_schedule_json) if call_schedule_json else None
+    except json.JSONDecodeError as e:
+        raise HTTPException(400, f"Invalid call_schedule JSON: {e}")
     return pricer.calculate_ytw(price, face_value, coupon_rate, years_to_maturity, call_schedule, frequency)
 
 
@@ -286,7 +294,10 @@ async def yield_curve_bootstrap(
     """Bootstrap spot rate curve from bond prices."""
     import json
     builder = YieldCurveBuilder()
-    bonds = json.loads(bonds_json)
+    try:
+        bonds = json.loads(bonds_json)
+    except json.JSONDecodeError as e:
+        raise HTTPException(400, f"Invalid bonds JSON: {e}")
     return builder.bootstrap_spot_curve(bonds, frequency)
 
 
@@ -298,7 +309,12 @@ async def yield_curve_nelson_siegel(
     """Fit Nelson-Siegel model to yield curve."""
     import json
     builder = YieldCurveBuilder()
-    return builder.fit_nelson_siegel(json.loads(maturities_json), json.loads(yields_json))
+    try:
+        maturities = json.loads(maturities_json)
+        yields = json.loads(yields_json)
+    except json.JSONDecodeError as e:
+        raise HTTPException(400, f"Invalid JSON parameter: {e}")
+    return builder.fit_nelson_siegel(maturities, yields)
 
 
 @router.get("/spread/g-spread")
