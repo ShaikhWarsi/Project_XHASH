@@ -19,7 +19,7 @@ router = APIRouter(prefix="/stream", tags=["stream"])
 async def _refresh_data():
     """Batch-refresh portfolio prices using a single yfinance download call."""
     try:
-        p = app_state.portfolio
+        p = await app_state.async_get_portfolio()
         if not p or not p.positions:
             return
         symbols = list(p.positions.keys())
@@ -57,7 +57,7 @@ async def event_generator(request: Request):
 
             if ticks % heartbeat_interval == 0:
                 await _refresh_data()
-                data = app_state.snapshot()
+                data = await app_state.async_snapshot()
                 yield f"data: {json.dumps(data, default=str)}\n\n"
             else:
                 yield ": heartbeat\n\n"

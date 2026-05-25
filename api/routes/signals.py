@@ -12,7 +12,7 @@ async def get_signals(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
-    sm = app_state.signals
+    sm = await app_state.async_get_signals()
     if not sm:
         return {"timestamp": "", "signals": {}, "composite_scores": {}, "regime": None}
 
@@ -51,7 +51,7 @@ async def get_signals(
 
 @router.get("/latest")
 async def get_latest_signals():
-    sm = app_state.signals
+    sm = await app_state.async_get_signals()
     if sm:
         signals_dict = {}
         for symbol, sigs in sm.signals.items():

@@ -9,7 +9,7 @@ router = APIRouter(prefix="/metrics", tags=["metrics"])
 
 @router.get("")
 async def get_metrics():
-    m = app_state.metrics
+    m = await app_state.async_get_metrics()
     if m:
         return {
             "sharpe_ratio": m.sharpe_ratio,
@@ -36,7 +36,7 @@ async def get_metrics():
 
 @router.get("/attribution")
 async def get_attribution():
-    a = app_state.attribution
+    a = await app_state.async_get_attribution()
     if a:
         return {
             "total_return": a.total_return,

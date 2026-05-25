@@ -6,7 +6,7 @@ router = APIRouter(tags=["positions"])
 
 @router.get("/positions")
 async def list_positions():
-    snapshot = app_state.snapshot()
+    snapshot = await app_state.async_snapshot()
     portfolio = snapshot.get("portfolio", {})
     positions = portfolio.get("positions", {})
     result = []

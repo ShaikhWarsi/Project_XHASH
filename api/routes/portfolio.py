@@ -12,7 +12,7 @@ router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 
 @router.get("")
 async def get_portfolio(session: AsyncSession = Depends(get_session)):
-    p = app_state.portfolio
+    p = await app_state.async_get_portfolio()
     positions = {}
     for s, pos in p.positions.items():
         positions[s] = {

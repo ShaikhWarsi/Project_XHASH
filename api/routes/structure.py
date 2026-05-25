@@ -16,7 +16,7 @@ async def get_structure(
     symbol: str,
     timeframe: str = Query("1h", description="Timeframe for analysis"),
 ):
-    sm = app_state.signals
+    sm = await app_state.async_get_signals()
     if sm is None:
         return _empty_state(symbol, timeframe)
 

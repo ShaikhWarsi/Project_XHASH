@@ -20,7 +20,7 @@ async def risk_event_generator(request: Request):
             if await request.is_disconnected():
                 break
 
-            snapshot = app_state.snapshot()
+            snapshot = await app_state.async_snapshot()
             portfolio = snapshot.get("portfolio", {})
             metrics = snapshot.get("metrics", {})
 

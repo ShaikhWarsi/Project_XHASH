@@ -16,7 +16,7 @@ async def clone_strategy(strategy_id: str) -> dict[str, Any]:
     try:
         from api.state import app_state
 
-        sm = app_state.signals
+        sm = await app_state.async_get_signals()
         if not sm:
             raise HTTPException(404, "Signal matrix not available")
 

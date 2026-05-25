@@ -20,7 +20,7 @@ async def signal_event_generator(request: Request, symbols: list[str] | None, en
             if await request.is_disconnected():
                 break
 
-            sm = app_state.signals
+            sm = await app_state.async_get_signals()
             if sm:
                 signals_dict = {}
                 for symbol, sigs in sm.signals.items():

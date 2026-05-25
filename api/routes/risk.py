@@ -9,7 +9,7 @@ router = APIRouter(tags=["risk"])
 
 @router.get("/risk")
 async def get_risk_metrics():
-    snapshot = app_state.snapshot()
+    snapshot = await app_state.async_snapshot()
     portfolio = snapshot.get("portfolio", {})
     metrics = snapshot.get("metrics", {})
 

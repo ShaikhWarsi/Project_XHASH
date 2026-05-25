@@ -63,7 +63,7 @@ async def ws_portfolio(websocket: WebSocket):
     await manager.connect("portfolio", websocket)
     try:
         while True:
-            snapshot = app_state.snapshot()
+            snapshot = await app_state.async_snapshot()
             await websocket.send_json({
                 "type": "portfolio",
                 "data": snapshot,
@@ -81,7 +81,7 @@ async def ws_orders(websocket: WebSocket):
     await manager.connect("orders", websocket)
     try:
         while True:
-            orders = app_state.open_orders if hasattr(app_state, 'open_orders') else []
+            orders = await app_state.async_get_open_orders() if hasattr(app_state, 'async_get_open_orders') else []
             await websocket.send_json({
                 "type": "orders",
                 "data": orders,
