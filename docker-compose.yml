@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+  trading-engine:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
+      - ./trading_engine.db:/app/trading_engine.db
+    env_file:
+      - .env
+    environment:
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173}
+      - TRADING_ENGINE_DB_URL=sqlite+aiosqlite:///app/trading_engine.db
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - FINNHUB_API_KEY=${FINNHUB_API_KEY:-}
+      - FRED_API_KEY=${FRED_API_KEY:-}
+      - APCA_API_KEY_ID=${APCA_API_KEY_ID:-}
+      - APCA_API_SECRET_KEY=${APCA_API_SECRET_KEY:-}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-}
+    restart: unless-stopped

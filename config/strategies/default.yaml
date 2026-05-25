@@ -1,0 +1,32 @@
+name: "Default Strategy"
+description: "Multi-analyst LLM hedge fund with quant signal augmentation"
+
+signals:
+  enabled:
+    - smc
+    - patterns
+    - structure
+    - regime_wasserstein
+    - volatility
+    - trend
+
+agents:
+  analysts:
+    - valuation
+    - sentiment
+    - fundamentals
+    - technical_llm
+  portfolio_manager:
+    consensus_threshold: 0.6
+    max_analysts_voting: 4
+
+risk:
+  stop_loss: true
+  position_sizing: "kelly"
+  circuit_breakers: true
+  max_drawdown: 0.20
+
+execution:
+  mode: "backtest"  # backtest | paper | live
+  broker: "backtest"
+  slippage_model: "fixed"

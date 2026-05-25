@@ -1,0 +1,134 @@
+[project]
+name = "trading-engine"
+version = "0.3.0"
+description = "AI-Augmented Quantitative Trading Platform — Hybrid quant signals + LLM agent reasoning + risk management"
+requires-python = ">=3.11"
+authors = [
+    { name = "Trading Engine Contributors" },
+]
+license = { text = "MIT" }
+keywords = ["trading", "quantitative", "finance", "ai", "backtesting", "machine-learning"]
+dependencies = [
+    "pandas>=2.0",
+    "numpy>=1.24",
+    "yfinance>=0.2",
+    "openbb>=4.0",
+    "plotly>=5.15",
+    "scipy>=1.10",
+    "scikit-learn>=1.3",
+    "fastapi>=0.100",
+    "uvicorn[standard]>=0.23",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "aiohttp>=3.9",
+    "sqlalchemy[asyncio]>=2.0",
+    "aiosqlite>=0.20",
+    "pydantic[email]>=2.0",
+    "slowapi>=0.1.9",
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+live = [
+    "ccxt>=4.0",
+    "alpaca-py>=0.25",
+]
+ml = [
+    "pyclustering>=0.10",
+    "xgboost>=2.0",
+    "lightgbm>=4.0",
+]
+llm = [
+    "openai>=1.0",
+    "anthropic>=0.30",
+    "langchain-openai>=0.1",
+    "langchain-anthropic>=0.1",
+    "langchain-google-genai>=1.0",
+]
+mcp = [
+    "fastmcp>=0.2",
+]
+cli = [
+    "typer>=0.12",
+    "rich>=13.0",
+    "questionary>=2.0",
+]
+backtest = [
+    "vectorbt>=0.40.0",
+]
+storage = [
+    "arcticdb>=4.0.0",
+]
+features = [
+    "tsfresh>=0.20.0",
+]
+portfolio = [
+    "skfolio>=0.2.0",
+]
+factors = [
+    "alphalens-reloaded>=0.4.0",
+]
+research = [
+    "finagg>=1.0.0",
+]
+calendars = [
+    "exchange_calendars>=4.0.0",
+]
+execution = [
+    "nautilus_trader>=1.200.0",
+]
+gpu = [
+    "spectre>=0.3.0",
+]
+rl = [
+    "stable-baselines3>=2.0",
+    "gym>=0.26",
+]
+all = [
+    "trading-engine[backtest,storage,features,portfolio,factors,research,calendars,execution,gpu,rl,ml,live,llm,mcp,cli]",
+]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.1",
+    "pytest-asyncio>=0.23",
+]
+
+[build-system]
+requires = ["setuptools>=64.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = [
+    "core*", "data*", "data.vendor_router*", "data.trade_journal*",
+    "data.fetchers*", "data.standard_models*",
+    "signals*", "signals.alpha_zoo*", "signals.alpha_zoo.zoo*",
+    "agents*", "agents.llm*", "agents.hedge_fund*", "agents.debate*",
+    "agents.memory_log*", "agents.wall_time*",
+    "risk*", "execution*", "backtesting*", "backtesting.validation*",
+    "backtesting.market_engines*",
+    "analytics*", "analytics.optimizers*", "analytics.hypothesis*", "analytics.benchmarks*",
+    "analytics.options*",
+    "api*", "integrations*", "scripts*", "config*",
+    "persistence*", "llm*", "analyzers*", "analyzers.mmc*",
+    "analytics.cfa*", "finscript*", "finscript.export*",
+    "cli*",
+]
+
+[project.scripts]
+trading-engine-backtest = "scripts.run:main"
+trading-engine-live = "scripts.live:main"
+trading-engine-dashboard = "scripts.dashboard:main"
+trading-engine = "cli.main:main"
+trading-engine-mcp = "mcp_server:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
