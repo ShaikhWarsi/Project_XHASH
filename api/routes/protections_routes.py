@@ -17,7 +17,7 @@ from api.services.protections import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/protections", tags=["protections"])
+router = APIRouter(prefix="/protections", tags=["protections"])
 
 
 @router.get("/available")

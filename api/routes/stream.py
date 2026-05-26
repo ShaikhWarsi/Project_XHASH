@@ -40,7 +40,7 @@ async def _refresh_data():
                 pos.market_value = pos.quantity * price
                 pos.unrealized_pnl = (price - pos.entry_price) * pos.quantity
             except Exception as e:
-                logger.debug("Failed to refresh price for %s: %s", sym, e)
+                logger.warning("Failed to refresh price for %s: %s", sym, e)
     except ImportError:
         logger.warning("yfinance not available — portfolio price refresh disabled")
     except Exception as e:
@@ -49,7 +49,7 @@ async def _refresh_data():
 
 async def event_generator(request: Request):
     try:
-        heartbeat_interval = 15
+        heartbeat_interval = 60
         ticks = 0
         _max_iter = 1000000
         for _ in range(_max_iter):

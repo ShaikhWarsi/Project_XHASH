@@ -56,6 +56,7 @@ const WorkflowPage = lazy(() => import('./pages/WorkflowPage'))
 const Settings = lazy(() => import('./pages/Settings'))
 const PluginsPage = lazy(() => import('./pages/Plugins'))
 const MultiSymbolCompare = lazy(() => import('./pages/MultiSymbolCompare'))
+const MarketScreener = lazy(() => import('./pages/MarketScreener'))
 const Infrastructure = lazy(() => import('./pages/Infrastructure'))
 const AuditLogPage = lazy(() => import('./pages/AuditLogPage'))
 const BotsPage = lazy(() => import('./pages/BotsPage'))
@@ -92,6 +93,7 @@ export default function App() {
                   <Route path="/markets/structure" element={<LazyPage><Structure /></LazyPage>} />
                   <Route path="/markets/advanced-charts" element={<LazyPage><AdvancedCharts /></LazyPage>} />
                   <Route path="/markets/compare" element={<LazyPage><MultiSymbolCompare /></LazyPage>} />
+                  <Route path="/markets/screener" element={<LazyPage><MarketScreener /></LazyPage>} />
                   <Route path="/trading/orders" element={<LazyPage><Orders /></LazyPage>} />
                   <Route path="/trading/trades" element={<LazyPage><Trades /></LazyPage>} />
                   <Route path="/trading/portfolio" element={<LazyPage><Portfolio /></LazyPage>} />

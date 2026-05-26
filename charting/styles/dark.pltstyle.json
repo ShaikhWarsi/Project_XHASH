@@ -1,0 +1,16 @@
+{
+  "bg": "#0a0e14",
+  "card": "#0d1117",
+  "border": "#1a2332",
+  "text": "#5d6b7e",
+  "textPrimary": "#e8eaed",
+  "up": "#26a69a",
+  "down": "#ef5350",
+  "upColorway": ["#26a69a", "#00bcd4", "#66bb6a", "#4caf50", "#009688"],
+  "downColorway": ["#ef5350", "#e57373", "#f44336", "#d32f2f", "#b71c1c"],
+  "accent": "#3b82f6",
+  "accentYellow": "#ffd54f",
+  "accentOrange": "#ff9800",
+  "accentPurple": "#ab47bc",
+  "lineColor": "#ffed00"
+}

@@ -5,7 +5,7 @@ from typing import Optional
 
 import pandas as pd
 import yfinance as yf
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 
 router = APIRouter(prefix="/bars", tags=["bars"])
 
@@ -44,9 +44,13 @@ async def get_bars(
     if interval == "1h":
         yf_interval = "60m"
 
-    df = yf.download(symbol, start=start, end=end_date, interval=yf_interval, progress=False, auto_adjust=True)
+    try:
+        df = yf.download(symbol, start=start, end=end_date, interval=yf_interval, progress=False, auto_adjust=True)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Data provider failed for {symbol}: {e}")
+
     if df.empty:
-        return []
+        raise HTTPException(status_code=404, detail=f"No data found for {symbol}")
 
     expected = {"open", "high", "low", "close", "volume"}
     if isinstance(df.columns, pd.MultiIndex):
@@ -55,7 +59,7 @@ async def get_bars(
         df.columns = [c.lower() for c in df.columns]
     missing = expected - set(df.columns)
     if missing:
-        return []
+        raise HTTPException(status_code=502, detail=f"Unexpected data format for {symbol}: missing columns {missing}")
     df = df[list(expected)]
 
     bars = []

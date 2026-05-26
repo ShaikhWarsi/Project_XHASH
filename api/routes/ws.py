@@ -1,35 +1,56 @@
 from __future__ import annotations
 import asyncio
-import json
+import logging
 import time
 import random
+import pandas as pd
+import yfinance as yf
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from api.websocket_manager import manager
 from api.state import app_state
-from data.providers.yfinance import YFinanceDataSource
-from core.types import PortfolioState
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/ws", tags=["websocket"])
-
-_yf = YFinanceDataSource()
 
 POPULAR_SYMBOLS = ["SPY","QQQ","DIA","IWM","AAPL","MSFT","GOOGL","AMZN","NVDA","META","TSLA","BTC-USD","ETH-USD"]
 
 _price_cache: dict[str, float] = {}
 _price_cache_lock = asyncio.Lock()
+_cache_last_refresh = 0.0
+_CACHE_TTL = 30.0
 
 
 async def _refresh_price_cache():
+    global _cache_last_refresh
+    now = time.time()
+    if now - _cache_last_refresh < _CACHE_TTL:
+        return
+    _cache_last_refresh = now
     prices = {}
-    for sym in POPULAR_SYMBOLS:
-        try:
-            ticker = await asyncio.to_thread(_yf.fetch_ticker, sym)
-            if ticker and ticker.get("price"):
-                prices[sym] = ticker["price"]
-        except Exception:
-            pass
-    async with _price_cache_lock:
-        _price_cache.update(prices)
+    try:
+        df = await asyncio.to_thread(
+            lambda: yf.download(" ".join(POPULAR_SYMBOLS), period="1d", group_by="ticker", progress=False)
+        )
+        if df.empty:
+            return
+        for sym in POPULAR_SYMBOLS:
+            try:
+                if isinstance(df.columns, pd.MultiIndex) and sym in df.columns.levels[0]:
+                    price = float(df[sym]["Close"].iloc[-1])
+                elif sym in df.columns:
+                    price = float(df[sym].iloc[-1]) if hasattr(df[sym], "iloc") else float(df[sym])
+                else:
+                    continue
+                prices[sym] = price
+            except Exception:
+                pass
+    except Exception as e:
+        logger.warning("Batch price refresh failed: %s", e)
+        _cache_last_refresh = 0.0
+    if prices:
+        async with _price_cache_lock:
+            _price_cache.update(prices)
 
 
 @router.websocket("/prices")
@@ -60,7 +81,8 @@ async def ws_prices(websocket: WebSocket):
         logger.warning("ws_prices hit max iterations")
     except WebSocketDisconnect:
         await manager.disconnect("prices", websocket)
-    except Exception:
+    except Exception as e:
+        logger.warning("ws_prices error: %s", e)
         await manager.disconnect("prices", websocket)
 
 
@@ -84,7 +106,8 @@ async def ws_portfolio(websocket: WebSocket):
         logger.warning("ws_portfolio hit max iterations")
     except WebSocketDisconnect:
         await manager.disconnect("portfolio", websocket)
-    except Exception:
+    except Exception as e:
+        logger.warning("ws_portfolio error: %s", e)
         await manager.disconnect("portfolio", websocket)
 
 
@@ -108,7 +131,8 @@ async def ws_orders(websocket: WebSocket):
         logger.warning("ws_orders hit max iterations")
     except WebSocketDisconnect:
         await manager.disconnect("orders", websocket)
-    except Exception:
+    except Exception as e:
+        logger.warning("ws_orders error: %s", e)
         await manager.disconnect("orders", websocket)
 
 
@@ -146,7 +170,8 @@ async def ws_orderbook(websocket: WebSocket, symbol: str):
         logger.warning("ws_orderbook hit max iterations")
     except WebSocketDisconnect:
         await manager.disconnect(f"orderbook:{symbol}", websocket)
-    except Exception:
+    except Exception as e:
+        logger.warning("ws_orderbook error: %s", e)
         await manager.disconnect(f"orderbook:{symbol}", websocket)
 
 
@@ -183,7 +208,8 @@ async def ws_trades(websocket: WebSocket, symbol: str):
         logger.warning("ws_trades hit max iterations")
     except WebSocketDisconnect:
         await manager.disconnect(f"trades:{symbol}", websocket)
-    except Exception:
+    except Exception as e:
+        logger.warning("ws_trades error: %s", e)
         await manager.disconnect(f"trades:{symbol}", websocket)
 
 
@@ -202,10 +228,11 @@ async def ws_social_signals(websocket: WebSocket):
                 for conn in manager.connections.get("signals", []):
                     try:
                         await conn.send_json(broadcast)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.warning("ws_social_signals broadcast error: %s", e)
         logger.warning("ws_social_signals hit max iterations")
     except (WebSocketDisconnect, asyncio.TimeoutError):
         await manager.disconnect("signals", websocket)
-    except Exception:
+    except Exception as e:
+        logger.warning("ws_social_signals error: %s", e)
         await manager.disconnect("signals", websocket)

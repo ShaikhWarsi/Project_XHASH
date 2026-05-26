@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useEffect, useRef, useMemo } from 'react'
 
 interface CorrelationData {
   symbols: string[]
@@ -7,179 +7,156 @@ interface CorrelationData {
 
 interface CorrelationHeatmapProps {
   data: CorrelationData
-  cellSize?: number
+  height?: number
 }
 
-function correlationColor(value: number): string {
-  const clamped = Math.max(-1, Math.min(1, value))
-  if (clamped > 0) {
-    const intensity = Math.round(clamped * 200)
-    const r = Math.max(0, 200 - intensity)
-    const g = Math.min(255, 50 + intensity * 2)
-    const b = Math.max(0, 200 - intensity)
-    return `rgb(${r}, ${Math.min(255, g)}, ${b})`
-  } else {
-    const intensity = Math.round(Math.abs(clamped) * 200)
-    const r = Math.min(255, 50 + intensity * 2)
-    const g = Math.max(0, 200 - intensity)
-    const b = Math.max(0, 200 - intensity)
-    return `rgb(${r}, ${g}, ${b})`
-  }
-}
+const DIVERGING_COLORS = [
+  '#053061', '#2166ac', '#4393c3', '#92c5de', '#d1e5f0',
+  '#f7f7f7',
+  '#fddbc7', '#f4a582', '#d6604d', '#b2182b', '#67001f',
+]
 
-export default function CorrelationHeatmap({ data, cellSize = 44 }: CorrelationHeatmapProps) {
-  const { symbols, matrix } = data
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null)
+export default function CorrelationHeatmap({ data, height = 500 }: CorrelationHeatmapProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const chartRef = useRef<any>(null)
 
-  const legendSteps = useMemo(() => {
-    const steps: number[] = []
-    for (let i = -10; i <= 10; i++) {
-      steps.push(i / 10)
+  const traceData = useMemo(() => {
+    const { symbols, matrix } = data
+    const z: number[][] = []
+    const hovertext: string[][] = []
+    for (let i = 0; i < symbols.length; i++) {
+      const row: number[] = []
+      const hoverRow: string[] = []
+      for (let j = 0; j < symbols.length; j++) {
+        const val = matrix[i]?.[j] ?? 0
+        row.push(parseFloat(val.toFixed(4)))
+        hoverRow.push(`${symbols[i]} / ${symbols[j]}<br>r = ${val.toFixed(4)}`)
+      }
+      z.push(row)
+      hovertext.push(hoverRow)
     }
-    return steps
-  }, [])
+    return { z, hovertext }
+  }, [data])
 
-  const gridSize = symbols.length * cellSize
-  const labelWidth = 50
-  const labelHeight = 16
+  useEffect(() => {
+    if (!containerRef.current || data.symbols.length === 0) return
 
-  const handleMouseEnter = (row: number, col: number, e: React.MouseEvent) => {
-    const val = matrix[row]?.[col]
-    if (val === undefined) return
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    setTooltip({
-      x: rect.left + rect.width / 2,
-      y: rect.top - 8,
-      text: `${symbols[row]} / ${symbols[col]}: ${val.toFixed(3)}`,
-    })
+    const Plotly = (window as any).Plotly
+    if (!Plotly) {
+      import('plotly.js-dist-min').then((mod) => {
+        renderChart(mod.default || mod)
+      })
+      return
+    }
+    renderChart(Plotly)
+
+    function renderChart(Plotly: any) {
+      const container = containerRef.current!
+      const isDark = document.documentElement.getAttribute('data-theme') !== 'light'
+      const textColor = isDark ? '#e8eaed' : '#212121'
+      const bgColor = isDark ? '#0d1117' : '#ffffff'
+      const gridColor = isDark ? '#1a2332' : '#e0e0e0'
+
+      const layout = {
+        paper_bgcolor: bgColor,
+        plot_bgcolor: bgColor,
+        font: { color: textColor, size: 11, family: 'JetBrains Mono, monospace' },
+        margin: { l: 60, r: 60, b: 60, t: 10, pad: 4 },
+        xaxis: {
+          tickvals: data.symbols.map((_, i) => i),
+          ticktext: data.symbols,
+          tickangle: -45,
+          side: 'top',
+          gridcolor: gridColor,
+          linecolor: gridColor,
+          zerolinecolor: gridColor,
+        },
+        yaxis: {
+          tickvals: data.symbols.map((_, i) => i),
+          ticktext: data.symbols,
+          gridcolor: gridColor,
+          linecolor: gridColor,
+          zerolinecolor: gridColor,
+          autorange: 'reversed' as any,
+        },
+        width: container.clientWidth,
+        height,
+      }
+
+      const trace = {
+        z: traceData.z,
+        x: data.symbols.map((_, i) => i),
+        y: data.symbols.map((_, i) => i),
+        xgap: 1,
+        ygap: 1,
+        type: 'heatmap' as const,
+        colorscale: [
+          [0, DIVERGING_COLORS[0]],
+          [0.1, DIVERGING_COLORS[1]],
+          [0.2, DIVERGING_COLORS[2]],
+          [0.3, DIVERGING_COLORS[3]],
+          [0.4, DIVERGING_COLORS[4]],
+          [0.5, DIVERGING_COLORS[5]],
+          [0.6, DIVERGING_COLORS[6]],
+          [0.7, DIVERGING_COLORS[7]],
+          [0.8, DIVERGING_COLORS[8]],
+          [0.9, DIVERGING_COLORS[9]],
+          [1, DIVERGING_COLORS[10]],
+        ] as any,
+        zmin: -1,
+        zmax: 1,
+        zmid: 0,
+        text: traceData.hovertext,
+        hoverinfo: 'text' as any,
+        hovertemplate: '%{text}<extra></extra>',
+        showscale: true,
+        colorbar: {
+          title: { text: 'r', font: { color: textColor, size: 10 } },
+          tickfont: { color: textColor, size: 10 },
+          thickness: 15,
+          len: 0.7,
+          tickvals: [-1, -0.5, 0, 0.5, 1],
+        },
+      }
+
+      try {
+        if (chartRef.current) {
+          Plotly.react(container, [trace], layout, { responsive: true, displayModeBar: false })
+        } else {
+          Plotly.newPlot(container, [trace], layout, { responsive: true, displayModeBar: false })
+        }
+        chartRef.current = container
+      } catch {}
+
+      const ro = new ResizeObserver(() => {
+        Plotly.Plots.resize(container)
+      })
+      ro.observe(container!)
+      return () => ro.disconnect()
+    }
+
+    return () => {
+      if (chartRef.current) {
+        try {
+          const Plotly = (window as any).Plotly
+          Plotly?.purge?.(chartRef.current)
+        } catch {}
+        chartRef.current = null
+      }
+    }
+  }, [data, height, traceData])
+
+  if (data.symbols.length === 0) {
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        height, fontFamily: 'JetBrains Mono, monospace', fontSize: 11,
+        color: 'var(--text-secondary)',
+      }}>
+        No correlation data available
+      </div>
+    )
   }
 
-  const handleMouseLeave = () => setTooltip(null)
-
-  return (
-    <div style={{ position: 'relative', fontFamily: "'JetBrains Mono', monospace" }}>
-      <div style={{ paddingLeft: labelWidth + 4, marginBottom: 4 }}>
-        <svg width={gridSize} height={labelHeight}>
-          {symbols.map((sym, i) => (
-            <text
-              key={sym}
-              x={i * cellSize + cellSize / 2}
-              y={labelHeight - 2}
-              textAnchor="end"
-              transform={`rotate(-45 ${i * cellSize + cellSize / 2} ${labelHeight - 2})`}
-              fill="var(--text-secondary)"
-              fontSize={8}
-              fontFamily="'JetBrains Mono', monospace"
-            >
-              {sym}
-            </text>
-          ))}
-        </svg>
-      </div>
-      <div style={{ display: 'flex' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 0, width: labelWidth, flexShrink: 0, paddingRight: 4 }}>
-          {symbols.map((sym) => (
-            <div
-              key={sym}
-              style={{
-                height: cellSize,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'flex-end',
-                fontSize: 8,
-                color: 'var(--text-secondary)',
-                fontFamily: "'JetBrains Mono', monospace",
-              }}
-            >
-              {sym}
-            </div>
-          ))}
-        </div>
-        <div style={{ position: 'relative' }}>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: `repeat(${symbols.length}, ${cellSize}px)`,
-              gridTemplateRows: `repeat(${symbols.length}, ${cellSize}px)`,
-              gap: 1,
-            }}
-          >
-            {matrix.map((row, i) =>
-              row.map((val, j) => (
-                <div
-                  key={`${i}-${j}`}
-                  onMouseEnter={(e) => handleMouseEnter(i, j, e)}
-                  onMouseLeave={handleMouseLeave}
-                  style={{
-                    width: cellSize,
-                    height: cellSize,
-                    background: correlationColor(val),
-                    borderRadius: 2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 7,
-                    color: Math.abs(val) > 0.5 ? '#fff' : 'var(--text-primary)',
-                    cursor: 'default',
-                    fontWeight: 500,
-                  }}
-                >
-                  {val.toFixed(2)}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginTop: 8, marginLeft: labelWidth + 4 }}>
-        <span style={{ fontSize: 8, color: 'var(--text-muted)', fontFamily: "'JetBrains Mono', monospace" }}>-1</span>
-        <div style={{ display: 'flex', flex: 1, height: 10, borderRadius: 2, overflow: 'hidden' }}>
-          {legendSteps.map((v) => (
-            <div
-              key={v}
-              style={{
-                flex: 1,
-                background: correlationColor(v),
-              }}
-            />
-          ))}
-        </div>
-        <span style={{ fontSize: 8, color: 'var(--text-muted)', fontFamily: "'JetBrains Mono', monospace" }}>0</span>
-        <div style={{ display: 'flex', flex: 1, height: 10, borderRadius: 2, overflow: 'hidden' }}>
-          {legendSteps.map((v) => (
-            <div
-              key={v}
-              style={{
-                flex: 1,
-                background: correlationColor(v),
-              }}
-            />
-          ))}
-        </div>
-        <span style={{ fontSize: 8, color: 'var(--text-muted)', fontFamily: "'JetBrains Mono', monospace" }}>+1</span>
-      </div>
-      {tooltip && (
-        <div
-          style={{
-            position: 'fixed',
-            left: tooltip.x,
-            top: tooltip.y,
-            transform: 'translate(-50%, -100%)',
-            background: 'var(--bg-hover)',
-            border: '1px solid var(--border-color)',
-            borderRadius: 4,
-            padding: '4px 8px',
-            fontSize: 9,
-            fontFamily: "'JetBrains Mono', monospace",
-            color: 'var(--text-primary)',
-            whiteSpace: 'nowrap',
-            zIndex: 1000,
-            pointerEvents: 'none',
-          }}
-        >
-          {tooltip.text}
-        </div>
-      )}
-    </div>
-  )
+  return <div ref={containerRef} style={{ width: '100%', height }} />
 }

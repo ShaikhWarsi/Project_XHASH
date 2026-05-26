@@ -51,7 +51,7 @@ def _to_response(state: StructureState) -> dict:
     return {
         "symbol": state.symbol,
         "timeframe": state.timeframe,
-        "composite_bias": state.composite_bias.value.upper(),
+        "composite_bias": state.composite_bias.name,
         "composite_confidence": state.composite_confidence,
         "regime": state.regime.value,
         "total_signals": state.total_signals,

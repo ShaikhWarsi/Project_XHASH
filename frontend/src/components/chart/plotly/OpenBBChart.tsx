@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 interface OpenBBChartProps {
   figureJSON: { data: any[]; layout: any; config?: any } | null
@@ -8,6 +8,7 @@ interface OpenBBChartProps {
 export default function OpenBBChart({ figureJSON, style }: OpenBBChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const plotlyRef = useRef<any>(null)
+  const [plotlyError, setPlotlyError] = useState(false)
 
   useEffect(() => {
     if (!containerRef.current || !figureJSON) return
@@ -20,8 +21,10 @@ export default function OpenBBChart({ figureJSON, style }: OpenBBChartProps) {
         // @ts-ignore
         plotlyImport = await import('plotly.js-dist-min')
       } catch {
+        setPlotlyError(true)
         return
       }
+      setPlotlyError(false)
       if (cancelled || !containerRef.current) return
       const Plotly = plotlyImport
       const fig = figureJSON!
@@ -96,7 +99,7 @@ export default function OpenBBChart({ figureJSON, style }: OpenBBChartProps) {
         const Plotly = plotlyImport || await import('plotly.js-dist-min')
         // @ts-ignore
         Plotly.Plots.resize(containerRef.current)
-      } catch { /* ignore resize errors */ }
+      } catch { console.debug('[OpenBBChart] resize failed') }
     }
     window.addEventListener('resize', handleResize)
 
@@ -109,11 +112,25 @@ export default function OpenBBChart({ figureJSON, style }: OpenBBChartProps) {
           import('plotly.js-dist-min').then((Plotly) => {
             Plotly.purge(containerRef.current)
           })
-        } catch { /* ignore purge errors */ }
+        } catch { console.debug('[OpenBBChart] purge failed') }
         plotlyRef.current = null
       }
     }
   }, [figureJSON])
+
+  if (plotlyError) {
+    return (
+      <div style={{
+        width: '100%', height: '100%', minHeight: 400, ...style,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'var(--bg-secondary, #0a0e14)',
+        color: 'var(--text-muted, #5d6b7e)',
+        fontFamily: 'JetBrains Mono, monospace', fontSize: 11,
+      }}>
+        <span>Failed to load chart library (Plotly)</span>
+      </div>
+    )
+  }
 
   return (
     <div

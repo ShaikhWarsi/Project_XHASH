@@ -15,14 +15,23 @@ interface ChartLayer {
 
 const FONT = { fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }
 
-const CANDLE_DATA: CandlestickData[] = Array.from({ length: 100 }, (_, i) => ({
-  time: (new Date(2024, 0, i + 1).getTime() / 1000) as any,
-  open: 150 + Math.random() * 10,
-  high: 155 + Math.random() * 10,
-  low: 145 + Math.random() * 10,
-  close: 150 + Math.random() * 10,
-  volume: Math.floor(Math.random() * 1000000),
-}))
+function generateDemoData(bars = 100): CandlestickData[] {
+  const data: CandlestickData[] = []
+  let t = Math.floor(Date.now() / 1000) - bars * 86400
+  let close = 150 + Math.random() * 50
+  for (let i = 0; i < bars; i++) {
+    t += 86400
+    const change = (Math.random() - 0.48) * close * 0.025
+    const open = close
+    close = open + change
+    const high = Math.max(open, close) + Math.random() * Math.abs(change) * 1.5
+    const low = Math.min(open, close) - Math.random() * Math.abs(change) * 1.5
+    data.push({ time: t as any, open, high, low, close })
+  }
+  return data
+}
+
+const CANDLE_DATA = generateDemoData()
 
 export default function AdvancedCharts() {
   const containerRef = useRef<HTMLDivElement>(null)

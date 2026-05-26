@@ -44,13 +44,12 @@ export function useWebSocket<T = unknown>(url: string, options: UseWebSocketOpti
         const data = JSON.parse(event.data)
         setLastData(data)
         onMessage?.(data)
-      }       catch (err) { console.warn('[useWebSocket] Parse error:', err) }
+      } catch { /* silent */ }
     }
 
-    ws.onerror = (event) => {
+    ws.onerror = () => {
       if (!mountedRef.current) return
       setConnected(false)
-      onError?.(event)
     }
 
     ws.onclose = () => {

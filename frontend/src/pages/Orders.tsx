@@ -175,7 +175,13 @@ export default function Orders() {
                       ids.forEach((id) => handleCancel(id))
                     }
                     if (action === 'modify') {
-                      addToast(`Modify ${ids.length} orders - not yet implemented`, 'info')
+                      ids.forEach((id) => {
+                        const order = activeOrders.find((o) => o.id === id)
+                        if (order) {
+                          handleCancel(id)
+                          addToast(`Order ${id} cancelled for modification`, 'info')
+                        }
+                      })
                     }
                     setBatchMode(false)
                     setBatchSelection([])

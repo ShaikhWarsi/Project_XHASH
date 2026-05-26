@@ -10,7 +10,7 @@ from api.services.workflow import WorkflowGraph, WorkflowState, build_default_wo
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/workflows", tags=["workflows"])
+router = APIRouter(prefix="/workflows", tags=["workflows"])
 
 
 @router.post("/run")

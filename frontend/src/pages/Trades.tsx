@@ -11,15 +11,15 @@ const FONT_SM = { fontFamily: "'JetBrains Mono', monospace", fontSize: 10 }
 const FONT_LABEL = { fontSize: 9, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.05em' }
 const ROW_HEIGHT = 22
 
-function TradeRow({ trade }: { trade: { id: number; symbol: string; side: string; quantity: number; price: number; commission: number; timestamp: string; pnl: number | null } }) {
+function TradeRow({ trade }: { trade: { id: number; symbol: string; side: string; quantity: number; price: number | null; commission: number | null; timestamp: string; pnl: number | null } }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr 0.6fr 0.6fr 0.7fr 0.7fr 0.7fr', gap: 0, height: ROW_HEIGHT, lineHeight: `${ROW_HEIGHT}px`, borderBottom: '1px solid var(--border-color)', ...FONT_DATA, color: 'var(--text-primary)', padding: '0 8px' }}>
       <span style={{ color: 'var(--text-muted)', ...FONT_SM }}>{new Date(trade.timestamp).toLocaleString()}</span>
       <span style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>{trade.symbol}</span>
       <span style={{ textAlign: 'center', color: ['BUY', 'COVER'].includes(trade.side) ? 'var(--accent-green)' : 'var(--accent-red)' }}>{trade.side}</span>
       <span style={{ textAlign: 'right' }}>{trade.quantity}</span>
-      <span style={{ textAlign: 'right' }}>${trade.price.toFixed(2)}</span>
-      <span style={{ textAlign: 'right', color: 'var(--text-muted)' }}>${trade.commission.toFixed(2)}</span>
+       <span style={{ textAlign: 'right' }}>${trade.price != null ? trade.price.toFixed(2) : '—'}</span>
+       <span style={{ textAlign: 'right', color: 'var(--text-muted)' }}>${trade.commission != null ? trade.commission.toFixed(2) : '—'}</span>
       <span style={{ textAlign: 'right', fontWeight: 600, color: trade.pnl != null ? (trade.pnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)') : 'var(--text-muted)' }}>
         {trade.pnl != null ? `${trade.pnl >= 0 ? '+' : ''}$${trade.pnl.toFixed(2)}` : '—'}
       </span>

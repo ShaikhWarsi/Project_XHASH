@@ -1,6 +1,8 @@
 import type { IChartApi } from 'lightweight-charts'
 import { DrawingTool } from './DrawingTool'
 import type { DrawingData, DrawingEvent, DrawingStyle, ToolType } from '../DrawingTypes'
+import { LevelsManager } from './LevelsManager'
+import type { SupportResistanceLevel } from './LevelsManager'
 import { TrendLine } from './tools/TrendLine'
 import { RayLine } from './tools/RayLine'
 import { ExtendedLine } from './tools/ExtendedLine'
@@ -35,6 +37,7 @@ const TOOL_MAP: Record<string, new (id: string, type: ToolType, points?: any[], 
 const MAX_HISTORY = 50
 
 export class DrawingManager {
+  readonly levelsManager: LevelsManager
   private drawings: DrawingTool[] = []
   private selectedId: string | null = null
   private activeToolType: ToolType | null = null
@@ -48,12 +51,15 @@ export class DrawingManager {
   private hoveredId: string | null = null
   private mapper: CoordMapper
   private onChanged: (() => void) | null = null
+  private onError: ((message: string) => void) | null = null
   private storageKey = ''
   private changeTimeout: ReturnType<typeof setTimeout> | null = null
   private beforeUnloadHandler: (() => void) | null = null
 
   constructor(_chart: IChartApi, mapper: CoordMapper) {
     this.mapper = mapper
+    this.levelsManager = new LevelsManager()
+    this.levelsManager.setOnChanged(() => this.scheduleChange())
     this.beforeUnloadHandler = () => this.saveToStorage()
     if (typeof window !== 'undefined') {
       window.addEventListener('beforeunload', this.beforeUnloadHandler)
@@ -61,6 +67,7 @@ export class DrawingManager {
   }
 
   setOnChanged(cb: (() => void) | null) { this.onChanged = cb }
+  setOnError(cb: ((message: string) => void) | null) { this.onError = cb }
 
   private saveHistory() {
     const snapshot = this.drawings.map((d) => d.toJSON())
@@ -256,7 +263,9 @@ export class DrawingManager {
       const data: DrawingData[] = JSON.parse(raw)
       this.drawings = data.map((d) => this.createFromData(d)).filter(Boolean) as DrawingTool[]
       this.saveHistory()
-    } catch { /* ignore corrupt data */ }
+    } catch {
+      this.onError?.('Failed to load drawings: stored data is corrupt')
+    }
   }
 
   saveToStorage() {
@@ -264,7 +273,26 @@ export class DrawingManager {
     try {
       const data = this.drawings.map((d) => d.toJSON())
       localStorage.setItem(this.storageKey, JSON.stringify(data))
-    } catch { /* localStorage full */ }
+    } catch {
+      this.onError?.('Failed to save drawings: localStorage may be full')
+    }
+  }
+
+  convertSelectedToLevel(): SupportResistanceLevel | null {
+    const selected = this.getSelectedDrawing()
+    if (!selected) return null
+    const data = selected.toJSON()
+    if (data.points.length === 0) return null
+    const price = data.points[0].price ?? (data.points.length > 1 ? data.points[1].price : null)
+    if (price == null) return null
+    const type = (selected.type === 'trendline' || selected.type === 'horizontal_line') ? 'resistance' as const : 'support' as const
+    const label = `${selected.type} @ ${(price as number).toFixed(2)}`
+    return this.levelsManager.addLevel(price as number, type, selected.id, label)
+  }
+
+  detectLevels(): SupportResistanceLevel[] {
+    this.levelsManager.detectLevelsFromDrawings(this.drawings, this.mapper)
+    return this.levelsManager.getLevels()
   }
 
   destroy() {

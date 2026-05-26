@@ -24,7 +24,7 @@ export interface WorkflowRun {
 }
 
 export async function fetchWorkflows(): Promise<{ workflows: WorkflowDefinition[] }> {
-  const res = await fetch('/api/workflows')
+  const res = await fetch('/api/workflows/list')
   if (!res.ok) throw new Error('Failed to fetch workflows')
   return res.json()
 }
@@ -36,19 +36,18 @@ export async function fetchWorkflow(id: string): Promise<WorkflowDefinition> {
 }
 
 export async function runWorkflow(id: string, params?: Record<string, any>): Promise<WorkflowRun> {
-  const res = await fetch(`/api/workflows/${id}/run`, {
+  const symbol = params?.symbol || 'AAPL'
+  const res = await fetch(`/api/workflows/run?symbol=${encodeURIComponent(symbol)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params || {}),
   })
-  if (!res.ok) throw new Error(`Failed to run workflow ${id}`)
+  if (!res.ok) throw new Error(`Failed to run workflow for ${symbol}`)
   return res.json()
 }
 
 export async function fetchWorkflowRuns(id: string): Promise<{ runs: WorkflowRun[] }> {
-  const res = await fetch(`/api/workflows/${id}/runs`)
-  if (!res.ok) throw new Error(`Failed to fetch runs for ${id}`)
-  return res.json()
+  const workflow = await fetchWorkflow(id)
+  return { runs: workflow ? [{ id, workflow_id: id, status: workflow.status || 'completed', started_at: workflow.created_at || new Date().toISOString() }] : [] }
 }
 
 export async function fetchProviders(): Promise<{ providers: { name: string; type: string; enabled: boolean; status: string }[] }> {

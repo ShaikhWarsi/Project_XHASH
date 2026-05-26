@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
+import numpy as np
 import pandas as pd
 
 from core.enums import SignalType
@@ -33,6 +34,21 @@ class SignalEngine(ABC):
     @abstractmethod
     def compute(self, bars: pd.DataFrame) -> list[QuantSignal]:
         pass
+
+    @staticmethod
+    def _normalize_to_signal(raw: float, low: float = -1.0, high: float = 1.0) -> float:
+        return max(low, min(high, raw))
+
+    @staticmethod
+    def _sigmoid(x: float, scale: float = 5.0) -> float:
+        return float(np.tanh(x * scale))
+
+    @staticmethod
+    def _percentile_rank(value: float, values: list[float]) -> float:
+        if not values:
+            return 50.0
+        below = sum(1 for v in values if v < value)
+        return (below / len(values)) * 100.0
 
     def update(self, bar: Bar) -> list[QuantSignal]:
         row = pd.DataFrame([{

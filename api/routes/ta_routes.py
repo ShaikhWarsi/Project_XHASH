@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from datetime import datetime, timedelta
 
@@ -53,6 +54,14 @@ class TARequest(BaseModel):
 
 @router.post("/ta")
 async def get_technical_analysis(request: TARequest):
+    cache_key = get_chart_cache_key(
+        request.symbol, interval=request.interval,
+        period_days=request.period_days, indicators=str(sorted(request.indicators.items())),
+    )
+    cached = get_chart_html(cache_key)
+    if cached:
+        return json.loads(cached)
+
     df = _fetch_data(request.symbol, request.interval, request.period_days, request.provider)
     if df is None or df.empty:
         raise HTTPException(status_code=404, detail=f"No data found for {request.symbol}")
@@ -68,10 +77,13 @@ async def get_technical_analysis(request: TARequest):
             volume=True,
         )
 
-        return {
+        response_data = {
             "figure_json": fig.to_plotly_json(),
             "symbol": request.symbol,
         }
+
+        set_chart_html(cache_key, json.dumps(response_data))
+        return response_data
     except Exception as e:
         logger.exception("Error generating TA chart")
         raise HTTPException(status_code=500, detail=str(e))
@@ -89,6 +101,14 @@ async def get_technical_analysis_get(
         ind_dict = json.loads(indicators)
     except json.JSONDecodeError:
         ind_dict = {}
+
+    cache_key = get_chart_cache_key(
+        symbol, interval=interval, period_days=period_days, indicators=str(sorted(ind_dict.items())),
+    )
+    cached = get_chart_html(cache_key)
+    if cached:
+        return json.loads(cached)
+
     df = _fetch_data(symbol, interval, period_days, provider)
     if df is None or df.empty:
         raise HTTPException(status_code=404, detail=f"No data found for {symbol}")
@@ -103,46 +123,106 @@ async def get_technical_analysis_get(
             candles=True,
             volume=True,
         )
-        return {
+        response_data = {
             "figure_json": fig.to_plotly_json(),
             "symbol": symbol,
         }
+        set_chart_html(cache_key, json.dumps(response_data))
+        return response_data
     except Exception as e:
         logger.exception("Error generating TA chart")
         raise HTTPException(status_code=500, detail=str(e))
 
 
+class IndicatorComputeRequest(BaseModel):
+    symbol: str
+    interval: str = "1d"
+    period_days: int = 100
+    indicators: dict = {}
+    signals: bool = False
+
+
+@router.post("/ta/compute")
+async def compute_indicators(request: IndicatorComputeRequest):
+    df = _fetch_data(request.symbol, request.interval, request.period_days, "yfinance")
+    if df is None or df.empty:
+        raise HTTPException(status_code=404, detail=f"No data for {request.symbol}")
+
+    from charting.indicators import registry
+
+    results = registry.compute_all(df, request.indicators)
+    df_with_indicators = pd.concat([df] + list(results.values()), axis=1)
+
+    serialized = {}
+    for name, plugin_df in results.items():
+        if plugin_df.empty:
+            continue
+        col = plugin_df.columns[0]
+        last_val = plugin_df[col].iloc[-1] if col in plugin_df else None
+        if isinstance(last_val, (int, float)):
+            serialized[name] = round(float(last_val), 6) if pd.notna(last_val) else None
+        elif isinstance(last_val, (pd.Series, pd.Index)):
+            vals = [round(float(v), 6) if pd.notna(v) else None for v in last_val]
+            serialized[name] = vals
+        else:
+            serialized[name] = float(last_val) if pd.notna(last_val) else None
+
+    response = {
+        "symbol": request.symbol,
+        "indicators": serialized,
+    }
+
+    if request.signals:
+        from charting.indicators import registry
+        sigs = registry.generate_signals(df_with_indicators)
+        response["signals"] = {
+            plugin: [
+                {"name": s.name, "value": str(s.value) if s.value is not None else None, "direction": s.direction, "strength": s.strength, "metadata": s.metadata}
+                for s in sig_list
+            ]
+            for plugin, sig_list in sigs.items()
+        }
+
+    return response
+
+
 @router.get("/ta/available-indicators")
 async def get_available_indicators():
-    from charting.core.plotly_ta.data_classes import ChartIndicators
+    from charting import get_available_indicator_params
 
-    available = ChartIndicators.get_available_indicators()
-
-    indicator_info = {
-        "sma": {"name": "Simple Moving Average", "params": {"length": [20, 50, 100]}, "category": "overlap"},
-        "ema": {"name": "Exponential Moving Average", "params": {"length": [20, 50]}, "category": "overlap"},
-        "wma": {"name": "Weighted Moving Average", "params": {"length": [20]}, "category": "overlap"},
-        "hma": {"name": "Hull Moving Average", "params": {"length": [20]}, "category": "overlap"},
-        "rsi": {"name": "Relative Strength Index", "params": {"length": 14}, "category": "momentum"},
-        "macd": {"name": "MACD", "params": {"fast": 12, "slow": 26, "signal": 9}, "category": "momentum"},
-        "stoch": {"name": "Stochastic Oscillator", "params": {"kPeriod": 14, "dPeriod": 3}, "category": "momentum"},
-        "cci": {"name": "Commodity Channel Index", "params": {"length": 20}, "category": "momentum"},
-        "fisher": {"name": "Fisher Transform", "params": {"length": 9}, "category": "momentum"},
-        "cg": {"name": "Center of Gravity", "params": {"length": 10}, "category": "momentum"},
-        "adx": {"name": "Average Directional Index", "params": {"length": 14}, "category": "trend"},
-        "aroon": {"name": "Aroon", "params": {"length": 25}, "category": "trend"},
-        "atr": {"name": "Average True Range", "params": {"length": 14}, "category": "volatility"},
-        "bbands": {"name": "Bollinger Bands", "params": {"length": 20, "std": 2}, "category": "volatility"},
-        "donchian": {"name": "Donchian Channels", "params": {"length": 20}, "category": "volatility"},
-        "kc": {"name": "Keltner Channels", "params": {"length": 20}, "category": "volatility"},
-        "ad": {"name": "Accumulation/Distribution", "params": {}, "category": "volume"},
-        "adosc": {"name": "Chaikin A/D Oscillator", "params": {}, "category": "volume"},
-        "obv": {"name": "On-Balance Volume", "params": {}, "category": "volume"},
-        "vwap": {"name": "Volume Weighted Average Price", "params": {}, "category": "overlap"},
-        "srlines": {"name": "Support/Resistance Lines", "params": {"window": 200}, "category": "custom"},
-        "fib": {"name": "Fibonacci Levels", "params": {"limit": 120}, "category": "custom"},
-    }
     return {
-        "indicators": {k: v for k, v in indicator_info.items() if k in available},
+        "indicators": get_available_indicator_params(),
         "categories": ["overlap", "momentum", "trend", "volatility", "volume", "custom"],
+    }
+
+
+@router.get("/ta/signals/{symbol}")
+async def get_technical_signals(
+    symbol: str,
+    interval: str = Query("1d"),
+    period_days: int = Query(100),
+):
+    df = _fetch_data(symbol, interval, period_days, "yfinance")
+    if df is None or df.empty:
+        raise HTTPException(status_code=404, detail=f"No data for {symbol}")
+
+    from charting.indicators import registry
+
+    results = registry.compute_all(df, {
+        "momentum": {"rsi_length": 14},
+        "overlap": {"sma_lengths": [20, 50, 200]},
+        "volatility": {"bb_length": 20, "bb_std": 2},
+    })
+
+    signals = registry.generate_signals(pd.concat([df] + list(results.values()), axis=1))
+
+    return {
+        "symbol": symbol,
+        "signals": {
+            plugin: [
+                {"name": s.name, "value": str(s.value) if s.value is not None else None, "direction": s.direction, "strength": s.strength, "metadata": s.metadata}
+                for s in sig_list
+            ]
+            for plugin, sig_list in signals.items()
+        },
     }

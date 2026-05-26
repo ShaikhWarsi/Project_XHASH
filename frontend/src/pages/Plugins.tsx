@@ -15,7 +15,18 @@ interface Plugin {
   stars?: number
 }
 
-const AVAILABLE_PLUGINS: Plugin[] = []
+const AVAILABLE_PLUGINS: Plugin[] = [
+  { id: 'mp1', name: 'Advanced MACD', version: '2.0.0', author: 'quantlab', description: 'MACD with histogram divergence detection and signal line cross alerts', type: 'indicator', enabled: false, installed: false, stars: 156 },
+  { id: 'mp2', name: 'Elliott Wave Scanner', version: '1.5.0', author: 'waveanalyst', description: 'Automatic Elliott Wave pattern recognition across multiple timeframes', type: 'indicator', enabled: false, installed: false, stars: 89 },
+  { id: 'mp3', name: 'Options Greeks Calculator', version: '1.0.0', author: 'optionpro', description: 'Real-time options Greeks (delta, gamma, theta, vega, rho) with IV surface', type: 'indicator', enabled: false, installed: false, stars: 234 },
+  { id: 'mp4', name: 'Statistical Arbitrage', version: '0.8.0', author: 'pairtrade', description: 'Pairs trading with cointegration testing, z-score entry, and Kalman filter hedge', type: 'strategy', enabled: false, installed: false, stars: 178 },
+  { id: 'mp5', name: 'ML Trend Predictor', version: '1.2.0', author: 'aiquant', description: 'LSTM-based trend prediction with feature engineering from 20+ technical indicators', type: 'signal', enabled: false, installed: false, stars: 312 },
+  { id: 'mp6', name: 'Market Profile', version: '1.0.0', author: 'volumePro', description: 'Market profile TPO chart, volume profile, and value area calculation', type: 'indicator', enabled: false, installed: false, stars: 67 },
+  { id: 'mp7', name: 'Iceberg Detection', version: '0.9.0', author: 'smartmoney', description: 'Real-time iceberg order detection using trade volume clustering and time-sales analysis', type: 'signal', enabled: false, installed: false, stars: 145 },
+  { id: 'mp8', name: 'Alpha Factor Suite', version: '2.1.0', author: 'quantres', description: '101 WorldQuant-style alpha factors with ranking and decay analysis', type: 'signal', enabled: false, installed: false, stars: 423 },
+  { id: 'mp9', name: 'Binance Spot Data', version: '1.3.0', author: 'cryptodata', description: 'Real-time and historical cryptocurrency data from Binance spot market', type: 'data_source', enabled: false, installed: false, stars: 56 },
+  { id: 'mp10', name: 'SEC Filings Parser', version: '0.7.0', author: 'fundamentals', description: 'Parse SEC 10-K/10-Q filings for fundamental signals and sentiment', type: 'data_source', enabled: false, installed: false, stars: 92 },
+]
 
 const INSTALLED_PLUGINS: Plugin[] = [
   { id: 'p1', name: 'Ichimoku Cloud', version: '1.0.0', author: 'community', description: 'Complete Ichimoku Kinko Hyo indicator with cloud, span, and chikou span', type: 'indicator', enabled: true, installed: true, stars: 42 },

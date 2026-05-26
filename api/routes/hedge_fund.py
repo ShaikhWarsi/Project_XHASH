@@ -65,7 +65,7 @@ async def run_hedge_fund(request_data: HedgeFundRequest, request: Request):
                 agents: list[PersonaAgent] = []
                 seen_keys: set[str] = set()
                 for node in request_data.graph_nodes:
-                    agent_key = node.data.get("agent_key", "").replace(" ", "_").lower()
+                    agent_key = (node.data.agent_key or "").replace(" ", "_").lower()
                     if agent_key in seen_keys:
                         continue
                     seen_keys.add(agent_key)

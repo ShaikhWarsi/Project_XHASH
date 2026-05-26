@@ -22,7 +22,19 @@ class LocalExtreme:
     conf_timestamp: pd.Timestamp
 
 
-class _ATRDirectionalChange:
+def extremes_sanity_checks(ext_df: pd.DataFrame) -> None:
+    if len(ext_df) < 2:
+        return
+    assert len(ext_df[ext_df["ext_type"] == ext_df["ext_type"].shift()]) == 0
+    assert ext_df["index"].diff().min() >= 0
+    ext_df["last"] = ext_df["price"].shift()
+    high_exts = ext_df[ext_df["ext_type"] == 1]
+    assert len(high_exts[high_exts["price"] <= high_exts["last"]]) == 0
+    low_exts = ext_df[ext_df["ext_type"] == -1]
+    assert len(low_exts[low_exts["price"] >= low_exts["last"]]) == 0
+
+
+class ATRDirectionalChange:
     def __init__(self, atr_lookback: int):
         self._up_move = True
         self._pend_max = np.nan
@@ -115,9 +127,9 @@ class _ATRDirectionalChange:
                 self._pend_max_i = i
 
 
-class _HierarchicalExtremes:
+class HierarchicalExtremes:
     def __init__(self, levels: int, atr_lookback: int):
-        self._base_dc = _ATRDirectionalChange(atr_lookback)
+        self._base_dc = ATRDirectionalChange(atr_lookback)
         self._levels = levels
 
         self.extremes: list[list[LocalExtreme]] = [[] for _ in range(levels)]
@@ -244,7 +256,7 @@ class ATRMarketStructureEngine(SignalEngine):
         self._atr_lookback = atr_lookback
         self._n_levels = n_levels
         self._max_extremes_per_level = max_extremes_per_level
-        self._he = _HierarchicalExtremes(n_levels, atr_lookback)
+        self._he = HierarchicalExtremes(n_levels, atr_lookback)
         self._last_processed = 0
         self._extremes: dict[int, list[LocalExtreme]] = {level: [] for level in range(n_levels)}
         self._symbol = ""

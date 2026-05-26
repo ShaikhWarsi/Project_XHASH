@@ -1,6 +1,8 @@
-import * as compute from './compute'
-import type { IndicatorInput } from './compute/types'
 import type { IndicatorConfig } from '../../DrawingTypes'
+import type { IndicatorInput } from './compute/types'
+import type { IndicatorSignal, IndicatorParams } from './IndicatorPlugin'
+import { getAllPlugins, getPlugin, getPluginsByCategory, getPluginCategories } from './IndicatorPlugin'
+import './plugins'
 
 export interface IndicatorResult {
   id: string
@@ -8,10 +10,16 @@ export interface IndicatorResult {
   type: 'line' | 'histogram' | 'multi_line'
   data: any[]
   config: IndicatorConfig
+  signals?: IndicatorSignal[]
 }
 
 export class IndicatorManager {
   private indicators: Map<string, IndicatorResult> = new Map()
+  private dataCache: IndicatorInput[] = []
+
+  setData(data: IndicatorInput[]) {
+    this.dataCache = data
+  }
 
   addIndicator(config: IndicatorConfig): IndicatorResult | null {
     const result = this.compute(config.name, config.params)
@@ -34,22 +42,24 @@ export class IndicatorManager {
   }
 
   compute(name: string, params: Record<string, number>): IndicatorResult | null {
-    const config = PRESET_INDICATORS.find((p) => p.name === name)
-    if (!config) return null
+    const plugin = getPlugin(name)
+    if (!plugin) return null
 
-    const mergedParams = { ...config.defaultParams, ...params }
-    const fn = (compute as Record<string, Function>)[config.computeFn]
-    if (!fn || typeof fn !== 'function') return null
+    const mergedParams: IndicatorParams = { ...plugin.defaultParams, ...params }
+    const data = plugin.computeFn(this.dataCache, mergedParams)
+    if (!data || data.length === 0) return null
 
-    const data: IndicatorInput[] = []
-    const result = fn(data, ...Object.values(mergedParams))
-    if (!result) return null
+    const signals = plugin.signals
+      ? plugin.signals(this.dataCache, data, mergedParams)
+      : undefined
+
     return {
-      id: config.id,
-      name: config.name,
-      type: config.outputType,
-      data: result,
-      config: { id: config.id, name: config.name, params: mergedParams, paneId: '', visible: true, style: {} },
+      id: plugin.id,
+      name: plugin.name,
+      type: plugin.outputType,
+      data,
+      config: { id: plugin.id, name: plugin.name, params: mergedParams as Record<string, number>, paneId: '', visible: true, style: {} },
+      signals: signals && signals.length > 0 ? signals : undefined,
     }
   }
 
@@ -57,30 +67,47 @@ export class IndicatorManager {
     const ind = this.indicators.get(id)
     if (!ind) return
     ind.config.params = { ...ind.config.params, ...params }
+    const result = this.compute(ind.name, ind.config.params)
+    if (result) {
+      ind.data = result.data
+      ind.signals = result.signals
+    }
+  }
+
+  refreshAll() {
+    for (const [id, ind] of this.indicators) {
+      const result = this.compute(ind.name, ind.config.params)
+      if (result) {
+        ind.data = result.data
+        ind.signals = result.signals
+      }
+    }
+  }
+
+  static getPresets() {
+    return getAllPlugins().map((p) => ({
+      id: p.id,
+      name: p.name,
+      description: p.description,
+      category: p.category,
+      defaultParams: p.defaultParams,
+      paramsMeta: p.paramsMeta,
+      outputType: p.outputType,
+      paneType: p.paneType,
+      color: p.color,
+    }))
+  }
+
+  static getByCategory(category: string) {
+    return getPluginsByCategory(category as any)
+  }
+
+  static getCategories() {
+    return getPluginCategories()
   }
 }
 
-export interface IndicatorPreset {
-  id: string
-  name: string
-  description: string
-  computeFn: string
-  defaultParams: Record<string, number>
-  outputType: 'line' | 'histogram' | 'multi_line'
-  paneType: 'overlay' | 'separate'
-  color: string
-}
+export type { IndicatorPreset } from './IndicatorPlugin'
 
-export const PRESET_INDICATORS: IndicatorPreset[] = [
-  { id: 'sma', name: 'SMA', description: 'Simple Moving Average', computeFn: 'sma', defaultParams: { period: 20 }, outputType: 'line', paneType: 'overlay', color: '#3b82f6' },
-  { id: 'ema', name: 'EMA', description: 'Exponential Moving Average', computeFn: 'ema', defaultParams: { period: 20 }, outputType: 'line', paneType: 'overlay', color: '#f59e0b' },
-  { id: 'bollinger', name: 'Bollinger Bands', description: 'Bollinger Bands', computeFn: 'bollinger', defaultParams: { period: 20, stdDev: 2 }, outputType: 'multi_line', paneType: 'overlay', color: '#8b5cf6' },
-  { id: 'vwap', name: 'VWAP', description: 'Volume Weighted Average Price', computeFn: 'vwap', defaultParams: {}, outputType: 'line', paneType: 'overlay', color: '#06b6d4' },
-  { id: 'psar', name: 'Parabolic SAR', description: 'Parabolic Stop and Reverse', computeFn: 'psar', defaultParams: { step: 0.02, maxStep: 0.2 }, outputType: 'line', paneType: 'overlay', color: '#10b981' },
-  { id: 'rsi', name: 'RSI', description: 'Relative Strength Index', computeFn: 'rsi', defaultParams: { period: 14 }, outputType: 'line', paneType: 'separate', color: '#f59e0b' },
-  { id: 'macd', name: 'MACD', description: 'Moving Average Convergence Divergence', computeFn: 'macd', defaultParams: { fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 }, outputType: 'multi_line', paneType: 'separate', color: '#3b82f6' },
-  { id: 'stochastic', name: 'Stochastic', description: 'Stochastic Oscillator', computeFn: 'stochastic', defaultParams: { kPeriod: 14, dPeriod: 3 }, outputType: 'multi_line', paneType: 'separate', color: '#8b5cf6' },
-  { id: 'atr', name: 'ATR', description: 'Average True Range', computeFn: 'atr', defaultParams: { period: 14 }, outputType: 'line', paneType: 'separate', color: '#ec4899' },
-  { id: 'ichimoku', name: 'Ichimoku', description: 'Ichimoku Cloud', computeFn: 'ichimoku', defaultParams: { tenkanPeriod: 9, kijunPeriod: 26, senkouBPeriod: 52 }, outputType: 'multi_line', paneType: 'overlay', color: '#06b6d4' },
-  { id: 'obv', name: 'OBV', description: 'On-Balance Volume', computeFn: 'obv', defaultParams: {}, outputType: 'line', paneType: 'separate', color: '#10b981' },
-]
+import type { IndicatorPreset as IP } from './IndicatorPlugin'
+export const PRESET_INDICATORS: IP[] = IndicatorManager.getPresets() as any

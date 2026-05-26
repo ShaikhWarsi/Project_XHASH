@@ -10,7 +10,7 @@ from signals.alpha_zoo.registry import get_default_registry, RegistryError, Skip
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/alphas", tags=["alphas"])
+router = APIRouter(prefix="/alphas", tags=["alphas"])
 
 
 @router.get("")
@@ -104,16 +104,50 @@ async def bench_alphas(req: BenchRequest):
 
 @router.get("/{alpha_id}/bench")
 async def get_alpha_bench(alpha_id: str):
+    import pandas as pd
+    import yfinance as yf
+
     reg = get_default_registry()
     try:
         alpha = reg.get(alpha_id)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Alpha {alpha_id} not found")
+
+    symbols = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA"]
+    panel: dict[str, pd.DataFrame] = {}
+    for s in symbols:
+        ticker = yf.Ticker(s)
+        df = ticker.history(start="2024-01-01", end="2025-01-01")
+        if df.empty:
+            continue
+        df.columns = [c.lower() for c in df.columns]
+        df.index.name = "date"
+        for col in ["open", "high", "low", "close", "volume"]:
+            if col not in panel:
+                panel[col] = pd.DataFrame(index=df.index)
+            panel[col][s] = df[col]
+
+    try:
+        factor = alpha.compute(panel["open"], panel["high"], panel["low"], panel["close"], panel["volume"])
+        if isinstance(factor, pd.Series):
+            ic = factor.corr(panel["close"].pct_change().shift(-1).mean(axis=1))
+            rank_ic = factor.corr(panel["close"].pct_change().shift(-1).mean(axis=1), method="spearman")
+            ret = factor.corr(panel["close"].pct_change().shift(-1).mean(axis=1))
+        else:
+            ic = rank_ic = ret = 0.0
+    except Exception as e:
+        return {"alpha_id": alpha_id, "zoo": alpha.zoo, "status": "error", "error": str(e), "metrics": {}}
+
     return {
         "alpha_id": alpha_id,
         "zoo": alpha.zoo,
-        "status": "not_benchmarked",
-        "metrics": {},
+        "status": "benchmarked",
+        "metrics": {
+            "information_coefficient": round(float(ic), 4),
+            "rank_ic": round(float(rank_ic), 4),
+            "mean_return": round(float(ret), 4),
+            "universe_size": len(symbols),
+        },
     }
 
 

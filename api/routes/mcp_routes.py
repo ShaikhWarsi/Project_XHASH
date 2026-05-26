@@ -7,7 +7,7 @@ from fastapi import APIRouter
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/mcp", tags=["mcp"])
+router = APIRouter(prefix="/mcp", tags=["mcp"])
 
 
 @router.get("/tools")

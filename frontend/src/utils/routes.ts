@@ -15,6 +15,7 @@ export const ROUTES: RouteConfig[] = [
   { path: '/markets/signals', label: 'Signals', group: 'markets' },
   { path: '/markets/structure', label: 'Structure', group: 'markets' },
   { path: '/markets/advanced-charts', label: 'Advanced Charts', group: 'markets' },
+  { path: '/markets/screener', label: 'Screener', group: 'markets' },
 
   // Trading
   { path: '/trading/orders', label: 'Orders', group: 'trading' },

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { usePortfolioStore } from '../store/portfolio'
 import { useSignalStore } from '../store/signals'
 import { connectDashboardSSE, fetchPortfolioHistory, fetchOHLCV, fetchTrades } from '../api/client'
@@ -15,6 +15,13 @@ import ActivityFeed from '../components/ActivityFeed'
 import SectorAllocationChart from '../components/SectorAllocationChart'
 import StarButton from '../components/StarButton'
 import DraggableGrid from '../components/DraggableGrid'
+import MarketTickerBarEnhanced from '../components/widgets/MarketTickerBarEnhanced'
+import AddWidgetModal from '../components/widgets/AddWidgetModal'
+import { DASHBOARD_TEMPLATES, applyTemplate, loadLayout, saveLayout } from '../components/widgets/DashboardTemplate'
+import HeatMapWidget from '../components/widgets/HeatMapWidget'
+import TopMoversWidget from '../components/widgets/TopMoversWidget'
+import RiskMetricsWidget from '../components/widgets/RiskMetricsWidget'
+import ScreenerWidget from '../components/widgets/ScreenerWidget'
 import { useEventBus, EVENTS } from '../contexts/EventBusContext'
 import { useAudio } from '../contexts/AudioAlertContext'
 import { useToastStore } from '../store/toast'
@@ -172,10 +179,40 @@ export default function Dashboard() {
   const m = snapshot?.metrics ?? metrics
   const unrealizedPnl = totalValue - cash
 
+  const widgetIds = ['kpis', 'positions-signals', 'equity-curve', 'risk-status', 'sector-allocation', 'attribution', 'heatmap', 'top-movers', 'risk-metrics', 'screener']
+  const [activeWidgets, setActiveWidgets] = useState<string[]>(() => loadLayout('default') || widgetIds)
+  const [showAddWidget, setShowAddWidget] = useState(false)
+  const [activeTemplate, setActiveTemplate] = useState('default')
+
+  const handleAddWidget = useCallback((widgetId: string) => {
+    setActiveWidgets((prev) => {
+      if (prev.includes(widgetId)) return prev
+      const next = [...prev, widgetId]
+      saveLayout(next)
+      return next
+    })
+  }, [])
+
+  const handleRemoveWidget = useCallback((widgetId: string) => {
+    setActiveWidgets((prev) => {
+      const next = prev.filter((id) => id !== widgetId)
+      saveLayout(next)
+      return next
+    })
+  }, [])
+
+  const handleApplyTemplate = useCallback((templateId: string) => {
+    setActiveTemplate(templateId)
+    setActiveWidgets(applyTemplate(templateId))
+  }, [])
+
   if (loading) return <DashboardSkeleton />
 
   return (
     <div className="flex flex-col gap-1.5">
+      {/* MARKET TICKER */}
+      <MarketTickerBarEnhanced />
+
       {/* TOP STATUS BAR */}
       <div className="flex items-center justify-between bg-card border border-default px-3 py-1.5">
         <div className="flex items-center gap-4">
@@ -188,6 +225,33 @@ export default function Dashboard() {
           <DataRow label="POS" value={String(posCount)} />
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex gap-1">
+            {DASHBOARD_TEMPLATES.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => handleApplyTemplate(t.id)}
+                className="font-mono-data text-[8px] px-1.5 py-0.5 cursor-pointer rounded-sm uppercase tracking-wider transition-colors"
+                style={{
+                  backgroundColor: activeTemplate === t.id ? 'var(--accent-cyan)' : 'transparent',
+                  border: `1px solid ${activeTemplate === t.id ? 'var(--accent-cyan)' : 'var(--border-color)'}`,
+                  color: activeTemplate === t.id ? '#000' : 'var(--text-muted)',
+                }}
+                title={t.description}
+              >
+                {t.name}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => setShowAddWidget(true)}
+            className="font-mono-data text-[8px] px-2 py-0.5 cursor-pointer rounded-sm uppercase tracking-wider"
+            style={{
+              border: '1px solid var(--border-color)',
+              color: 'var(--accent-cyan)',
+            }}
+          >
+            + WIDGET
+          </button>
           {isStale && <Badge label="STALE" variant="warning" />}
           {snapshot && <span className="font-mono-data text-[10px] text-muted">{new Date(snapshot.timestamp).toLocaleTimeString()}</span>}
         </div>
@@ -412,7 +476,38 @@ export default function Dashboard() {
             ) : null,
             defaultSize: { w: 1, h: 120 },
           },
-        ].filter((item) => item.content !== null)}
+          {
+            id: 'heatmap',
+            label: 'Sector Heatmap',
+            content: <HeatMapWidget id="heatmap" onRemove={() => handleRemoveWidget('heatmap')} />,
+            defaultSize: { w: 1, h: 260 },
+          },
+          {
+            id: 'top-movers',
+            label: 'Top Movers',
+            content: <TopMoversWidget id="top-movers" onRemove={() => handleRemoveWidget('top-movers')} />,
+            defaultSize: { w: 1, h: 280 },
+          },
+          {
+            id: 'risk-metrics',
+            label: 'Risk Metrics',
+            content: <RiskMetricsWidget id="risk-metrics" onRemove={() => handleRemoveWidget('risk-metrics')} />,
+            defaultSize: { w: 1, h: 300 },
+          },
+          {
+            id: 'screener',
+            label: 'Stock Screener',
+            content: <ScreenerWidget id="screener" onRemove={() => handleRemoveWidget('screener')} />,
+            defaultSize: { w: 1, h: 300 },
+          },
+        ].filter((item) => item.content !== null && activeWidgets.includes(item.id))}
+      />
+
+      <AddWidgetModal
+        isOpen={showAddWidget}
+        onClose={() => setShowAddWidget(false)}
+        onAdd={handleAddWidget}
+        activeWidgets={activeWidgets}
       />
 
       {/* ACTIVITY FEED */}

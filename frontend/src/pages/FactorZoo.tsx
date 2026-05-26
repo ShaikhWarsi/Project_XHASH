@@ -43,13 +43,21 @@ export default function FactorZoo() {
     api.get('/alphas', { params }).then((r) => {
       setAlphas(r.data.alphas)
       setHealth(r.data.health)
+    }).catch(() => {
+      setAlphas([])
+      setHealth(null)
     }).finally(() => setLoading(false))
   }, [zooFilter, themeFilter, univFilter])
 
   const viewSource = async (id: string) => {
-    const r = await api.get(`/alphas/${id}/source`)
-    setAlphaSource(r.data.source)
-    setSelectedAlpha(alphas.find((a) => a.id === id) || null)
+    try {
+      const r = await api.get(`/alphas/${id}/source`)
+      setAlphaSource(r.data.source)
+      setSelectedAlpha(alphas.find((a) => a.id === id) || null)
+    } catch {
+      setAlphaSource('Failed to load source')
+      setSelectedAlpha(alphas.find((a) => a.id === id) || null)
+    }
   }
 
   const runBench = async () => {

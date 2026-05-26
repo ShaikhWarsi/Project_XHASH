@@ -70,7 +70,7 @@ export class CoordMapper {
       if (scale && typeof (scale as any).height === 'function') {
         return (scale as any).height() ?? 300
       }
-    } catch { /* lightweight-charts may not expose height */ }
+    } catch { console.debug('[CoordMapper] getPaneHeight fallback to 300px') }
     return 300
   }
 }

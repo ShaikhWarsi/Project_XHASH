@@ -9,7 +9,7 @@ from api.services.debate import DebateService, DebateConfig
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/debate", tags=["debate"])
+router = APIRouter(prefix="/debate", tags=["debate"])
 
 
 @router.post("/run")

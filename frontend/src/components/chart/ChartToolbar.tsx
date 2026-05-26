@@ -12,40 +12,41 @@ interface ChartToolbarProps {
   interval: string
   onIntervalChange?: (interval: string) => void
   onIndicatorAdd?: () => void
+  onTemplates?: () => void
 }
 
 const TOOLS: { type: ToolType | null; label: string; icon: string }[] = [
-  { type: null, label: 'Cursor', icon: '?' },
-  { type: 'crosshair', label: 'Crosshair', icon: '?' },
+  { type: null, label: 'Cursor', icon: '' },
+  { type: 'crosshair', label: 'Crosshair', icon: '' },
   { type: null, label: '|', icon: '' },
-  { type: 'trendline', label: 'Trend Line', icon: '?' },
-  { type: 'ray', label: 'Ray', icon: '?' },
+  { type: 'trendline', label: 'Trend Line', icon: '' },
+  { type: 'ray', label: 'Ray', icon: '' },
   { type: 'extended_line', label: 'Extended', icon: '-' },
-  { type: 'horizontal_line', label: 'Horizontal', icon: '?' },
-  { type: 'vertical_line', label: 'Vertical', icon: '?' },
+  { type: 'horizontal_line', label: 'Horizontal', icon: '' },
+  { type: 'vertical_line', label: 'Vertical', icon: '' },
   { type: null, label: '|', icon: '' },
   { type: 'fib_retracement', label: 'Fib Retrace', icon: 'F' },
   { type: 'fib_extension', label: 'Fib Ext', icon: 'F+' },
   { type: 'fib_timezone', label: 'Fib Time', icon: 'FT' },
   { type: null, label: '|', icon: '' },
-  { type: 'rectangle', label: 'Rectangle', icon: '?' },
-  { type: 'ellipse', label: 'Ellipse', icon: '?' },
-  { type: 'triangle', label: 'Triangle', icon: '?' },
-  { type: 'parallelogram', label: 'Parallelogram', icon: '?' },
-  { type: 'channel', label: 'Channel', icon: '?' },
+  { type: 'rectangle', label: 'Rectangle', icon: '' },
+  { type: 'ellipse', label: 'Ellipse', icon: '' },
+  { type: 'triangle', label: 'Triangle', icon: '' },
+  { type: 'parallelogram', label: 'Parallelogram', icon: '' },
+  { type: 'channel', label: 'Channel', icon: '' },
   { type: null, label: '|', icon: '' },
   { type: 'text_label', label: 'Text', icon: 'T' },
-  { type: 'arrow', label: 'Arrow', icon: '?' },
-  { type: 'brush', label: 'Brush', icon: '?' },
-  { type: 'gann_fan', label: 'Gann Fan', icon: '?' },
+  { type: 'arrow', label: 'Arrow', icon: '' },
+  { type: 'brush', label: 'Brush', icon: '' },
+  { type: 'gann_fan', label: 'Gann Fan', icon: '' },
   { type: null, label: '|', icon: '' },
-  { type: 'long_marker', label: 'Long Entry', icon: '?' },
-  { type: 'short_marker', label: 'Short Entry', icon: '?' },
+  { type: 'long_marker', label: 'Long Entry', icon: '' },
+  { type: 'short_marker', label: 'Short Entry', icon: '' },
 ]
 
 export function ChartToolbar({
   activeTool, onToolSelect, onUndo, onRedo, canUndo, canRedo,
-  symbol, interval, onIndicatorAdd,
+  symbol, interval, onIndicatorAdd, onTemplates,
 }: ChartToolbarProps) {
   return (
     <div style={{
@@ -90,6 +91,11 @@ export function ChartToolbar({
       <button onClick={onIndicatorAdd} title="Add Indicator"
         style={{ background: 'transparent', color: '#5d6b7e', border: '1px solid #1a2332', borderRadius: '2px', padding: '2px 6px', cursor: 'pointer', fontSize: '10px' }}>
         Indicators
+      </button>
+
+      <button onClick={onTemplates} title="Drawing Templates"
+        style={{ background: 'transparent', color: '#5d6b7e', border: '1px solid #1a2332', borderRadius: '2px', padding: '2px 6px', cursor: 'pointer', fontSize: '10px' }}>
+        Templates
       </button>
 
       <button onClick={onUndo} disabled={!canUndo} title="Undo"

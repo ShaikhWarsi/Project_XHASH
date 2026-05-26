@@ -10,7 +10,7 @@ from api.services.backtest_cache import get_cached, set_cache, invalidate, stats
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/backtest-cache", tags=["backtest cache"])
+router = APIRouter(prefix="/backtest-cache", tags=["backtest cache"])
 
 
 @router.get("/stats")

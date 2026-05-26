@@ -27,23 +27,27 @@ export default function MarketTickerBar() {
 
   useEffect(() => {
     const load = async () => {
-      const quotes = await fetchQuotes(SYMBOLS)
-      const updated: TickerItem[] = []
-      let anySuccess = false
-      for (const s of SYMBOLS) {
-        const q = quotes[s]
-        if (q && q.c != null) {
-          anySuccess = true
-          updated.push({
-            symbol: s,
-            price: formatPrice(s, q.c),
-            change: q.dp >= 0 ? `+${q.dp.toFixed(2)}%` : `${q.dp.toFixed(2)}%`,
-            up: q.dp >= 0,
-          })
+      try {
+        const quotes = await fetchQuotes(SYMBOLS)
+        const updated: TickerItem[] = []
+        let anySuccess = false
+        for (const s of SYMBOLS) {
+          const q = quotes[s]
+          if (q && q.c != null) {
+            anySuccess = true
+            updated.push({
+              symbol: s,
+              price: formatPrice(s, q.c),
+              change: q.dp >= 0 ? `+${q.dp.toFixed(2)}%` : `${q.dp.toFixed(2)}%`,
+              up: q.dp >= 0,
+            })
+          }
         }
+        if (anySuccess) setTickers(updated)
+        setError(!anySuccess)
+      } catch {
+        setError(true)
       }
-      if (anySuccess) setTickers(updated)
-      setError(!anySuccess)
     }
     load()
     const interval = setInterval(load, 60000)

@@ -91,6 +91,22 @@ class SwarmStore:
         _atomic_write(os.path.join(d, "tasks", f"{task['id']}.json"), task)
 
     @staticmethod
+    def update_task_status(run_id: str, task_id: str, status: str) -> dict | None:
+        task = SwarmStore.load_task(run_id, task_id)
+        if not task:
+            return None
+        task["status"] = status
+        if status in ("completed", "failed", "cancelled"):
+            task["completed_at"] = datetime.now(timezone.utc).isoformat()
+        SwarmStore.save_task(run_id, task)
+        return task
+
+    @staticmethod
+    def save_artifact(run_id: str, task_id: str, data: Any) -> None:
+        d = _ensure_run_dir(run_id)
+        _atomic_write(os.path.join(d, "artifacts", f"{task_id}.json"), data)
+
+    @staticmethod
     def load_all_tasks(run_id: str) -> list[dict]:
         tasks_dir = os.path.join(SWARM_DIR, run_id, "tasks")
         if not os.path.isdir(tasks_dir):

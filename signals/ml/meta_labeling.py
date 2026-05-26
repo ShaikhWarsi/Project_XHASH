@@ -69,6 +69,19 @@ def _fit_trendlines_single(data: np.ndarray):
     return support_coefs, resist_coefs
 
 
+def fit_trendlines_high_low(
+    high: np.ndarray, low: np.ndarray, close: np.ndarray,
+) -> tuple[tuple[float, float], tuple[float, float]]:
+    x = np.arange(len(close))
+    coefs = np.polyfit(x, close, 1)
+    line_points = coefs[0] * x + coefs[1]
+    upper_pivot = (high - line_points).argmax()
+    lower_pivot = (low - line_points).argmin()
+    support_coefs = _optimize_slope(True, lower_pivot, coefs[0], low)
+    resist_coefs = _optimize_slope(False, upper_pivot, coefs[0], high)
+    return support_coefs, resist_coefs
+
+
 # ──────────────────────────────────────────────
 #  MANUAL INDICATOR COMPUTATION (pandas_ta fallback)
 # ──────────────────────────────────────────────

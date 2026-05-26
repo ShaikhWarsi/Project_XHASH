@@ -19,8 +19,8 @@ export default function ChinaMarketsPanel() {
   useEffect(() => {
     setLoading(true)
     Promise.all([
-      fetchChinaStocks().then((r) => setStocks(r.stocks)).catch((err) => { console.warn('ChinaMarkets: stocks failed', err); addToast('Failed to load China stocks', 'error') }),
-      fetchChinaIndices().then((r) => setIndices(r.indices)).catch((err) => { console.warn('ChinaMarkets: indices failed', err); addToast('Failed to load China indices', 'error') }),
+      fetchChinaStocks().then((r) => setStocks(r.stocks)).catch(() => { /* china data unavailable */ }),
+      fetchChinaIndices().then((r) => setIndices(r.indices)).catch(() => { /* china data unavailable */ }),
     ]).finally(() => setLoading(false))
   }, [])
 

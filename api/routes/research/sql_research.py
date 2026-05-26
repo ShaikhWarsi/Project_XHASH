@@ -11,7 +11,7 @@ from analytics.research.sql_aggregator import SQLAggregator
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/research", tags=["research"])
+router = APIRouter(prefix="/research", tags=["research"])
 
 _SQL_SELECT_ONLY = re.compile(r'^\s*SELECT\b', re.IGNORECASE)
 

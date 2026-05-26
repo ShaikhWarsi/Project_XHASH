@@ -1,24 +1,29 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import type { BarData } from '../../api/types'
+import type { MultiChartSync } from './MultiChartSync'
 
 interface TimeMachineProps {
   data: BarData[]
   onSeek: (index: number) => void
   currentIndex: number | null
   disabled?: boolean
+  multiChartSync?: MultiChartSync
+  onSyncAll?: () => void
+  synced?: boolean
 }
 
-export default function TimeMachine({ data, onSeek, currentIndex, disabled }: TimeMachineProps) {
+const SPEEDS = [1, 2, 5, 10, 25]
+
+export default function TimeMachine({ data, onSeek, currentIndex, disabled, multiChartSync, onSyncAll, synced }: TimeMachineProps) {
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(1)
   const playRef = useRef<number | null>(null)
   const indexRef = useRef(currentIndex ?? Math.max(0, data.length - 1))
+  const playStartRef = useRef<number | null>(null)
 
   useEffect(() => {
     indexRef.current = currentIndex ?? Math.max(0, data.length - 1)
   }, [currentIndex, data.length])
-
-  const SPEEDS = [1, 2, 5, 10, 25]
 
   const togglePlay = useCallback(() => {
     if (playing) {
@@ -35,7 +40,17 @@ export default function TimeMachine({ data, onSeek, currentIndex, disabled }: Ti
   useEffect(() => {
     if (!playing) return
     const ms = Math.max(50, 1000 / speed)
+    playStartRef.current = Date.now()
+    const MAX_PLAY_MS = 30000
     playRef.current = window.setInterval(() => {
+      if (Date.now() - (playStartRef.current ?? 0) > MAX_PLAY_MS) {
+        setPlaying(false)
+        if (playRef.current != null) {
+          clearInterval(playRef.current)
+          playRef.current = null
+        }
+        return
+      }
       const next = indexRef.current + 1
       if (next >= data.length) {
         setPlaying(false)
@@ -47,6 +62,9 @@ export default function TimeMachine({ data, onSeek, currentIndex, disabled }: Ti
       }
       indexRef.current = next
       onSeek(next)
+      if (synced && multiChartSync) {
+        multiChartSync.seekToIndex(next, data.length)
+      }
     }, ms)
     return () => {
       if (playRef.current != null) {
@@ -54,7 +72,7 @@ export default function TimeMachine({ data, onSeek, currentIndex, disabled }: Ti
         playRef.current = null
       }
     }
-  }, [playing, speed, data.length, onSeek])
+  }, [playing, speed, data.length, onSeek, synced, multiChartSync])
 
   if (data.length === 0 || disabled) return null
 
@@ -88,7 +106,7 @@ export default function TimeMachine({ data, onSeek, currentIndex, disabled }: Ti
           fontSize: 9, borderRadius: 2,
           opacity: curIdx >= data.length - 1 ? 0.4 : 1,
         }}>
-        {playing ? '? STOP' : '? PLAY'}
+        {playing ? '\u25A0 STOP' : '\u25B6 PLAY'}
       </button>
 
       <div style={{ width: 1, height: 12, background: '#1a2332' }} />
@@ -111,7 +129,13 @@ export default function TimeMachine({ data, onSeek, currentIndex, disabled }: Ti
       <span style={{ color: '#8b95a5', minWidth: 130 }}>{formatTime(curTime)}</span>
 
       <input type="range" min={0} max={data.length - 1} value={curIdx}
-        onChange={(e) => onSeek(Number(e.target.value))}
+        onChange={(e) => {
+          const idx = Number(e.target.value)
+          onSeek(idx)
+          if (synced && multiChartSync) {
+            multiChartSync.seekToIndex(idx, data.length)
+          }
+        }}
         style={{ flex: 1, height: 3, accentColor: '#3b82f6', cursor: 'pointer' }} />
 
       <span style={{ fontSize: 9, minWidth: 50, textAlign: 'right' }}>
@@ -128,6 +152,22 @@ export default function TimeMachine({ data, onSeek, currentIndex, disabled }: Ti
       </div>
 
       {playing && <span style={{ color: '#ef5350', fontSize: 8 }}>LIVE</span>}
+
+      {multiChartSync && multiChartSync.getChartCount() > 1 && (
+        <>
+          <div style={{ width: 1, height: 12, background: '#1a2332' }} />
+          <button onClick={onSyncAll}
+            style={{
+              background: synced ? 'rgba(38,166,154,0.2)' : 'rgba(117,117,117,0.15)',
+              border: '1px solid ' + (synced ? '#26a69a' : '#757575'),
+              color: synced ? '#26a69a' : '#757575',
+              cursor: 'pointer', padding: '1px 6px',
+              fontSize: 8, borderRadius: 2,
+            }}>
+            {synced ? '\u26A1 SYNCED' : '\u26A1 SYNC'}
+          </button>
+        </>
+      )}
     </div>
   )
 }

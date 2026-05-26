@@ -71,7 +71,7 @@ export class ChartPane {
         this.chart.timeScale().setVisibleRange(range)
       }
     } catch {
-      // Time scale sync failed silently — non-critical
+      console.debug('[ChartPane] timeScale sync failed')
     }
   }
 

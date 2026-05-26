@@ -15,6 +15,7 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from .routes import backtest_routes, bars_routes, cfa, chart_routes, config, flows, hedge_fund, market_data, metrics, mmc, portfolio, signals, stream, structure, trades, global_market
 from .routes.ws import router as ws_router
+from .state import seed_demo_data
 from .routes.orders import router as orders_router
 from .routes.positions import router as positions_router
 from .routes.risk import router as risk_router
@@ -26,6 +27,8 @@ from .routes.rl_training import router as rl_training_router
 from .routes.research.sql_research import router as sql_research_router
 from .routes.finscript import router as finscript_router
 from .routes.ta_routes import router as ta_router
+from .routes.correlation_routes import router as correlation_router
+from .routes.workspace_routes import router as workspace_router
 from .routes.alpha_zoo_routes import router as alpha_zoo_router
 from .routes.geo_analysis_routes import router as geo_analysis_router
 from .routes.experiment_routes import router as experiment_router
@@ -51,6 +54,11 @@ from .routes.risk_live import router as risk_live_router
 from .routes.portfolio_whatif import router as portfolio_whatif_router
 from .routes.strategy_clone import router as strategy_clone_router
 from .routes.llm import router as llm_router
+from .routes.screener_routes import router as screener_router
+from .routes.renaissance import router as renaissance_router
+from .routes.integrations_routes import router as integrations_router
+from .routes.analytics_routes import router as analytics_router
+from .routes.audit_routes import router as audit_router
 from persistence import init_db, close_db
 from persistence.database import _engine as db_engine
 
@@ -62,6 +70,7 @@ _start_time = time.time()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    await seed_demo_data()
     yield
     await close_db()
 
@@ -133,6 +142,8 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
     app.include_router(sql_research_router)
     app.include_router(finscript_router)
     app.include_router(ta_router)
+    app.include_router(correlation_router)
+    app.include_router(workspace_router)
     app.include_router(alpha_zoo_router)
     app.include_router(geo_analysis_router)
     app.include_router(experiment_router)
@@ -152,6 +163,11 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
     app.include_router(portfolio_whatif_router)
     app.include_router(strategy_clone_router)
     app.include_router(llm_router)
+    app.include_router(screener_router)
+    app.include_router(renaissance_router)
+    app.include_router(integrations_router)
+    app.include_router(analytics_router)
+    app.include_router(audit_router)
 
     @app.get("/")
     async def root():

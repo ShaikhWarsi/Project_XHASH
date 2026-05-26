@@ -10,7 +10,7 @@ from api.services.optuna_optimizer import OptunaOptimizer
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/hyperopt", tags=["hyperopt"])
+router = APIRouter(prefix="/hyperopt", tags=["hyperopt"])
 
 
 class OptimizeRequest(BaseModel):

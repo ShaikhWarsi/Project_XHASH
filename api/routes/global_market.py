@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 from data.heatmap import generate_heatmap_data
 from data.swr_cache import cached_or_compute, invalidate, clear_cache
 
-router = APIRouter(prefix="/api/global-market", tags=["global_market"])
+router = APIRouter(prefix="/global-market", tags=["global_market"])
 
 
 @router.get("/overview")

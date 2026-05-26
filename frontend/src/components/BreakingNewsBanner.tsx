@@ -44,9 +44,8 @@ export default function BreakingNewsBanner() {
           timestamp: new Date(a.datetime * 1000).toISOString(),
         })))
       }
-    }).catch((err) => {
-      console.warn('[BreakingNewsBanner] Failed to fetch company news:', err)
-      useToastStore.getState().addToast('Failed to load news', 'error')
+    }).catch(() => {
+      /* news feed unavailable - using mock data */
     })
   }, [])
 

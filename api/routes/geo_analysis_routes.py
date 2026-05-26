@@ -13,7 +13,7 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/geo", tags=["geopolitical"])
+router = APIRouter(prefix="/geo", tags=["geopolitical"])
 
 _GEO_SEVERE_PATTERNS = [
     re.compile(r"\b(?:war|wars|warfare|wartime)\b", re.I),

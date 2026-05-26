@@ -382,6 +382,16 @@ export async function evaluateFinScript(code: string, symbol = 'AAPL', start = '
   return data
 }
 
+export async function listStrategyTemplates(): Promise<{ name: string; description: string }[]> {
+  const { data } = await api.get('/finscript/templates')
+  return data.templates
+}
+
+export async function getStrategyTemplate(name: string): Promise<{ name: string; code: string }> {
+  const { data } = await api.get(`/finscript/templates/${name}`)
+  return data
+}
+
 export async function portfolioWhatIf(
   current_weights: Record<string, number>,
   target_weights: Record<string, number>,
@@ -401,6 +411,48 @@ export async function trainRL(
 ): Promise<RLTrainResult> {
   const { data } = await api.post('/rl-training/train', {
     prices, timestamps, algo, total_timesteps: totalTimesteps,
+  })
+  return data
+}
+
+// ── Screener ─────────────────────────────────────────────
+
+export async function getScreenerPresets(): Promise<Record<string, { name: string; description: string; filters: Record<string, any> }>> {
+  const { data } = await api.get('/screener/presets')
+  return data.presets
+}
+
+export async function scanSymbols(
+  symbols: string[],
+  filters?: Record<string, any>,
+): Promise<{ results: any[]; total: number; matches: number; errors: string[] }> {
+  const { data } = await api.get('/screener/scan', {
+    params: { symbols: symbols.join(','), ...filters },
+  })
+  return data
+}
+
+export async function scanWithPreset(
+  presetName: string,
+  symbols = 'AAPL,MSFT,GOOGL,AMZN,TSLA,META,NVDA',
+): Promise<{ results: any[]; total: number; matches: number; errors: string[] }> {
+  const { data } = await api.get(`/screener/preset/${presetName}`, {
+    params: { symbols },
+  })
+  return data
+}
+
+// ── TA Compute ───────────────────────────────────────────
+
+export async function computeIndicators(
+  symbol: string,
+  indicators: Record<string, any>,
+  interval = '1d',
+  periodDays = 100,
+  signals = false,
+): Promise<{ symbol: string; indicators: Record<string, any>; signals?: Record<string, any> }> {
+  const { data } = await api.post('/chart/ta/compute', {
+    symbol, interval, period_days: periodDays, indicators, signals,
   })
   return data
 }

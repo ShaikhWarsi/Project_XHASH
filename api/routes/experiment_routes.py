@@ -10,7 +10,7 @@ from api.services.experiment.runner import ExperimentRunnerService
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/experiments", tags=["experiments"])
+router = APIRouter(prefix="/experiments", tags=["experiments"])
 
 
 class ParameterSpaceItem(BaseModel):

@@ -19,7 +19,7 @@ from api.services.pairlists import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/pairlists", tags=["pairlists"])
+router = APIRouter(prefix="/pairlists", tags=["pairlists"])
 
 
 @router.get("/filters")

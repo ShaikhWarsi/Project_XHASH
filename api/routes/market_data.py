@@ -73,8 +73,7 @@ async def get_quotes(symbols: str = "SPY,QQQ"):
     try:
         df = await asyncio.to_thread(lambda: yf.download(" ".join(sym_list), period="1d", group_by="ticker", progress=False))
     except Exception as e:
-        logger.warning("yfinance download failed: %s", e)
-        df = pd.DataFrame()
+        raise HTTPException(status_code=502, detail=f"Data provider failed for {sym_list}: {e}")
     import math
     result = {}
     for sym in sym_list:
@@ -96,9 +95,8 @@ async def get_quotes(symbols: str = "SPY,QQQ"):
                 return float(v)
             result[sym] = {"c": sf(price), "d": sf(chg), "dp": sf(pct), "h": sf(high), "l": sf(low), "o": sf(price - chg), "pc": sf(price - chg)}
         except Exception as e:
-            logger.debug("Failed to fetch price for %s: %s", sym, e)
+            logger.warning("Failed to fetch price for %s: %s", sym, e)
             result[sym] = None
-    return result
 
 
 @router.get("/profile/{symbol}")
@@ -116,8 +114,8 @@ async def get_news(symbol: str):
         news = _get_finnhub().get_news(symbol)
         return {"articles": news}
     except Exception as e:
-        logger.warning("Finnhub news failed: %s", e)
-        return {"articles": []}
+        logger.warning("Finnhub news failed for %s: %s", symbol, e)
+        raise HTTPException(status_code=502, detail=f"News provider failed for {symbol}: {e}")
 
 
 @router.get("/news")
