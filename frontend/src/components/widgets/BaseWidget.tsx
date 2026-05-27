@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { X, RefreshCw, Settings, GripHorizontal } from 'lucide-react'
+import ErrorBoundary from '../ErrorBoundary'
 
 interface BaseWidgetProps {
   id: string
@@ -34,7 +35,7 @@ function WidgetButton({
       }}
       onMouseEnter={(e) => {
         if (!disabled) {
-          e.currentTarget.style.backgroundColor = danger ? 'rgba(239,68,68,0.15)' : 'var(--bg-hover)'
+          e.currentTarget.style.backgroundColor = danger ? 'color-mix(in srgb, var(--accent-red) 15%, transparent)' : 'var(--bg-hover)'
           e.currentTarget.style.color = danger ? 'var(--accent-red)' : 'var(--text-primary)'
         }
       }}
@@ -54,14 +55,18 @@ export default function BaseWidget({
 }: BaseWidgetProps) {
   return (
     <div
-      className="flex flex-col overflow-hidden transition-colors"
+      className="flex flex-col overflow-hidden"
       style={{
         height: '100%',
         width: '100%',
         background: 'var(--bg-card)',
         border: '1px solid var(--border-color)',
         borderRadius: 'var(--card-radius)',
+        boxShadow: 'var(--widget-shadow)',
+        transition: 'box-shadow 0.2s ease',
       }}
+      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = 'var(--widget-shadow-hover)' }}
+      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--widget-shadow)' }}
     >
       <div
         className="flex items-center justify-between shrink-0"
@@ -125,7 +130,7 @@ export default function BaseWidget({
       <div className="flex-1 overflow-auto relative">
         {error ? (
           <div className="flex flex-col items-center justify-center h-full p-3 gap-1.5">
-            <div className="flex items-center justify-center rounded-full" style={{ width: 24, height: 24, backgroundColor: 'rgba(239,68,68,0.15)' }}>
+            <div className="flex items-center justify-center rounded-full" style={{ width: 24, height: 24, backgroundColor: 'color-mix(in srgb, var(--accent-red) 15%, transparent)' }}>
               <X size={12} style={{ color: 'var(--accent-red)' }} />
             </div>
             <div className="font-mono-data text-[9px] font-bold tracking-wider uppercase" style={{ color: 'var(--accent-red)' }}>ERROR</div>
@@ -150,7 +155,7 @@ export default function BaseWidget({
             </div>
           </div>
         ) : (
-          children
+          <ErrorBoundary componentName={title} category="widget">{children}</ErrorBoundary>
         )}
       </div>
 

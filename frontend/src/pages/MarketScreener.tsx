@@ -89,8 +89,8 @@ export default function MarketScreener() {
   })
 
   const colorForChange = (pct: number) => {
-    if (pct > 0) return '#22c55e'
-    if (pct < 0) return '#ef4444'
+    if (pct > 0) return 'var(--accent-green)'
+    if (pct < 0) return 'var(--accent-red)'
     return 'var(--text-secondary)'
   }
 
@@ -177,7 +177,7 @@ export default function MarketScreener() {
         ))}
       </div>
 
-      {error && <div style={{ color: '#ef4444', fontSize: 12, marginBottom: 12 }}>{error}</div>}
+      {error && <div style={{ color: 'var(--accent-red)', fontSize: 12, marginBottom: 12 }}>{error}</div>}
       {loading && <Spinner label="Scanning markets..." />}
 
       {sorted.length > 0 && !loading && (
@@ -231,26 +231,26 @@ export default function MarketScreener() {
                     <td style={{ padding: '5px 8px', textAlign: 'right', color: 'var(--text-muted)' }}>
                       {r.volume > 1e6 ? `${(r.volume / 1e6).toFixed(1)}M` : r.volume > 1e3 ? `${(r.volume / 1e3).toFixed(1)}K` : r.volume}
                     </td>
-                    <td style={{ padding: '5px 8px', textAlign: 'right', color: r.volume_ratio > 1.5 ? '#22c55e' : 'var(--text-secondary)' }}>
+                    <td style={{ padding: '5px 8px', textAlign: 'right', color: r.volume_ratio > 1.5 ? 'var(--accent-green)' : 'var(--text-secondary)' }}>
                       {r.volume_ratio?.toFixed(2)}x
                     </td>
-                    <td style={{ padding: '5px 8px', textAlign: 'right', color: r.rsi == null ? 'var(--text-muted)' : r.rsi < 30 ? '#ef4444' : r.rsi > 70 ? '#22c55e' : 'var(--text-secondary)' }}>
+                    <td style={{ padding: '5px 8px', textAlign: 'right', color: r.rsi == null ? 'var(--text-muted)' : r.rsi < 30 ? 'var(--accent-red)' : r.rsi > 70 ? 'var(--accent-green)' : 'var(--text-secondary)' }}>
                       {r.rsi?.toFixed(1) ?? '-'}
                     </td>
                     <td style={{ padding: '5px 8px', textAlign: 'right' }}>{r.sma_50?.toFixed(2) ?? '-'}</td>
                     <td style={{ padding: '5px 8px', textAlign: 'right' }}>{r.sma_200?.toFixed(2) ?? '-'}</td>
-                    <td style={{ padding: '5px 8px', textAlign: 'center', color: r.golden_cross ? '#22c55e' : 'var(--text-muted)' }}>
+                    <td style={{ padding: '5px 8px', textAlign: 'center', color: r.golden_cross ? 'var(--accent-green)' : 'var(--text-muted)' }}>
                       {r.golden_cross ? '✓' : '-'}
                     </td>
-                    <td style={{ padding: '5px 8px', textAlign: 'center', color: r.macd_bullish_cross ? '#22c55e' : 'var(--text-muted)' }}>
+                    <td style={{ padding: '5px 8px', textAlign: 'center', color: r.macd_bullish_cross ? 'var(--accent-green)' : 'var(--text-muted)' }}>
                       {r.macd_bullish_cross ? '✓' : '-'}
                     </td>
                     <td style={{ padding: '5px 8px', textAlign: 'right' }}>{r.bb_width?.toFixed(2) ?? '-'}</td>
                     <td style={{ padding: '5px 8px', textAlign: 'center', fontSize: 10 }}>
                       {r.match === false ? (
-                        <span style={{ color: '#ef4444' }}>✗</span>
+                        <span style={{ color: 'var(--accent-red)' }}>✗</span>
                       ) : r.match === true ? (
-                        <span style={{ color: '#22c55e' }}>✓</span>
+                        <span style={{ color: 'var(--accent-green)' }}>✓</span>
                       ) : '-'}
                     </td>
                   </tr>

@@ -1,77 +1,82 @@
+export type RouteGroup = 'markets' | 'trading' | 'risk' | 'strategy' | 'ai' | 'research' | 'data' | 'settings'
+export type WorkflowGroup = 'trader' | 'quant' | 'researcher' | 'admin'
+
 export interface RouteConfig {
   path: string
   label: string
-  group: 'markets' | 'trading' | 'risk' | 'strategy' | 'ai' | 'research' | 'data' | 'settings'
+  group: RouteGroup
+  workflow?: WorkflowGroup
   icon?: string
 }
 
 export const ROUTES: RouteConfig[] = [
-  { path: '/', label: 'Hedge Fund', group: 'ai' },
-  { path: '/markets/dashboard', label: 'Dashboard', group: 'markets' },
+  { path: '/', label: 'Dashboard', group: 'markets', workflow: 'trader' },
+  { path: '/markets/dashboard', label: 'Dashboard', group: 'markets', workflow: 'trader' },
+  { path: '/alerts', label: 'Alerts', group: 'markets', workflow: 'trader' },
 
   // Markets
-  { path: '/markets/chart', label: 'Chart', group: 'markets' },
-  { path: '/markets/watchlist', label: 'Watchlist', group: 'markets' },
-  { path: '/markets/signals', label: 'Signals', group: 'markets' },
-  { path: '/markets/structure', label: 'Structure', group: 'markets' },
-  { path: '/markets/advanced-charts', label: 'Advanced Charts', group: 'markets' },
-  { path: '/markets/screener', label: 'Screener', group: 'markets' },
+  { path: '/markets/chart', label: 'Chart', group: 'markets', workflow: 'trader' },
+  { path: '/markets/watchlist', label: 'Watchlist', group: 'markets', workflow: 'trader' },
+  { path: '/markets/signals', label: 'Signals', group: 'markets', workflow: 'quant' },
+  { path: '/markets/structure', label: 'Structure', group: 'markets', workflow: 'quant' },
+  { path: '/markets/advanced-charts', label: 'Advanced Charts', group: 'markets', workflow: 'trader' },
+  { path: '/markets/screener', label: 'Screener', group: 'markets', workflow: 'researcher' },
 
   // Trading
-  { path: '/trading/orders', label: 'Orders', group: 'trading' },
-  { path: '/trading/trades', label: 'Trades', group: 'trading' },
-  { path: '/trading/portfolio', label: 'Portfolio', group: 'trading' },
-  { path: '/trading/paper-trading', label: 'Paper Trading', group: 'trading' },
-  { path: '/trading/portfolio-optimization', label: 'Portfolio Opt', group: 'trading' },
-  { path: '/trading/social-trading', label: 'Social Trading', group: 'trading' },
-  { path: '/trading/live', label: 'Live Trading Wizard', group: 'trading' },
+  { path: '/trading/orders', label: 'Orders', group: 'trading', workflow: 'trader' },
+  { path: '/trading/trades', label: 'Trades', group: 'trading', workflow: 'trader' },
+  { path: '/trading/portfolio', label: 'Portfolio', group: 'trading', workflow: 'trader' },
+  { path: '/trading/paper-trading', label: 'Paper Trading', group: 'trading', workflow: 'trader' },
+  { path: '/trading/portfolio-optimization', label: 'Portfolio Opt', group: 'trading', workflow: 'quant' },
+  { path: '/trading/social-trading', label: 'Social Trading', group: 'trading', workflow: 'trader' },
+  { path: '/trading/live', label: 'Live Trading Wizard', group: 'trading', workflow: 'trader' },
 
   // Risk
-  { path: '/risk', label: 'Risk Dashboard', group: 'risk' },
-  { path: '/risk/attribution', label: 'Attribution Analysis', group: 'risk' },
+  { path: '/risk', label: 'Risk Dashboard', group: 'risk', workflow: 'trader' },
+  { path: '/risk/attribution', label: 'Attribution Analysis', group: 'risk', workflow: 'quant' },
 
   // Strategy
-  { path: '/strategy/backtest', label: 'Backtest', group: 'strategy' },
-  { path: '/strategy/lab', label: 'Strategy Lab', group: 'strategy' },
-  { path: '/strategy/code', label: 'Strategy Code', group: 'strategy' },
-  { path: '/strategy/optimizer', label: 'Strategy Optimizer', group: 'strategy' },
-  { path: '/strategy/visual', label: 'Visual Strategy', group: 'strategy' },
+  { path: '/strategy/backtest', label: 'Backtest', group: 'strategy', workflow: 'quant' },
+  { path: '/strategy/lab', label: 'Strategy Lab', group: 'strategy', workflow: 'quant' },
+  { path: '/strategy/code', label: 'Strategy Code', group: 'strategy', workflow: 'quant' },
+  { path: '/strategy/optimizer', label: 'Strategy Optimizer', group: 'strategy', workflow: 'quant' },
+  { path: '/strategy/visual', label: 'Visual Strategy', group: 'strategy', workflow: 'quant' },
 
   // AI
-  { path: '/ai/agents', label: 'Agents', group: 'ai' },
-  { path: '/ai/hedge-fund', label: 'Hedge Fund', group: 'ai' },
-  { path: '/ai/hedge-flow', label: 'Hedge Flow', group: 'ai' },
-  { path: '/ai/swarm', label: 'Swarm', group: 'ai' },
-  { path: '/ai/hypothesis-lab', label: 'Hypothesis Lab', group: 'ai' },
-  { path: '/ai/debate', label: 'Debate Arena', group: 'ai' },
-  { path: '/ai/rl-training', label: 'RL Training', group: 'ai' },
-  { path: '/ai/llm', label: 'LLM Playground', group: 'ai' },
-  { path: '/ai/persona-council', label: 'Persona Council', group: 'ai' },
+  { path: '/ai/agents', label: 'Agents', group: 'ai', workflow: 'quant' },
+  { path: '/ai/hedge-fund', label: 'Hedge Fund', group: 'ai', workflow: 'quant' },
+  { path: '/ai/hedge-flow', label: 'Hedge Flow', group: 'ai', workflow: 'quant' },
+  { path: '/ai/swarm', label: 'Swarm', group: 'ai', workflow: 'quant' },
+  { path: '/ai/hypothesis-lab', label: 'Hypothesis Lab', group: 'ai', workflow: 'researcher' },
+  { path: '/ai/debate', label: 'Debate Arena', group: 'ai', workflow: 'researcher' },
+  { path: '/ai/rl-training', label: 'RL Training', group: 'ai', workflow: 'quant' },
+  { path: '/ai/llm', label: 'LLM Playground', group: 'ai', workflow: 'researcher' },
+  { path: '/ai/persona-council', label: 'Persona Council', group: 'ai', workflow: 'quant' },
 
   // Research
-  { path: '/research/cfa', label: 'CFA Analytics', group: 'research' },
-  { path: '/research/factor-analysis', label: 'Factor Analysis', group: 'research' },
-  { path: '/research/factor-zoo', label: 'Factor Zoo', group: 'research' },
-  { path: '/research/mmc', label: 'MMC Analysis', group: 'research' },
-  { path: '/research/hyperopt', label: 'Hyperopt', group: 'research' },
-  { path: '/research/geo', label: 'Geo Analysis', group: 'research' },
-  { path: '/research/workflow-lab', label: 'Workflow Lab', group: 'research' },
-  { path: '/research/sql', label: 'SQL Research', group: 'research' },
-  { path: '/research/experiments', label: 'Experiment Lab', group: 'research' },
+  { path: '/research/cfa', label: 'CFA Analytics', group: 'research', workflow: 'researcher' },
+  { path: '/research/factor-analysis', label: 'Factor Analysis', group: 'research', workflow: 'researcher' },
+  { path: '/research/factor-zoo', label: 'Factor Zoo', group: 'research', workflow: 'researcher' },
+  { path: '/research/mmc', label: 'MMC Analysis', group: 'research', workflow: 'researcher' },
+  { path: '/research/hyperopt', label: 'Hyperopt', group: 'research', workflow: 'researcher' },
+  { path: '/research/geo', label: 'Geo Analysis', group: 'research', workflow: 'researcher' },
+  { path: '/research/workflow-lab', label: 'Workflow Lab', group: 'research', workflow: 'researcher' },
+  { path: '/research/sql', label: 'SQL Research', group: 'research', workflow: 'researcher' },
+  { path: '/research/experiments', label: 'Experiment Lab', group: 'research', workflow: 'researcher' },
 
   // Data
-  { path: '/data/pipeline', label: 'Data Pipeline', group: 'data' },
-  { path: '/data/task-orchestration', label: 'Task Orchestration', group: 'data' },
-  { path: '/data/signal-engines', label: 'Signal Engines', group: 'data' },
-  { path: '/data/china-markets', label: 'China Markets', group: 'data' },
-  { path: '/data/workflows', label: 'Workflows', group: 'data' },
+  { path: '/data/pipeline', label: 'Data Pipeline', group: 'data', workflow: 'quant' },
+  { path: '/data/task-orchestration', label: 'Task Orchestration', group: 'data', workflow: 'quant' },
+  { path: '/data/signal-engines', label: 'Signal Engines', group: 'data', workflow: 'quant' },
+  { path: '/data/china-markets', label: 'China Markets', group: 'data', workflow: 'researcher' },
+  { path: '/data/workflows', label: 'Workflows', group: 'data', workflow: 'quant' },
 
   // Settings
-  { path: '/settings', label: 'Settings', group: 'settings' },
-  { path: '/settings/plugins', label: 'Plugins', group: 'settings' },
-  { path: '/settings/infrastructure', label: 'Infrastructure', group: 'settings' },
-  { path: '/settings/audit-log', label: 'Audit Log', group: 'settings' },
-  { path: '/settings/bots', label: 'Bot Integrations', group: 'settings' },
+  { path: '/settings', label: 'Settings', group: 'settings', workflow: 'admin' },
+  { path: '/settings/plugins', label: 'Plugins', group: 'settings', workflow: 'admin' },
+  { path: '/settings/infrastructure', label: 'Infrastructure', group: 'settings', workflow: 'admin' },
+  { path: '/settings/audit-log', label: 'Audit Log', group: 'settings', workflow: 'admin' },
+  { path: '/settings/bots', label: 'Bot Integrations', group: 'settings', workflow: 'admin' },
 ]
 
 export function getRouteLabel(path: string): string {

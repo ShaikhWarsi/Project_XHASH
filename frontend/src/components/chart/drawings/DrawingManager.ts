@@ -295,6 +295,38 @@ export class DrawingManager {
     return this.levelsManager.getLevels()
   }
 
+  saveToLibrary(symbol: string, interval: string): void {
+    const drawings = this.getDrawings()
+    const key = `drawing_lib_${symbol}_${interval}`
+    const existing = JSON.parse(localStorage.getItem(key) || '[]')
+    const entry = {
+      id: `lib_${Date.now()}`,
+      savedAt: new Date().toISOString(),
+      symbol,
+      interval,
+      drawingCount: drawings.length,
+      drawings: drawings.map(d => ({ type: d.type, points: d.points, style: d.style })),
+    }
+    existing.push(entry)
+    localStorage.setItem(key, JSON.stringify(existing))
+  }
+
+  loadFromLibrary(symbol: string, interval: string, libraryId: string): boolean {
+    const key = `drawing_lib_${symbol}_${interval}`
+    const entries = JSON.parse(localStorage.getItem(key) || '[]')
+    const entry = entries.find((e: any) => e.id === libraryId)
+    if (!entry) return false
+    for (const d of entry.drawings) {
+      this.addDrawingFromJSON(d)
+    }
+    return true
+  }
+
+  listLibraries(symbol: string, interval: string): any[] {
+    const key = `drawing_lib_${symbol}_${interval}`
+    return JSON.parse(localStorage.getItem(key) || '[]')
+  }
+
   destroy() {
     this.saveToStorage()
     if (this.beforeUnloadHandler) {

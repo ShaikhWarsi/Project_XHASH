@@ -97,8 +97,8 @@ export default function CacheStatsPanel() {
       <button
         onClick={handleInvalidate}
         style={{
-          background: 'rgba(239,68,68,0.15)',
-          border: '1px solid rgba(239,68,68,0.3)',
+          background: 'color-mix(in srgb, var(--accent-red) 15%, transparent)',
+          border: '1px solid color-mix(in srgb, var(--accent-red) 30%, transparent)',
           color: 'var(--accent-red)',
           padding: '3px 12px',
           ...FONT_SM,

@@ -12,7 +12,6 @@ function ComparisonChart({ series, showCandles }: { series: { symbol: string; da
     if (!chartRef.current || series.length === 0) return
     const styles = getComputedStyle(document.documentElement)
     const chartBg = styles.getPropertyValue('--chart-bg').trim() || '#1e2235'
-    const chartText = styles.getPropertyValue('--chart-text').trim() || '#9aa0a6'
     const chartGrid = styles.getPropertyValue('--chart-grid').trim() || '#2a2d3e'
     const chartBorder = styles.getPropertyValue('--chart-border').trim() || '#2a2d3e'
     const chart = createChart(chartRef.current, {

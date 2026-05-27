@@ -41,6 +41,7 @@ export default function SocialTrading() {
   const [symbol, setSymbol] = useState('')
   const [action, setAction] = useState<'BUY' | 'SELL'>('BUY')
   const [quantity, setQuantity] = useState('')
+  const [price, setPrice] = useState('')
   const [connected, setConnected] = useState(false)
   const [wsStatus, setWsStatus] = useState('Disconnected')
   const wsRef = useRef<WebSocket | null>(null)
@@ -75,7 +76,7 @@ export default function SocialTrading() {
       symbol: symbol.toUpperCase(),
       action,
       quantity: Number(quantity),
-      price: 0,
+      price: Number(price) || 0,
       timestamp: new Date().toLocaleTimeString(),
       message,
     }
@@ -84,77 +85,86 @@ export default function SocialTrading() {
       wsRef.current.send(JSON.stringify({ type: 'signal', data: newSignal }))
     }
     setMessage('')
-  }, [symbol, action, quantity, message])
+    setPrice('')
+  }, [symbol, action, quantity, price, message])
 
   return (
-    <div className="flex h-full gap-1.5">
+    <div className="flex h-full gap-1.5" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
       <div className="flex-1 flex flex-col gap-1.5">
         <div className="flex items-center gap-2 py-1">
-          <span className="font-mono-data text-[11px] font-bold text-up">SOCIAL TRADING</span>
-          <span className="flex items-center gap-1 font-mono-data text-[10px]" style={{ color: connected ? '#22c55e' : 'var(--text-muted)' }}>
+          <span className="text-[11px] font-bold" style={{ color: 'var(--accent-green)' }}>SOCIAL TRADING</span>
+          <span className="flex items-center gap-1 text-[10px]" style={{ color: connected ? 'var(--accent-green)' : 'var(--text-muted)' }}>
             <Radio size={10} /> {wsStatus}
           </span>
         </div>
 
         <div className="grid grid-cols-4 gap-1">
           {DEMO_TRADERS.map((trader) => (
-            <div key={trader.id} className="bg-card border border-default rounded px-2 py-1.5 font-mono-data text-[10px]">
+            <div key={trader.id} className="bg-card border border-default rounded px-2 py-1.5 text-[10px]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
               <div className="flex items-center gap-1">
-                <div className="w-1.5 h-1.5 rounded-full" style={{ background: trader.status === 'online' ? '#22c55e' : 'var(--text-muted)' }} />
-                <span className="font-semibold text-primary">{trader.name}</span>
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: trader.status === 'online' ? 'var(--accent-green)' : 'var(--text-muted)' }} />
+                <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{trader.name}</span>
               </div>
-              <div className="text-muted mt-0.5">{trader.followers} followers · {trader.winRate}% win</div>
+              <div style={{ color: 'var(--text-muted)', marginTop: 2, fontSize: 9 }}>{trader.followers} followers · {trader.winRate}% win</div>
             </div>
           ))}
         </div>
 
-        <div className="flex gap-1 px-2 py-1.5 bg-card border border-default rounded font-mono-data text-[10px]">
-          <input type="text" value={symbol} onChange={(e) => setSymbol(e.target.value)} placeholder="Symbol" className="bg-card border border-default text-primary font-mono-data text-[11px] px-1.5 py-0.5 outline-none w-[70px]" />
-          <select value={action} onChange={(e) => setAction(e.target.value as any)} className="bg-card border border-default text-primary font-mono-data text-[11px] px-1.5 py-0.5 outline-none w-[60px]">
+        <div className="flex gap-1 px-2 py-1.5 bg-card border border-default rounded text-[10px]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+          <input type="text" value={symbol} onChange={(e) => setSymbol(e.target.value)} placeholder="Symbol" className="bg-card border border-default" style={{ color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace", fontSize: 11, padding: '1px 4px', outline: 'none', width: 70 }} />
+          <select value={action} onChange={(e) => setAction(e.target.value as any)} style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace", fontSize: 11, padding: '1px 4px', outline: 'none', width: 65 }}>
             <option value="BUY">BUY</option>
             <option value="SELL">SELL</option>
           </select>
-          <input type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="Qty" className="bg-card border border-default text-primary font-mono-data text-[11px] px-1.5 py-0.5 outline-none w-[60px]" />
-          <input type="text" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Message (optional)" className="bg-card border border-default text-primary font-mono-data text-[11px] px-1.5 py-0.5 outline-none flex-1" />
+          <input type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="Qty" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace", fontSize: 11, padding: '1px 4px', outline: 'none', width: 60 }} />
+          <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Price" step="0.01" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace", fontSize: 11, padding: '1px 4px', outline: 'none', width: 70 }} />
+          <input type="text" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Message (optional)" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace", fontSize: 11, padding: '1px 4px', outline: 'none', flex: 1, minWidth: 60 }} />
           <button onClick={sendSignal} disabled={!symbol || !quantity}
-            className="flex items-center gap-1 bg-[var(--accent-cyan)] text-black border-none font-semibold px-2.5 py-1" style={{ cursor: symbol && quantity ? 'pointer' : 'not-allowed', opacity: symbol && quantity ? 1 : 0.5 }}>
+            style={{
+              display: 'flex', alignItems: 'center', gap: 4,
+              background: 'var(--accent-cyan)', border: 'none', color: '#000',
+              fontWeight: 600, padding: '2px 8px',
+              cursor: symbol && quantity ? 'pointer' : 'not-allowed',
+              opacity: symbol && quantity ? 1 : 0.5,
+              fontFamily: "'JetBrains Mono', monospace", fontSize: 10, borderRadius: 2,
+            }}>
             <Send size={12} /> SIGNAL
           </button>
         </div>
 
         <div className="flex-1 overflow-auto flex flex-col gap-1">
-          <span className="font-mono-data text-[10px] text-muted font-semibold">LIVE SIGNALS ({signals.length})</span>
+          <span className="text-[10px] font-semibold" style={{ color: 'var(--text-muted)' }}>LIVE SIGNALS ({signals.length})</span>
           {signals.map((s) => (
-            <div key={s.id} className="bg-card border border-default rounded px-2 py-1.5 font-mono-data text-[10px]">
+            <div key={s.id} className="bg-card border border-default rounded px-2 py-1.5 text-[10px]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
               <div className="flex items-center gap-1.5">
-                <span className="font-semibold text-primary">{s.from}</span>
-                <span className="text-muted">·</span>
-                <span className="text-accent-blue font-semibold">{s.symbol}</span>
-                <span className="font-bold" style={{ color: s.action === 'BUY' ? '#22c55e' : '#ef4444' }}>{s.action}</span>
-                <span className="text-secondary">{s.quantity} shares</span>
-                {s.price > 0 && <span className="text-muted">@ ${s.price}</span>}
+                <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{s.from}</span>
+                <span style={{ color: 'var(--text-muted)' }}>·</span>
+                <span className="font-semibold" style={{ color: 'var(--accent-blue)' }}>{s.symbol}</span>
+                <span className="font-bold" style={{ color: s.action === 'BUY' ? 'var(--accent-green)' : 'var(--accent-red)' }}>{s.action}</span>
+                <span style={{ color: 'var(--text-secondary)' }}>{s.quantity} shares</span>
+                {s.price > 0 && <span style={{ color: 'var(--text-muted)' }}>@ ${s.price.toFixed(2)}</span>}
                 <span className="flex-1" />
-                <span className="text-muted text-[9px]">{s.timestamp}</span>
+                <span style={{ color: 'var(--text-muted)', fontSize: 9 }}>{s.timestamp}</span>
               </div>
-              {s.message && <div className="text-secondary mt-0.5 text-[10px]">{s.message}</div>}
+              {s.message && <div style={{ color: 'var(--text-secondary)', marginTop: 1, fontSize: 9 }}>{s.message}</div>}
             </div>
           ))}
         </div>
       </div>
 
       <div className="w-50 border-l border-default pl-1.5 flex flex-col gap-1">
-        <span className="font-mono-data text-[10px] font-bold text-up uppercase flex items-center gap-1">
-          <Users size={12} className="inline mr-1" />
+        <span className="text-[10px] font-bold uppercase flex items-center gap-1" style={{ color: 'var(--accent-green)' }}>
+          <Users size={12} />
           FOLLOWING
         </span>
         {DEMO_TRADERS.map((trader) => (
-          <div key={trader.id} className="flex items-center gap-1.5 px-1.5 py-1 bg-card border border-default rounded font-mono-data text-[10px]">
+          <div key={trader.id} className="flex items-center gap-1.5 px-1.5 py-1 bg-card border border-default rounded text-[10px]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
             <div className="w-1.5 h-1.5 rounded-full" style={{ background: trader.status === 'online' ? '#22c55e' : 'var(--text-muted)' }} />
-            <span className="flex-1 text-primary">{trader.name}</span>
-            <span className="text-[8px] text-muted">{trader.followers}</span>
+            <span className="flex-1" style={{ color: 'var(--text-primary)' }}>{trader.name}</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: 8 }}>{trader.followers}</span>
           </div>
         ))}
-        <button className="flex items-center gap-1 bg-card border border-default text-primary font-mono-data text-[10px] px-2 py-1 cursor-pointer rounded">
+        <button className="flex items-center gap-1 bg-card border border-default" style={{ color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace", fontSize: 10, padding: '4px 6px', cursor: 'pointer', borderRadius: 2 }}>
           <UserPlus size={10} /> FIND TRADERS
         </button>
       </div>

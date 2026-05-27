@@ -79,6 +79,11 @@ export default function WatchlistPage() {
                 {items.map(item => (
                   <div
                     key={item.symbol}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('text/plain', item.symbol)
+                      e.dataTransfer.effectAllowed = 'copy'
+                    }}
                     className="flex items-center justify-between p-3 rounded-lg hover:bg-[#2a2d3e]/50 transition-colors cursor-pointer group"
                     onClick={() => navigate(`/chart?symbol=${item.symbol}`)}
                   >

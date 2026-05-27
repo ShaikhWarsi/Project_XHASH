@@ -21,6 +21,28 @@ export interface ChartCallbacks {
   onIntervalChange?: (interval: string) => void
 }
 
+export interface SignalMarker {
+  time: Time
+  type: 'buy' | 'sell'
+  price: number
+  label?: string
+  strength?: number
+}
+
+export interface RegimeZone {
+  timeStart: Time
+  timeEnd: Time
+  regime: string
+  color: string
+}
+
+export interface StructureOverlay {
+  orderBlocks: { level: number; direction: string; confidence: number }[]
+  fvgs: { top: number; bottom: number; direction: string }[]
+  liquidityLevels: { level: number; direction: string; confidence: number }[]
+  keyLevels: number[]
+}
+
 export class ChartEngine {
   readonly chart: IChartApi
   readonly mapper: CoordMapper
@@ -42,6 +64,9 @@ export class ChartEngine {
   protected _symbol: string
   protected _interval: string
   protected _theme: ChartThemeColors
+  protected _signals: SignalMarker[] = []
+  protected _regimeZones: RegimeZone[] = []
+  protected _structureData: StructureOverlay | null = null
 
   constructor(options: ChartOptions, callbacks?: ChartCallbacks) {
     this._symbol = options.symbol
@@ -327,12 +352,6 @@ export class ChartEngine {
     })
   }
 
-  protected renderOverlay() {
-    const ctx = this.overlayCtx
-    ctx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height)
-    this.drawingManager.render(ctx, 0)
-  }
-
   seekToIndex(index: number, data: CandlestickData[]) {
     if (index < 0 || index >= data.length) return
     const from = data[0].time
@@ -379,6 +398,146 @@ export class ChartEngine {
   get symbol() { return this._symbol }
   get interval() { return this._interval }
   get theme() { return this._theme }
+
+  setSignals(signals: SignalMarker[]) {
+    this._signals = signals
+    this.requestRender()
+  }
+
+  setRegime(zones: RegimeZone[]) {
+    this._regimeZones = zones
+    this.requestRender()
+  }
+
+  setStructureData(data: StructureOverlay | null) {
+    this._structureData = data
+    this.requestRender()
+  }
+
+  protected drawSignalMarkers(ctx: CanvasRenderingContext2D) {
+    if (!this.mainSeries) return
+    for (const sig of this._signals) {
+      const x = this.mapper.timeToX(sig.time)
+      const y = this.mapper.priceToY(sig.price, 0)
+      if (x == null || y == null) continue
+      const size = 8 + (sig.strength ?? 1) * 3
+      const half = size / 2
+      if (sig.type === 'buy') {
+        ctx.fillStyle = this._theme.up
+        ctx.beginPath()
+        ctx.moveTo(x - half, y - half)
+        ctx.lineTo(x + half, y)
+        ctx.lineTo(x - half, y + half)
+        ctx.closePath()
+        ctx.fill()
+        ctx.fillStyle = `${this._theme.up}40`
+        ctx.beginPath()
+        ctx.arc(x, y, size, 0, Math.PI * 2)
+        ctx.fill()
+      } else {
+        ctx.fillStyle = this._theme.down
+        ctx.beginPath()
+        ctx.moveTo(x - half, y + half)
+        ctx.lineTo(x + half, y)
+        ctx.lineTo(x - half, y - half)
+        ctx.closePath()
+        ctx.fill()
+        ctx.fillStyle = `${this._theme.down}40`
+        ctx.beginPath()
+        ctx.arc(x, y, size, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    }
+  }
+
+  protected drawRegimeZones(ctx: CanvasRenderingContext2D) {
+    for (const zone of this._regimeZones) {
+      const x1 = this.mapper.timeToX(zone.timeStart)
+      const x2 = this.mapper.timeToX(zone.timeEnd)
+      if (x1 == null || x2 == null) continue
+      ctx.fillStyle = zone.color
+      ctx.fillRect(x1, 0, x2 - x1, this.overlayCanvas.height)
+    }
+  }
+
+  protected drawStructureOverlay(ctx: CanvasRenderingContext2D) {
+    const data = this._structureData
+    if (!data) return
+    const w = this.overlayCanvas.width
+    const bullish = (dir: string) => dir === 'bullish' || dir === 'up' || dir === 'buy'
+
+    // Key levels (subtle background lines)
+    for (const level of data.keyLevels) {
+      const y = this.mapper.priceToY(level, 0)
+      if (y == null) continue
+      ctx.strokeStyle = this._theme.text
+      ctx.globalAlpha = 0.2
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.moveTo(0, y)
+      ctx.lineTo(w, y)
+      ctx.stroke()
+    }
+    ctx.globalAlpha = 1
+
+    // FVGs – translucent vertical rectangles
+    for (const fvg of data.fvgs) {
+      const yT = this.mapper.priceToY(fvg.top, 0)
+      const yB = this.mapper.priceToY(fvg.bottom, 0)
+      if (yT == null || yB == null) continue
+      const y1 = Math.min(yT, yB)
+      const y2 = Math.max(yT, yB)
+      const isBull = bullish(fvg.direction)
+      const color = isBull ? this._theme.up : this._theme.down
+      ctx.fillStyle = color + '26'
+      ctx.fillRect(0, y1, w, y2 - y1)
+      ctx.strokeStyle = color + '66'
+      ctx.lineWidth = 1
+      ctx.strokeRect(0, y1, w, y2 - y1)
+    }
+
+    // Order blocks – horizontal bands with label
+    ctx.font = '8px JetBrains Mono, monospace'
+    ctx.textBaseline = 'middle'
+    for (const ob of data.orderBlocks) {
+      const y = this.mapper.priceToY(ob.level, 0)
+      if (y == null) continue
+      const h = Math.max(4, ob.confidence * 16)
+      const isBull = bullish(ob.direction)
+      const color = isBull ? this._theme.up : this._theme.down
+      ctx.fillStyle = color + '40'
+      ctx.fillRect(0, y - h / 2, w, h)
+      ctx.fillStyle = 'rgba(255,255,255,0.7)'
+      ctx.textAlign = 'right'
+      ctx.fillText(`$${ob.level.toFixed(2)} ${(ob.confidence * 100).toFixed(0)}%`, w - 4, y)
+    }
+
+    // Liquidity zones – dashed horizontal lines
+    ctx.setLineDash([6, 3])
+    ctx.lineWidth = 2
+    ctx.strokeStyle = this._theme.accentYellow
+    for (const liq of data.liquidityLevels) {
+      const y = this.mapper.priceToY(liq.level, 0)
+      if (y == null) continue
+      ctx.beginPath()
+      ctx.moveTo(0, y)
+      ctx.lineTo(w, y)
+      ctx.stroke()
+      ctx.fillStyle = 'rgba(255,255,255,0.7)'
+      ctx.textAlign = 'right'
+      ctx.fillText(`$${liq.level.toFixed(2)} ${(liq.confidence * 100).toFixed(0)}%`, w - 4, y)
+    }
+    ctx.setLineDash([])
+  }
+
+  protected renderOverlay() {
+    const ctx = this.overlayCtx
+    ctx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height)
+    this.drawRegimeZones(ctx)
+    this.drawStructureOverlay(ctx)
+    this.drawingManager.render(ctx, 0)
+    this.drawSignalMarkers(ctx)
+  }
 
   destroy() {
     if (this.resizeObserver) this.resizeObserver.disconnect()

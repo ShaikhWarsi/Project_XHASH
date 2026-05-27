@@ -23,16 +23,16 @@ const INITIAL_TASKS: Task[] = [
 
 const STATUS_CONFIG = {
   idle: { icon: Clock, color: 'var(--text-muted)' },
-  running: { icon: Activity, color: '#22c55e' },
-  completed: { icon: CheckCircle, color: '#3b82f6' },
-  failed: { icon: AlertCircle, color: '#ef4444' },
+  running: { icon: Activity, color: 'var(--accent-green)' },
+  completed: { icon: CheckCircle, color: 'var(--accent-blue)' },
+  failed: { icon: AlertCircle, color: 'var(--accent-red)' },
 }
 
-const TYPE_COLORS = {
-  backtest: '#3b82f6',
-  data_collection: '#22c55e',
-  optimization: '#a855f7',
-  signal_generation: '#f59e0b',
+const TYPE_COLORS: Record<string, string> = {
+  backtest: 'var(--accent-blue)',
+  data_collection: 'var(--accent-green)',
+  optimization: 'var(--accent-purple)',
+  signal_generation: 'var(--accent-yellow)',
 }
 
 export default function TaskOrchestration() {
@@ -122,7 +122,7 @@ export default function TaskOrchestration() {
                 </div>
                 {(task.status === 'running' || task.status === 'failed') && (
                   <div className="mt-1.5 h-1 bg-[var(--bg-app)] rounded overflow-hidden">
-                    <div className="h-full rounded transition-all duration-500" style={{ width: `${task.progress}%`, background: task.status === 'running' ? '#22c55e' : '#ef4444' }} />
+                    <div className="h-full rounded transition-all duration-500" style={{ width: `${task.progress}%`, background: task.status === 'running' ? 'var(--accent-green)' : 'var(--accent-red)' }} />
                   </div>
                 )}
               </div>

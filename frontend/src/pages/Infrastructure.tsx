@@ -26,8 +26,20 @@ export default function Infrastructure() {
       <div className="flex items-center gap-2 px-3 py-1 border-b border-default">
         <Cpu size={12} /><span className="font-bold text-sm">INFRASTRUCTURE</span>
         <span className="text-[#5d6b7e]">|</span>
-        <button onClick={() => setTab('providers')} className="cursor-pointer px-2 py-0.5 text-[10px] border-none" style={{ background: tab === 'providers' ? 'rgba(59,130,246,0.15)' : 'none', color: tab === 'providers' ? '#3b82f6' : '#5d6b7e' }}>
-          <Database size={10} className="mr-1" />Providers
+        <button onClick={() => setTab('providers')} className="cursor-pointer px-2 py-0.5 text-[10px] border-none" style={{ background: tab === 'providers' ? 'color-mix(in srgb, var(--accent-blue) 15%, transparent)' : 'none', color: tab === 'providers' ? 'var(--accent-blue)' : 'var(--text-muted)' }}>
+          PROVIDERS
+        </button>
+        <button onClick={() => setTab('mcp')} className="cursor-pointer px-2 py-0.5 text-[10px] border-none" style={{ background: tab === 'mcp' ? 'color-mix(in srgb, var(--accent-blue) 15%, transparent)' : 'none', color: tab === 'mcp' ? 'var(--accent-blue)' : 'var(--text-muted)' }}>
+          MCP
+        </button>
+        <button onClick={() => setTab('cache')} className="cursor-pointer px-2 py-0.5 text-[10px] border-none" style={{ background: tab === 'cache' ? 'color-mix(in srgb, var(--accent-blue) 15%, transparent)' : 'none', color: tab === 'cache' ? 'var(--accent-blue)' : 'var(--text-muted)' }}>
+          CACHE
+        </button>
+        <button onClick={() => setTab('protections')} className="cursor-pointer px-2 py-0.5 text-[10px] border-none" style={{ background: tab === 'protections' ? 'color-mix(in srgb, var(--accent-blue) 15%, transparent)' : 'none', color: tab === 'protections' ? 'var(--accent-blue)' : 'var(--text-muted)' }}>
+          PROTECTIONS
+        </button>
+        <button onClick={() => setTab('pairlists')} className="cursor-pointer px-2 py-0.5 text-[10px] border-none" style={{ background: tab === 'pairlists' ? 'color-mix(in srgb, var(--accent-blue) 15%, transparent)' : 'none', color: tab === 'pairlists' ? 'var(--accent-blue)' : 'var(--text-muted)' }}>
+          PAIRLISTS
         </button>
         <button onClick={() => setTab('mcp')} className="cursor-pointer px-2 py-0.5 text-[10px] border-none" style={{ background: tab === 'mcp' ? 'rgba(59,130,246,0.15)' : 'none', color: tab === 'mcp' ? '#3b82f6' : '#5d6b7e' }}>
           MCP Tools
@@ -62,7 +74,7 @@ export default function Infrastructure() {
                   {p.models?.length > 0 && (
                     <div className="flex gap-1 flex-wrap mt-1">
                       {p.models.map((m: string) => (
-                        <span key={m} className="px-1.5 py-0 rounded-sm text-[8px]" style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}>{m}</span>
+                        <span key={m} className="px-1.5 py-0 rounded-sm text-[8px]" style={{ background: 'color-mix(in srgb, var(--accent-blue) 10%, transparent)', color: 'var(--accent-blue)' }}>{m}</span>
                       ))}
                     </div>
                   )}

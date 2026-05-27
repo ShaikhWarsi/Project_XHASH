@@ -224,7 +224,7 @@ export default function StrategyBuilder({ onRunBacktest }: StrategyBuilderProps)
             </h4>
             <button
               onClick={addEntryCondition}
-              style={{ background: 'rgba(34,197,94,0.15)' }}
+              style={{ background: 'color-mix(in srgb, var(--accent-green) 15%, transparent)' }}
               className="text-up border-none rounded-sm px-2 py-1 text-[10px] cursor-pointer"
             >
               <Plus className="w-3 h-3 inline mr-1" />Add Condition
@@ -256,7 +256,7 @@ export default function StrategyBuilder({ onRunBacktest }: StrategyBuilderProps)
             </h4>
             <button
               onClick={addExitCondition}
-              style={{ background: 'rgba(239,68,68,0.15)' }}
+              style={{ background: 'color-mix(in srgb, var(--accent-red) 15%, transparent)' }}
               className="text-down border-none rounded-sm px-2 py-1 text-[10px] cursor-pointer"
             >
               <Plus className="w-3 h-3 inline mr-1" />Add Condition

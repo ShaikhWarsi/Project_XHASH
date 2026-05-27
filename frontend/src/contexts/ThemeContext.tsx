@@ -2,9 +2,9 @@ import { createContext, useContext, useEffect, useState, useCallback, type React
 
 export type ThemeName = 'classic' | 'matrix' | 'amber' | 'cyber' | 'terminal' | 'light' | 'auto'
 
-const THEME_CYCLE: ThemeName[] = ['classic', 'matrix', 'amber', 'cyber', 'terminal', 'light', 'auto']
+const THEME_CYCLE: ThemeName[] = ['classic', 'cyber', 'terminal', 'light', 'auto']
 
-const DARK_THEMES: ThemeName[] = ['classic', 'matrix', 'amber', 'cyber', 'terminal']
+const DARK_THEMES: ThemeName[] = ['classic', 'cyber', 'terminal']
 
 function prefersDark(): boolean {
   if (typeof window === 'undefined') return true

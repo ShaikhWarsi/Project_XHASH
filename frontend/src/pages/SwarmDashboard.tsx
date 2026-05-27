@@ -57,7 +57,7 @@ export default function SwarmDashboard() {
   }
 
   const statusColor = (s: string) => {
-    const m: Record<string, string> = { running: '#3b82f6', completed: '#22c55e', failed: '#ef4444', cancelled: '#5d6b7e', pending: '#f59e0b' }
+    const m: Record<string, string> = { running: 'var(--accent-blue)', completed: 'var(--accent-green)', failed: 'var(--accent-red)', cancelled: 'var(--text-muted)', pending: 'var(--accent-yellow)' }
     return m[s] || '#5d6b7e'
   }
 

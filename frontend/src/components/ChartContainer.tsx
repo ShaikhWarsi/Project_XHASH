@@ -39,21 +39,31 @@ export default function ChartContainer({
   }, [])
 
   useEffect(() => {
+    if (!isExpanded) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsExpanded(false)
+      if (e.key === 'F11') { e.preventDefault(); setIsExpanded(v => !v) }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [isExpanded])
+
+  useEffect(() => {
     if (!chartRef.current) return
     const styles = getComputedStyle(document.documentElement)
     const chart = createChart(chartRef.current, {
       height: isExpanded ? windowHeight - 100 : height,
       layout: {
-        background: { type: ColorType.Solid, color: styles.getPropertyValue('--chart-bg').trim() || '#1e2235' },
-        textColor: styles.getPropertyValue('--chart-text').trim() || '#9aa0a6',
+        background: { type: ColorType.Solid, color: styles.getPropertyValue('--chart-bg').trim() || 'var(--bg-card)' },
+        textColor: styles.getPropertyValue('--chart-text').trim() || 'var(--chart-text)',
       },
       grid: {
-        vertLines: { color: styles.getPropertyValue('--chart-grid').trim() || '#2a2d3e' },
-        horzLines: { color: styles.getPropertyValue('--chart-grid').trim() || '#2a2d3e' },
+        vertLines: { color: styles.getPropertyValue('--chart-grid').trim() || 'var(--chart-grid)' },
+        horzLines: { color: styles.getPropertyValue('--chart-grid').trim() || 'var(--chart-grid)' },
       },
-      rightPriceScale: { borderColor: styles.getPropertyValue('--chart-border').trim() || '#2a2d3e' },
-      timeScale: { borderColor: styles.getPropertyValue('--chart-border').trim() || '#2a2d3e', timeVisible: true, secondsVisible: false },
-      crosshair: { mode: 0, vertLine: { color: '#3b82f6', width: 1, labelBackgroundColor: '#3b82f6' }, horzLine: { color: '#3b82f6', width: 1, labelBackgroundColor: '#3b82f6' } },
+      rightPriceScale: { borderColor: styles.getPropertyValue('--chart-border').trim() || 'var(--chart-border)' },
+      timeScale: { borderColor: styles.getPropertyValue('--chart-border').trim() || 'var(--chart-border)', timeVisible: true, secondsVisible: false },
+      crosshair: { mode: 0, vertLine: { color: 'var(--accent-blue)', width: 1, labelBackgroundColor: 'var(--accent-blue)' }, horzLine: { color: 'var(--accent-blue)', width: 1, labelBackgroundColor: 'var(--accent-blue)' } },
     })
     chartApiRef.current = chart
 
@@ -64,18 +74,18 @@ export default function ChartContainer({
 
     if (type === 'candlestick') {
       const series = chart.addSeries(CandlestickSeries, {
-        upColor: styles.getPropertyValue('--chart-candle-up').trim() || '#22c55e',
-        downColor: styles.getPropertyValue('--chart-candle-down').trim() || '#ef4444',
-        borderUpColor: styles.getPropertyValue('--chart-candle-up').trim() || '#22c55e',
-        borderDownColor: styles.getPropertyValue('--chart-candle-down').trim() || '#ef4444',
-        wickUpColor: styles.getPropertyValue('--chart-candle-up').trim() || '#22c55e',
-        wickDownColor: styles.getPropertyValue('--chart-candle-down').trim() || '#ef4444',
+        upColor: styles.getPropertyValue('--chart-candle-up').trim() || 'var(--chart-candle-up)',
+        downColor: styles.getPropertyValue('--chart-candle-down').trim() || 'var(--chart-candle-down)',
+        borderUpColor: styles.getPropertyValue('--chart-candle-up').trim() || 'var(--chart-candle-up)',
+        borderDownColor: styles.getPropertyValue('--chart-candle-down').trim() || 'var(--chart-candle-down)',
+        wickUpColor: styles.getPropertyValue('--chart-candle-up').trim() || 'var(--chart-candle-up)',
+        wickDownColor: styles.getPropertyValue('--chart-candle-down').trim() || 'var(--chart-candle-down)',
         ...options,
       } as any)
       seriesRef.current = series
     } else if (type === 'line') {
       const series = chart.addSeries(LineSeries, {
-        color: styles.getPropertyValue('--chart-line').trim() || '#22c55e',
+        color: styles.getPropertyValue('--chart-line').trim() || 'var(--chart-line)',
         lineWidth: 2,
         ...options,
       } as any)
@@ -120,14 +130,33 @@ export default function ChartContainer({
   }, [])
 
   return (
-    <div className={`transition-all duration-300 ${isExpanded ? 'fixed inset-0 z-[9999] bg-[#0f1118] p-4' : ''}`}>
-      <div className="flex items-center justify-between mb-2">
+    <div className={`transition-all duration-300 ease-linear ${isExpanded ? 'fixed inset-0 z-[9999] p-4' : ''}`}
+      style={{
+        transition: 'all 300ms ease',
+        position: isExpanded ? 'fixed' as any : undefined,
+        ...(isExpanded ? { background: 'var(--bg-primary)', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, padding: 16 } : {}),
+      }}>
+      {isExpanded && (
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)',
+          padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-primary)', fontWeight: 600 }}>{title || 'Chart'}</span>
+          <div style={{ flex: 1 }} />
+          <button onClick={() => setIsExpanded(false)}
+            style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', padding: '4px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 10 }}>
+            Exit Fullscreen (Esc)
+          </button>
+        </div>
+      )}
+      <div className="flex items-center justify-between mb-2" style={isExpanded ? { marginTop: 28 } : undefined}>
         {title && <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{title}</h3>}
         <div className="flex items-center gap-2">
           {toolbar}
           <button
             onClick={() => setShowAnnotations(!showAnnotations)}
-            style={{ background: showAnnotations ? 'rgba(59,130,246,0.15)' : 'var(--bg-hover)', border: 'none', borderRadius: 'var(--radius-sm)', padding: 4, color: showAnnotations ? 'var(--accent-blue)' : 'var(--text-secondary)', cursor: 'pointer', position: 'relative' }}
+            style={{ background: showAnnotations ? 'color-mix(in srgb, var(--accent-blue) 15%, transparent)' : 'var(--bg-hover)', border: 'none', borderRadius: 'var(--radius-sm)', padding: 4, color: showAnnotations ? 'var(--accent-blue)' : 'var(--text-secondary)', cursor: 'pointer', position: 'relative' }}
             title="Annotations"
           >
             <MessageSquare className="w-3.5 h-3.5" />

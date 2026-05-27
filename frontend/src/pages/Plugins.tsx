@@ -65,7 +65,7 @@ function saveCommunityStrategies(strategies: SharedStrategy[]) {
 }
 
 const TYPE_COLORS: Record<string, string> = {
-  indicator: '#22c55e', strategy: '#3b82f6', data_source: '#f59e0b', signal: '#a855f7',
+  indicator: 'var(--accent-green)', strategy: 'var(--accent-blue)', data_source: 'var(--accent-yellow)', signal: 'var(--accent-purple)',
 }
 
 export default function Plugins() {
@@ -196,7 +196,7 @@ export default function Plugins() {
                 <Share2 size={10} />
               </button>
               <button onClick={() => togglePlugin(plugin.id)}
-                style={{ background: plugin.enabled ? '#22c55e' : 'var(--bg-app)', color: plugin.enabled ? '#000' : 'var(--text-muted)' }}
+                style={{ background: plugin.enabled ? 'var(--accent-green)' : 'var(--bg-app)', color: plugin.enabled ? '#000' : 'var(--text-muted)' }}
                 className="font-mono-data text-[9px] px-2 py-0.5 cursor-pointer border border-default rounded-sm">
                 {plugin.enabled ? 'ENABLED' : 'DISABLED'}
               </button>

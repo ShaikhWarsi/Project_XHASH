@@ -38,8 +38,8 @@ function RadarChart({ bullish, bearish, neutral }: { bullish: number; bearish: n
     ctx.clearRect(0, 0, size, size)
 
     const segments = [
-      { label: 'Bullish', count: bullish, color: '#22c55e', start: -Math.PI / 2 },
-      { label: 'Bearish', count: bearish, color: '#ef4444', start: 0 },
+      { label: 'Bullish', count: bullish, color: 'var(--accent-green)', start: -Math.PI / 2 },
+      { label: 'Bearish', count: bearish, color: 'var(--accent-red)', start: 0 },
       { label: 'Neutral', count: neutral, color: '#eab308', start: Math.PI / 2 },
     ]
 
@@ -168,7 +168,7 @@ export default function PersonaVoteAnimation({ opinions, loading }: PersonaVoteA
           {total > 0 && (() => {
             const netScore = (bullish - bearish) / total
             const verdict = netScore > 0.15 ? 'BULLISH' : netScore < -0.15 ? 'BEARISH' : 'NEUTRAL'
-            const color = netScore > 0.15 ? '#22c55e' : netScore < -0.15 ? '#ef4444' : '#eab308'
+            const color = netScore > 0.15 ? 'var(--accent-green)' : netScore < -0.15 ? 'var(--accent-red)' : 'var(--accent-yellow)'
             const avgConf = opinions.reduce((s, o) => s + o.confidence, 0) / total
             return (
               <div>
@@ -177,8 +177,8 @@ export default function PersonaVoteAnimation({ opinions, loading }: PersonaVoteA
                   {(Math.abs(netScore) * 100).toFixed(0)}% net · {(avgConf * 100).toFixed(0)}% avg confidence
                 </div>
                 <div className="flex gap-2 mt-2">
-                  <span className="text-xs px-2 py-0.5 rounded" style={{ background: '#22c55e20', color: '#22c55e' }}>{bullish} bullish</span>
-                  <span className="text-xs px-2 py-0.5 rounded" style={{ background: '#ef444420', color: '#ef4444' }}>{bearish} bearish</span>
+                  <span className="text-xs px-2 py-0.5 rounded" style={{ background: 'color-mix(in srgb, var(--accent-green) 15%, transparent)', color: 'var(--accent-green)' }}>{bullish} bullish</span>
+                  <span className="text-xs px-2 py-0.5 rounded" style={{ background: 'color-mix(in srgb, var(--accent-red) 15%, transparent)', color: 'var(--accent-red)' }}>{bearish} bearish</span>
                   <span className="text-xs px-2 py-0.5 rounded" style={{ background: '#eab30820', color: '#eab308' }}>{neutral} neutral</span>
                 </div>
               </div>

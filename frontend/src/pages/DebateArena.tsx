@@ -23,9 +23,9 @@ export default function DebateArena() {
   }
 
   const stanceColor = (s: string) => {
-    if (s === 'bullish' || s === 'bull') return '#22c55e'
-    if (s === 'bearish' || s === 'bear') return '#ef4444'
-    return '#f59e0b'
+    if (s === 'bullish' || s === 'bull') return 'var(--accent-green)'
+    if (s === 'bearish' || s === 'bear') return 'var(--accent-red)'
+    return 'var(--accent-yellow)'
   }
 
   return (
@@ -44,7 +44,7 @@ export default function DebateArena() {
         <input type="number" value={rounds} onChange={(e) => setRounds(Number(e.target.value))} min={1} max={10}
           className="bg-card border border-default text-primary px-1.5 py-0.5 text-[10px] w-[50px]" />
         <button onClick={() => runDebate(false)} disabled={loading}
-          className="text-white cursor-pointer px-3.5 py-1 text-[10px] disabled:opacity-60" style={{ background: '#3b82f6' }}>
+          className="text-white cursor-pointer px-3.5 py-1 text-[10px] disabled:opacity-60" style={{ background: 'var(--accent-blue)' }}>
           {loading ? 'DEBATING...' : 'DEBATE'}
         </button>
         <button onClick={() => runDebate(true)} disabled={loading}

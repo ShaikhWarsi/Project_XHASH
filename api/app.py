@@ -59,6 +59,8 @@ from .routes.renaissance import router as renaissance_router
 from .routes.integrations_routes import router as integrations_router
 from .routes.analytics_routes import router as analytics_router
 from .routes.audit_routes import router as audit_router
+from .routes.providers_v2 import router as providers_v2_router
+from .routes.hypotheses_v2 import router as hypotheses_v2_router
 from persistence import init_db, close_db
 from persistence.database import _engine as db_engine
 
@@ -168,6 +170,8 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
     app.include_router(integrations_router)
     app.include_router(analytics_router)
     app.include_router(audit_router)
+    app.include_router(providers_v2_router)
+    app.include_router(hypotheses_v2_router)
 
     @app.get("/")
     async def root():

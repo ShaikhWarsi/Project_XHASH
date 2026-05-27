@@ -19,9 +19,9 @@ interface Hypothesis {
 
 const STATUS_COLORS: Record<string, string> = {
   exploring: '#f59e0b',
-  testing: '#3b82f6',
-  validated: '#22c55e',
-  rejected: '#ef4444',
+  testing: 'var(--accent-blue)',
+  validated: 'var(--accent-green)',
+  rejected: 'var(--accent-red)',
   monitoring: '#8b5cf6',
 }
 

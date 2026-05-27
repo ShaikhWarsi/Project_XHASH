@@ -214,7 +214,7 @@ export default function Dashboard() {
       <MarketTickerBarEnhanced />
 
       {/* TOP STATUS BAR */}
-      <div className="flex items-center justify-between bg-card border border-default px-3 py-1.5">
+      <div className="flex items-center justify-between bg-card border border-default px-2 py-1 shadow-widget">
         <div className="flex items-center gap-4">
           <DataRow label="NAV" value={`$${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`} />
           <span className="text-border">|</span>
@@ -374,7 +374,7 @@ export default function Dashboard() {
                         onClick={() => setShowBenchmark(!showBenchmark)}
                         className="text-[9px] font-mono px-2 py-0.5 cursor-pointer rounded-sm border transition-colors"
                         style={{
-                          background: showBenchmark ? 'rgba(59,130,246,0.15)' : 'none',
+                          background: showBenchmark ? 'color-mix(in srgb, var(--accent-blue) 15%, transparent)' : 'none',
                           borderColor: 'var(--border-color)',
                           color: showBenchmark ? 'var(--accent-blue)' : 'var(--text-muted)',
                         }}
@@ -519,7 +519,7 @@ export default function Dashboard() {
             background: showActivity ? 'var(--accent-blue)' : 'var(--bg-card)',
             borderColor: 'var(--border-color)',
             color: showActivity ? '#fff' : 'var(--text-secondary)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+            boxShadow: 'var(--shadow-md)',
           }}
           title="Activity Feed"
         >

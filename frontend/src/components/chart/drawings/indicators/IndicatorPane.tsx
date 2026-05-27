@@ -23,24 +23,24 @@ export function IndicatorPane({ indicator, data, onRemove, height = 120 }: Indic
       height,
       layout: {
         background: { color: 'transparent' },
-        textColor: '#5d6b7e',
+        textColor: 'var(--text-secondary)',
       },
       grid: {
-        vertLines: { color: '#1a2332' },
-        horzLines: { color: '#1a2332' },
+        vertLines: { color: 'var(--chart-grid)' },
+        horzLines: { color: 'var(--chart-grid)' },
       },
       crosshair: {
         mode: CrosshairMode.Normal,
-        vertLine: { color: '#3b82f6', width: 1, style: 2, labelBackgroundColor: '#3b82f6' },
-        horzLine: { color: '#3b82f6', width: 1, style: 2, labelBackgroundColor: '#3b82f6' },
+        vertLine: { color: 'var(--accent-blue)', width: 1, style: 2, labelBackgroundColor: 'var(--accent-blue)' },
+        horzLine: { color: 'var(--accent-blue)', width: 1, style: 2, labelBackgroundColor: 'var(--accent-blue)' },
       },
       timeScale: { visible: false },
-      rightPriceScale: { borderColor: '#1a2332' },
+      rightPriceScale: { borderColor: 'var(--chart-border)' },
     })
 
     chartRef.current = chart
     seriesRef.current = chart.addSeries(LineSeries, {
-      color: indicator.style?.color || '#f59e0b',
+      color: indicator.style?.color || 'var(--accent-yellow)',
       lineWidth: 1,
       priceFormat: { type: 'price' },
     })
@@ -59,19 +59,19 @@ export function IndicatorPane({ indicator, data, onRemove, height = 120 }: Indic
   return (
     <div style={{
       position: 'relative',
-      borderTop: '1px solid #1a2332',
-      background: 'var(--bg-card, #0a0e14)',
+      borderTop: '1px solid var(--chart-border)',
+      background: 'var(--bg-card)',
     }}>
       <div style={{
         display: 'flex', justifyContent: 'space-between',
         padding: '1px 6px', fontSize: '9px',
-        color: 'var(--text-secondary, #5d6b7e)',
+        color: 'var(--text-secondary)',
         fontFamily: 'JetBrains Mono, monospace',
       }}>
-        <span style={{ color: indicator.style?.color || '#f59e0b' }}>{indicator.name}</span>
+        <span style={{ color: indicator.style?.color || 'var(--accent-yellow)' }}>{indicator.name}</span>
         {onRemove && (
           <button onClick={() => onRemove(indicator.id)}
-            style={{ background: 'none', border: 'none', color: '#ef5350', cursor: 'pointer', fontSize: '9px', padding: 0 }}>
+            style={{ background: 'none', border: 'none', color: 'var(--accent-red)', cursor: 'pointer', fontSize: '9px', padding: 0 }}>
             ?
           </button>
         )}

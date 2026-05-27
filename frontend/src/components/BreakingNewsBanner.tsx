@@ -10,16 +10,28 @@ interface NewsItem {
   timestamp: string
 }
 
-const MOCK_NEWS: NewsItem[] = [
-  { title: 'Fed holds rates steady at 5.50% as inflation moderates', source: 'Bloomberg', url: '', priority: 'flash', timestamp: new Date().toISOString() },
-  { title: 'S&P 500 hits fresh all-time high above 5,500', source: 'Reuters', url: '', priority: 'urgent', timestamp: new Date().toISOString() },
-  { title: 'Oil prices surge 3% on Middle East supply concerns', source: 'CNBC', url: '', priority: 'normal', timestamp: new Date().toISOString() },
+const NEWS_ROTATION: NewsItem[][] = [
+  [
+    { title: 'Fed holds rates steady at 5.50% as inflation moderates', source: 'Bloomberg', url: '', priority: 'flash', timestamp: new Date().toISOString() },
+    { title: 'S&P 500 hits fresh all-time high above 5,500', source: 'Reuters', url: '', priority: 'urgent', timestamp: new Date().toISOString() },
+    { title: 'Oil prices surge 3% on Middle East supply concerns', source: 'CNBC', url: '', priority: 'normal', timestamp: new Date().toISOString() },
+  ],
+  [
+    { title: 'Treasury yields dip as bond market rallies on GDP data', source: 'Bloomberg', url: '', priority: 'flash', timestamp: new Date().toISOString() },
+    { title: 'NVDA earnings beat estimates, stock up 8% in after-hours', source: 'Reuters', url: '', priority: 'urgent', timestamp: new Date().toISOString() },
+    { title: 'JP Morgan raises S&P 500 year-end target to 6,000', source: 'CNBC', url: '', priority: 'normal', timestamp: new Date().toISOString() },
+  ],
+  [
+    { title: 'EUR/USD breaks above 1.12 for first time since 2023', source: 'Bloomberg', url: '', priority: 'flash', timestamp: new Date().toISOString() },
+    { title: 'VIX spikes 15% as geopolitical tensions escalate', source: 'Reuters', url: '', priority: 'urgent', timestamp: new Date().toISOString() },
+    { title: 'Gold hits new record above $2,500/oz on safe-haven demand', source: 'CNBC', url: '', priority: 'normal', timestamp: new Date().toISOString() },
+  ],
 ]
 
 const PRIORITY_COLORS: Record<string, string> = {
-  flash: '#ef4444',
-  urgent: '#ea580c',
-  normal: '#3b82f6',
+  flash: 'var(--accent-red)',
+  urgent: 'var(--accent-orange)',
+  normal: 'var(--accent-blue)',
 }
 
 const PRIORITY_LABELS: Record<string, string> = {
@@ -30,7 +42,8 @@ const PRIORITY_LABELS: Record<string, string> = {
 
 export default function BreakingNewsBanner() {
   const [visible] = useState(true)
-  const [items, setItems] = useState(MOCK_NEWS)
+  const [newsSet, setNewsSet] = useState(0)
+  const [items, setItems] = useState(NEWS_ROTATION[0])
   const [dismissed, setDismissed] = useState<Set<number>>(new Set())
 
   useEffect(() => {
@@ -45,9 +58,17 @@ export default function BreakingNewsBanner() {
         })))
       }
     }).catch(() => {
-      /* news feed unavailable - using mock data */
+      /* news feed unavailable - using rotating mock data */
     })
   }, [])
+
+  useEffect(() => {
+    const rotation = setInterval(() => {
+      setNewsSet((prev) => (prev + 1) % NEWS_ROTATION.length)
+      setItems(NEWS_ROTATION[newsSet])
+    }, 30000)
+    return () => clearInterval(rotation)
+  }, [newsSet])
 
   const activeItems = items.filter((_, i) => !dismissed.has(i))
   if (!visible || activeItems.length === 0) return null

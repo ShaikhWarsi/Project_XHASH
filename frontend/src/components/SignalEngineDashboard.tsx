@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Card from './ui/Card'
 import Badge from './ui/Badge'
 import { api } from '../api/client'
@@ -19,10 +19,58 @@ const INPUT_STYLE: React.CSSProperties = {
   width: '100%',
 }
 
+function ConfidenceGauge({ label, value, maxValue, color }: { label: string; value: number; maxValue: number; color: string }) {
+  const pct = maxValue > 0 ? Math.min(value / maxValue, 1) : 0
+  return (
+    <div style={{ marginBottom: 6 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', ...FONT_LABEL, color: 'var(--text-secondary)', marginBottom: 2 }}>
+        <span>{label}</span>
+        <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{typeof value === 'number' ? value.toFixed(4) : value}</span>
+      </div>
+      <div style={{ width: '100%', height: 6, background: 'var(--bg-hover)', borderRadius: 3, overflow: 'hidden' }}>
+        <div style={{ width: `${pct * 100}%`, height: 6, background: color, borderRadius: 3, transition: 'width 0.4s ease' }} />
+      </div>
+    </div>
+  )
+}
+
+function HistogramBar({ label, value, maxValue, color }: { label: string; value: number; maxValue: number; color: string }) {
+  const pct = maxValue > 0 ? Math.abs(value) / maxValue : 0
+  const isNeg = value < 0
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+      <span style={{ width: 80, ...FONT_LABEL, color: 'var(--text-muted)', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
+      <div style={{ flex: 1, height: 14, background: 'var(--bg-hover)', borderRadius: 2, position: 'relative', overflow: 'hidden' }}>
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          [isNeg ? 'right' : 'left']: '50%',
+          width: `${pct * 50}%`,
+          height: 14,
+          background: color,
+          borderRadius: 2,
+        }} />
+        <div style={{
+          position: 'absolute',
+          top: 0, left: '50%',
+          width: 1, height: 14,
+          background: 'var(--border-color)',
+        }} />
+      </div>
+      <span style={{ width: 60, ...FONT_DATA, color: 'var(--text-primary)', textAlign: 'right' }}>{value.toFixed(4)}</span>
+    </div>
+  )
+}
+
+type ResultValue = Record<string, number | string>
+type ResultEntry = [string, number | string]
+
+function isNumeric(v: unknown): v is number { return typeof v === 'number' && !Number.isNaN(v) }
+
 export default function SignalEngineDashboard() {
   const [tab, setTab] = useState<EngineTab>('spectre')
   const [symbol, setSymbol] = useState('AAPL')
-  const [result, setResult] = useState<any>(null)
+  const [result, setResult] = useState<ResultValue | null>(null)
   const [loading, setLoading] = useState(false)
 
   const runEngine = async () => {
@@ -47,6 +95,14 @@ export default function SignalEngineDashboard() {
     setLoading(false)
   }
 
+  const metrics = useMemo(() => {
+    if (!result || result.error) return null
+    const entries = Object.entries(result) as ResultEntry[]
+    const numericValues = entries.filter(([, v]) => isNumeric(v)).map(([, v]) => Math.abs(v as number))
+    const maxAbs = numericValues.length > 0 ? Math.max(...numericValues) : 1
+    return { entries, maxAbs }
+  }, [result])
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-card)', border: '1px solid var(--border-color)', padding: '4px 8px' }}>
@@ -56,7 +112,7 @@ export default function SignalEngineDashboard() {
             key={t}
             onClick={() => { setTab(t); setResult(null) }}
             style={{
-              background: tab === t ? 'rgba(59,130,246,0.15)' : 'none',
+              background: tab === t ? 'color-mix(in srgb, var(--accent-blue) 15%, transparent)' : 'none',
               border: 'none',
               color: tab === t ? 'var(--accent-blue)' : 'var(--text-muted)',
               ...FONT_SM,
@@ -97,38 +153,77 @@ export default function SignalEngineDashboard() {
       </Card>
 
       <Card title="RESULTS">
-        {result ? (
-          result.error ? (
-            <div style={{ ...FONT_SM, color: 'var(--accent-red)' }}>Error: {result.error}</div>
-          ) : (
-            <div style={{ maxHeight: 300, overflowY: 'auto' }}>
-              {Object.entries(result).map(([k, v]) => (
-                <div
-                  key={k}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    padding: '3px 0',
-                    borderBottom: '1px solid var(--border-color)',
-                    ...FONT_DATA,
-                    color: 'var(--text-secondary)',
-                  }}
-                >
-                  <span style={{ color: 'var(--text-muted)', ...FONT_LABEL, textTransform: 'capitalize' }}>
-                    {k.replace(/_/g, ' ')}
-                  </span>
-                  <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
-                    {typeof v === 'number' ? (Math.abs(v) > 100 ? v.toFixed(2) : v.toFixed(4)) : String(v).slice(0, 60)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )
-        ) : (
+        {!result && !loading && (
           <div style={{ padding: 12, textAlign: 'center', ...FONT_SM, color: 'var(--text-muted)' }}>
-            {tab === 'spectre' && 'Run Spectre GPU factor analysis'}
-            {tab === 'tsfresh' && 'Run tsfresh feature extraction'}
-            {tab === 'rl' && 'Train a reinforcement learning agent'}
+            {tab === 'spectre' && 'Run Spectre GPU factor analysis — results shown as confidence bars'}
+            {tab === 'tsfresh' && 'Run tsfresh feature extraction — top features ranked by importance'}
+            {tab === 'rl' && 'Train a reinforcement learning agent — policy and reward metrics'}
+          </div>
+        )}
+        {loading && (
+          <div style={{ padding: 12, textAlign: 'center', ...FONT_SM, color: 'var(--text-muted)' }}>
+            <div className="animate-pulse-glow" style={{ width: '100%', height: 4, background: 'var(--accent-blue)', borderRadius: 2, marginBottom: 8 }} />
+            Processing signal engine...
+          </div>
+        )}
+        {result?.error && (
+          <div style={{ ...FONT_SM, color: 'var(--accent-red)' }}>Error: {result.error}</div>
+        )}
+        {metrics && !result?.error && (
+          <div>
+            {tab === 'spectre' && (
+              <div style={{ marginBottom: 8 }}>
+                {metrics.entries.map(([k, v]) => (
+                  isNumeric(v) ? (
+                    <HistogramBar
+                      key={k}
+                      label={k.replace(/_/g, ' ')}
+                      value={v}
+                      maxValue={metrics.maxAbs}
+                      color={v >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'}
+                    />
+                  ) : (
+                    <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', ...FONT_DATA, color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-color)' }}>
+                      <span style={{ ...FONT_LABEL, color: 'var(--text-muted)', textTransform: 'capitalize' }}>{k.replace(/_/g, ' ')}</span>
+                      <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{String(v).slice(0, 60)}</span>
+                    </div>
+                  )
+                ))}
+              </div>
+            )}
+            {tab === 'tsfresh' && (
+              <div>
+                {metrics.entries.slice(0, 10).map(([k, v], i) => (
+                  isNumeric(v) ? (
+                    <ConfidenceGauge
+                      key={k}
+                      label={`#${i + 1} ${k.replace(/_/g, ' ')}`}
+                      value={v}
+                      maxValue={metrics.maxAbs}
+                      color={i === 0 ? 'var(--accent-green)' : i < 3 ? 'var(--accent-blue)' : 'var(--accent-cyan)'}
+                    />
+                  ) : null
+                ))}
+              </div>
+            )}
+            {tab === 'rl' && (
+              <div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 6, marginBottom: 8 }}>
+                  {metrics.entries.map(([k, v]) => (
+                    isNumeric(v) ? (
+                      <div key={k} style={{ textAlign: 'center', padding: '6px 4px', background: 'var(--bg-hover)', borderRadius: 'var(--radius-sm)' }}>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', ...FONT_DATA }}>{v.toFixed(2)}</div>
+                        <div style={{ ...FONT_LABEL, color: 'var(--text-muted)', marginTop: 2 }}>{k.replace(/_/g, ' ')}</div>
+                      </div>
+                    ) : null
+                  ))}
+                </div>
+                <div style={{ width: '100%', height: 4, background: 'var(--bg-hover)', borderRadius: 2 }}>
+                  <div className="animate-pulse-glow" style={{ width: '60%', height: 4, background: 'var(--accent-green)', borderRadius: 2 }} />
+                </div>
+                <div style={{ ...FONT_LABEL, color: 'var(--text-muted)', marginTop: 4 }}>Training progress indicator</div>
+              </div>
+            )}
           </div>
         )}
       </Card>

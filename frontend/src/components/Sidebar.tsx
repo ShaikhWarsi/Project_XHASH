@@ -6,15 +6,15 @@ import {
   BarChart3, Sigma, X, ArrowLeftRight, FileCode, AlertTriangle,
   PieChart, TrendingUp, BrainCircuit, Code, GitBranch, Puzzle,
   Share2, Globe, Search, Cpu, ChevronDown, ChevronRight, Target,
-  BarChart4, Radio, LineChart, Shield, BookOpen, Database,
+  BarChart4, Radio, LineChart, Shield, BookOpen, Database, Bell,
 } from 'lucide-react'
 import { useBreakpoint } from '../hooks/useBreakpoint'
-import { ROUTES, GROUP_LABELS, type RouteConfig } from '../utils/routes'
+import { ROUTES, GROUP_LABELS, type RouteConfig, type WorkflowGroup } from '../utils/routes'
 
 const MOD = navigator.platform.startsWith('Mac') ? '⌘' : '^'
 
 const ICON_MAP: Record<string, any> = {
-  dashboard: LayoutDashboard, chart: CandlestickChart, watchlist: Star,
+  dashboard: LayoutDashboard, chart: CandlestickChart, watchlist: Star, alerts: Bell,
   signals: Activity, structure: Layers, 'advanced-charts': LineChart,
   orders: ArrowLeftRight, trades: ScrollText, portfolio: Wallet,
   'paper-trading': FlaskConical, 'portfolio-optimization': TrendingUp,
@@ -51,7 +51,7 @@ function buildNavGroups(): NavGroup[] {
   return groupKeys.map((key) => ({
     label: GROUP_LABELS[key] || key.toUpperCase(),
     items: ROUTES
-      .filter((r) => r.group === key)
+      .filter((r) => r.group === key && r.path !== '/markets/dashboard')
       .map((r) => ({
         to: r.path,
         label: r.label,
@@ -94,6 +94,15 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     setCollapsedGroups((prev) => ({ ...prev, [label]: !prev[label] }))
   }
 
+  const [workflowFilter, setWorkflowFilter] = useState<WorkflowGroup | null>(null)
+
+  const WORKFLOW_OPTIONS: { id: WorkflowGroup; label: string; icon: any }[] = [
+    { id: 'trader', label: 'Trader', icon: TrendingUp },
+    { id: 'quant', label: 'Quant', icon: Sigma },
+    { id: 'researcher', label: 'Research', icon: Search },
+    { id: 'admin', label: 'Admin', icon: Settings },
+  ]
+
   const sidebarContent = (
     <>
       <div
@@ -111,7 +120,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           >
             TE$
           </span>
-          <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>v0.3</span>
         </div>
         {isMobile && onClose && (
           <button
@@ -122,6 +130,34 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <X size={14} />
           </button>
         )}
+      </div>
+      <div style={{ display: 'flex', gap: 2, padding: '4px 8px', borderBottom: '1px solid var(--border-color)' }}>
+        <button onClick={() => setWorkflowFilter(null)} style={{
+          flex: 1, padding: '3px 0', fontSize: 9, fontFamily: "'JetBrains Mono', monospace",
+          background: workflowFilter === null ? 'var(--accent-green)' : 'transparent',
+          color: workflowFilter === null ? '#000' : 'var(--text-muted)',
+          border: `1px solid ${workflowFilter === null ? 'var(--accent-green)' : 'var(--border-color)'}`,
+          cursor: 'pointer',
+          fontWeight: workflowFilter === null ? 700 : 400,
+        }}>ALL</button>
+        {WORKFLOW_OPTIONS.map((w) => {
+          const Icon = w.icon
+          const isActive = workflowFilter === w.id
+          return (
+            <button key={w.id} onClick={() => setWorkflowFilter(isActive ? null : w.id)} style={{
+              flex: 1, padding: '3px 0', fontSize: 9, fontFamily: "'JetBrains Mono', monospace",
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2,
+              background: isActive ? 'color-mix(in srgb, var(--accent-cyan) 20%, transparent)' : 'transparent',
+              color: isActive ? 'var(--accent-cyan)' : 'var(--text-muted)',
+              border: `1px solid ${isActive ? 'var(--accent-cyan)' : 'var(--border-color)'}`,
+              cursor: 'pointer',
+              fontWeight: isActive ? 700 : 400,
+            }}>
+              <Icon size={9} />
+              {w.label}
+            </button>
+          )
+        })}
       </div>
       <nav className="flex-1 py-2 overflow-y-auto" aria-label="Main navigation" style={{ scrollbarWidth: 'thin' }}>
         {hiddenGroups['__all'] && (
@@ -143,7 +179,14 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             </button>
           </div>
         )}
-        {NAV_GROUPS.filter((g) => !hiddenGroups[g.label]).map((group) => {
+        {NAV_GROUPS.map((g) => ({
+          ...g,
+          items: g.items.filter((item) => {
+            if (!workflowFilter) return true
+            const route = ROUTES.find((r) => r.path === item.to)
+            return route?.workflow === workflowFilter
+          }),
+        })).filter((g) => !hiddenGroups[g.label] && g.items.length > 0).map((group) => {
           const isCollapsed = collapsedGroups[group.label]
           return (
             <div key={group.label} className="mb-3">

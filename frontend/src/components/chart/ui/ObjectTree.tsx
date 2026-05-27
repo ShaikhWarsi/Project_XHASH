@@ -44,7 +44,7 @@ export function ObjectTree({ drawings, selectedId, onSelect, onDelete, onVisibil
           }}
         >
           <span onClick={(e) => { e.stopPropagation(); onVisibilityToggle(d.id) }}
-            style={{ cursor: 'pointer', color: d.visible ? '#3b82f6' : '#333', fontSize: '10px' }}>
+            style={{ cursor: 'pointer', color: d.visible ? 'var(--accent-blue)' : 'var(--text-muted)', fontSize: '10px' }}>
             {d.visible ? '??' : '?'}
           </span>
           <span style={{ flex: 1 }}>{TOOL_LABELS[d.type] || d.type}</span>

@@ -182,9 +182,9 @@ export default function StrategyOptimizer() {
                 {result.ranking.map((r: any, i: number) => (
                   <tr key={i} className="border-b border-[rgba(26,35,50,0.3)]" style={{ background: i === 0 ? 'rgba(34,197,94,0.05)' : 'none' }}>
                     <td className="px-2 py-0.5 font-semibold">{i + 1}</td>
-                    <td className="px-2 py-0.5 font-semibold" style={{ color: r.score.overall >= 80 ? '#22c55e' : r.score.overall >= 50 ? '#f59e0b' : '#ef4444' }}>{r.score.overall?.toFixed(1)}</td>
+                    <td className="px-2 py-0.5 font-semibold" style={{ color: r.score.overall >= 80 ? 'var(--accent-green)' : r.score.overall >= 50 ? 'var(--accent-yellow)' : 'var(--accent-red)' }}>{r.score.overall?.toFixed(1)}</td>
                     <td className="px-2 py-0.5">{r.score.letter}</td>
-                    <td className="px-2 py-0.5" style={{ color: r.metrics.total_return > 0 ? '#22c55e' : '#ef4444' }}>{r.metrics.total_return?.toFixed(1)}%</td>
+                    <td className="px-2 py-0.5" style={{ color: r.metrics.total_return > 0 ? 'var(--accent-green)' : 'var(--accent-red)' }}>{r.metrics.total_return?.toFixed(1)}%</td>
                     <td className="px-2 py-0.5">{r.metrics.sharpe_ratio?.toFixed(2)}</td>
                     <td className="px-2 py-0.5">{r.metrics.win_rate?.toFixed(0)}%</td>
                     <td className="px-2 py-0.5 text-down">{r.metrics.max_drawdown?.toFixed(1)}%</td>

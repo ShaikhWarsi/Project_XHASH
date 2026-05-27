@@ -70,33 +70,45 @@ async def get_quotes(symbols: str = "SPY,QQQ"):
     sym_list = [s.strip().upper() for s in symbols.split(",") if s.strip()]
     import yfinance as yf
     import pandas as pd
-    try:
-        df = await asyncio.to_thread(lambda: yf.download(" ".join(sym_list), period="1d", group_by="ticker", progress=False))
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Data provider failed for {sym_list}: {e}")
     import math
     result = {}
-    for sym in sym_list:
-        try:
-            if not df.empty and isinstance(df.columns, pd.MultiIndex) and sym in df.columns.levels[0]:
-                row = df[sym].iloc[-1]
-                price = float(row["Close"])
-                prev = float(row["Open"])
-                high = float(row["High"])
-                low = float(row["Low"])
-                chg = price - prev
-                pct = (chg / prev * 100) if prev else 0.0
-            else:
+    try:
+        with _market_lock:
+            df = await asyncio.to_thread(lambda: yf.download(" ".join(sym_list), period="1d", group_by="ticker", progress=False))
+        for sym in sym_list:
+            try:
+                if not df.empty and isinstance(df.columns, pd.MultiIndex) and sym in df.columns.levels[0]:
+                    row = df[sym].iloc[-1]
+                    price = float(row["Close"])
+                    prev = float(row["Open"])
+                    high = float(row["High"])
+                    low = float(row["Low"])
+                    chg = price - prev
+                    pct = (chg / prev * 100) if prev else 0.0
+                else:
+                    quote = _get_yfinance().get_quote(sym)
+                    price, chg, pct, high, low = quote["c"], quote["d"], quote["dp"], quote["h"], quote["l"]
+                def sf(v):
+                    if v is None or (isinstance(v, float) and (math.isnan(v) or math.isinf(v))):
+                        return 0.0
+                    return float(v)
+                result[sym] = {"c": sf(price), "d": sf(chg), "dp": sf(pct), "h": sf(high), "l": sf(low), "o": sf(price - chg), "pc": sf(price - chg)}
+            except Exception as e:
+                logger.warning("Failed to fetch price for %s: %s", sym, e)
+                result[sym] = None
+    except Exception as e:
+        for sym in sym_list:
+            try:
                 quote = _get_yfinance().get_quote(sym)
-                price, chg, pct, high, low = quote["c"], quote["d"], quote["dp"], quote["h"], quote["l"]
-            def sf(v):
-                if v is None or (isinstance(v, float) and (math.isnan(v) or math.isinf(v))):
-                    return 0.0
-                return float(v)
-            result[sym] = {"c": sf(price), "d": sf(chg), "dp": sf(pct), "h": sf(high), "l": sf(low), "o": sf(price - chg), "pc": sf(price - chg)}
-        except Exception as e:
-            logger.warning("Failed to fetch price for %s: %s", sym, e)
-            result[sym] = None
+                def sf(v):
+                    if v is None or (isinstance(v, float) and (math.isnan(v) or math.isinf(v))):
+                        return 0.0
+                    return float(v)
+                result[sym] = {"c": sf(quote["c"]), "d": sf(quote["d"]), "dp": sf(quote["dp"]), "h": sf(quote["h"]), "l": sf(quote["l"]), "o": sf(quote["o"]), "pc": sf(quote["pc"])}
+            except Exception as e2:
+                logger.warning("Fallback quote failed for %s: %s", sym, e2)
+                result[sym] = None
+    return result
 
 
 @router.get("/profile/{symbol}")

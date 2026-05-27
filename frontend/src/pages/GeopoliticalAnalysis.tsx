@@ -45,15 +45,15 @@ export default function GeopoliticalAnalysis() {
           <div className="flex gap-3 mb-4">
             <div className="bg-card border border-default px-3.5 py-2.5 rounded min-w-[120px]">
               <div className="text-[9px] text-muted mb-0.5">SENTIMENT SCORE</div>
-              <div className="text-[22px] font-bold" style={{ color: result.sentiment_score > 0 ? '#22c55e' : '#ef4444' }}>{result.sentiment_score?.toFixed(0)}</div>
+              <div className="text-[22px] font-bold" style={{ color: result.sentiment_score > 0 ? 'var(--accent-green)' : 'var(--accent-red)' }}>{result.sentiment_score?.toFixed(0)}</div>
+              <div className="text-[12px] text-muted">Sentiment Score</div>
             </div>
-            <div className="bg-card border border-default px-3.5 py-2.5 rounded min-w-[120px]">
-              <div className="text-[9px] text-muted mb-0.5">GEO EVENTS</div>
-              <div className="text-[22px] font-bold" style={{ color: result.geo_count > 0 ? '#f59e0b' : '#22c55e' }}>{result.geo_count}</div>
+            <div>
+              <div className="text-[22px] font-bold" style={{ color: result.geo_count > 0 ? 'var(--accent-yellow)' : 'var(--accent-green)' }}>{result.geo_count}</div>
+              <div className="text-[12px] text-muted">Geo Events</div>
             </div>
-            <div className="bg-card border border-default px-3.5 py-2.5 rounded min-w-[120px]">
-              <div className="text-[9px] text-muted mb-0.5">GEO PENALTY</div>
-              <div className="text-[22px] font-bold" style={{ color: result.geo_penalty < 0 ? '#ef4444' : '#22c55e' }}>{result.geo_penalty}</div>
+            <div>
+              <div className="text-[22px] font-bold" style={{ color: result.geo_penalty < 0 ? 'var(--accent-red)' : 'var(--accent-green)' }}>{result.geo_penalty}</div>
             </div>
           </div>
 
@@ -73,7 +73,7 @@ export default function GeopoliticalAnalysis() {
                 {Object.entries(result.trend_outlook).map(([k, v]: [string, any]) => (
                   <div key={k} className="bg-card border border-default px-3 py-2 rounded flex-1">
                     <div className="text-[9px] text-muted mb-0.5">{k.toUpperCase()}</div>
-                    <div className="text-sm font-bold" style={{ color: v.trend === 'BUY' ? '#22c55e' : v.trend === 'SELL' ? '#ef4444' : '#f59e0b' }}>{v.trend}</div>
+                    <div className="text-sm font-bold" style={{ color: v.trend === 'BUY' ? 'var(--accent-green)' : v.trend === 'SELL' ? 'var(--accent-red)' : 'var(--accent-yellow)' }}>{v.trend}</div>
                     <div className="text-[9px] text-muted">{v.strength} ({v.score?.toFixed(0)})</div>
                   </div>
                 ))}
@@ -111,7 +111,7 @@ export default function GeopoliticalAnalysis() {
                   {result.geo_detections.map((d: any, i: number) => (
                     <tr key={i} className="border-b border-[rgba(26,35,50,0.3)]">
                       <td className="px-2 py-[3px]">
-                        <span className="font-semibold" style={{ color: d.level === 'severe' ? '#ef4444' : '#f59e0b' }}>{d.level.toUpperCase()}</span>
+                        <span className="font-semibold" style={{ color: d.level === 'severe' ? 'var(--accent-red)' : 'var(--accent-yellow)' }}>{d.level.toUpperCase()}</span>
                       </td>
                       <td className="px-2 py-[3px] text-accent-blue">{d.matched}</td>
                       <td className="px-2 py-[3px] max-w-[300px] overflow-hidden text-ellipsis whitespace-nowrap">{d.title}</td>

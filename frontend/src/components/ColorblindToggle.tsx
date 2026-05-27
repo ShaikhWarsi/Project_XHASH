@@ -10,10 +10,10 @@ interface ColorblindToggleProps {
 
 const PALETTES: Record<Mode, Record<string, string>> = {
   default: {
-    '--accent-green': '#22c55e',
-    '--accent-red': '#ef4444',
-    '--chart-candle-up': '#22c55e',
-    '--chart-candle-down': '#ef4444',
+    '--accent-green': 'var(--accent-green)',
+    '--accent-red': 'var(--accent-red)',
+    '--chart-candle-up': 'var(--accent-green)',
+    '--chart-candle-down': 'var(--accent-red)',
   },
   deuteranopia: {
     '--accent-green': '#0066cc',

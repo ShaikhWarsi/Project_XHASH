@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Play, Loader, Settings } from 'lucide-react'
+import { Play, Loader, Settings, Share2 } from 'lucide-react'
 import { useBacktestStore } from '../store/backtest'
 import { fetchOHLCV } from '../api/client'
 import { useToastStore } from '../store/toast'
@@ -32,7 +32,7 @@ function EquityCurveChart({
     const chartBorder = styles.getPropertyValue('--chart-border').trim() || '#2a2d3e'
     const chartLine = styles.getPropertyValue('--chart-line').trim() || '#22c55e'
     const chart = createChart(chartRef.current, {
-      height: 220,
+      height: 400,
       layout: { background: { type: ColorType.Solid, color: chartBg }, textColor: chartText },
       grid: { vertLines: { color: chartGrid }, horzLines: { color: chartGrid } },
       crosshair: { mode: 0 },
@@ -50,22 +50,15 @@ function EquityCurveChart({
   }, [data, benchmark, showBenchmark])
   return (
     <div>
-      <div ref={chartRef} />
       {benchmark && benchmark.length > 0 && (
-        <div className="flex justify-end mt-1">
-          <button
-            onClick={() => setShowBenchmark(!showBenchmark)}
-            className="text-[9px] font-mono-data px-2 py-0.5 cursor-pointer rounded-sm border transition-colors"
-            style={{
-              background: showBenchmark ? 'rgba(59,130,246,0.15)' : 'none',
-              borderColor: 'var(--border-color)',
-              color: showBenchmark ? 'var(--accent-blue)' : 'var(--text-muted)',
-            }}
-          >
-            {showBenchmark ? 'HIDE SPY' : 'VS SPY'}
-          </button>
+        <div className="flex items-center gap-2 mb-1">
+          <label className="flex items-center gap-1.5 font-mono-data text-[10px] cursor-pointer" style={{ color: showBenchmark ? 'var(--accent-blue)' : 'var(--text-muted)' }}>
+            <input type="checkbox" checked={showBenchmark} onChange={() => setShowBenchmark(!showBenchmark)} style={{ accentColor: 'var(--accent-blue)' }} />
+            VS SPY BENCHMARK
+          </label>
         </div>
       )}
+      <div ref={chartRef} />
     </div>
   )
 }
@@ -231,6 +224,12 @@ export default function Backtest() {
         </button>
       </div>
 
+      {running && (
+        <div style={{ width: '100%', height: 3, background: 'var(--bg-hover)', overflow: 'hidden' }}>
+          <div className="animate-pulse-glow" style={{ width: '60%', height: 3, background: 'var(--accent-cyan)', borderRadius: 2 }} />
+        </div>
+      )}
+
       {showCache && <CacheStatsPanel />}
 
       {/* ── Tab bar ── */}
@@ -321,10 +320,21 @@ export default function Backtest() {
                 />
               </Card>
 
-              <button onClick={clear} className="bg-none border font-mono-data text-[10px] px-3 py-0.5 cursor-pointer self-start"
-                style={{ borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}>
-                CLEAR RESULTS
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => {
+                  const params = new URLSearchParams({ symbol: config.tickers, start: config.start, end: config.end, capital: String(config.capital) })
+                  const url = `${window.location.origin}${window.location.pathname}?${params}`
+                  navigator.clipboard.writeText(url)
+                  addToast('Backtest URL copied to clipboard', 'success')
+                }} className="flex items-center gap-1 bg-none border font-mono-data text-[10px] px-3 py-0.5 cursor-pointer"
+                  style={{ borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}>
+                  <Share2 size={10} /> Share
+                </button>
+                <button onClick={clear} className="bg-none border font-mono-data text-[10px] px-3 py-0.5 cursor-pointer"
+                  style={{ borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}>
+                  CLEAR RESULTS
+                </button>
+              </div>
             </>
           )}
 

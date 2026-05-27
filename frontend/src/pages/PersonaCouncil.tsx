@@ -73,6 +73,7 @@ export default function PersonaCouncil() {
         signal: abort.signal,
       })
       const decoder = new TextDecoder()
+      const pending: Opinion[] = []
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
@@ -81,9 +82,21 @@ export default function PersonaCouncil() {
           if (line.startsWith('data: ')) {
             try {
               const event = JSON.parse(line.slice(6))
-              if (event.type === 'complete') {
+              if (event.type === 'opinion') {
+                const o = event.data
+                if (o?.agent) {
+                  const opinion: Opinion = {
+                    agent: o.agent_name || o.agent || 'Unknown',
+                    signal: o.direction === 1 ? 'bullish' : o.direction === -1 ? 'bearish' : 'neutral',
+                    confidence: Math.abs(o.score || o.confidence || 0.5),
+                    reasoning: o.reasoning || o.reason || '',
+                  }
+                  pending.push(opinion)
+                  setOpinions([...pending])
+                }
+              } else if (event.type === 'complete') {
                 const data = event.data
-                if (data?.decisions) {
+                if (data?.decisions && pending.length === 0) {
                   const ops: Opinion[] = []
                   for (const t of Object.keys(data.decisions)) {
                     for (const signal of data.decisions[t] || []) {
@@ -166,7 +179,7 @@ export default function PersonaCouncil() {
           disabled={loading || !ticker}
           className="px-4 py-2 text-xs font-mono font-bold rounded-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed text-white border-none"
           style={{
-            background: loading ? 'var(--bg-hover)' : 'linear-gradient(135deg, #8b5cf6, #3b82f6)',
+            background: loading ? 'var(--bg-hover)' : 'linear-gradient(135deg, var(--accent-purple), var(--accent-blue))',
             color: loading ? 'var(--text-muted)' : '#fff',
           }}
         >
@@ -199,85 +212,100 @@ export default function PersonaCouncil() {
       )}
 
       {error && (
-        <div className="px-3 py-2 text-[10px] font-mono rounded-sm text-down" style={{ background: 'rgba(239,68,68,0.1)' }}>
+        <div className="px-3 py-2 text-[10px] font-mono rounded-sm text-down" style={{ background: 'color-mix(in srgb, var(--accent-red) 10%, transparent)' }}>
           {error}
         </div>
       )}
 
       {opinions.length > 0 && (
         <>
-          <div className="grid grid-cols-4 gap-2">
-            <Card>
-              <div className="flex flex-col items-center py-2">
+          {/* Consensus Gauge & Stats */}
+          <Card>
+            <div className="flex items-stretch gap-3 p-2">
+              <div className="flex-1 flex flex-col justify-center items-center gap-1">
                 <span className="text-[9px] font-mono uppercase tracking-wider text-muted">Consensus</span>
-                <span className={`text-lg font-bold ${consensusColor}`}>{consensus}</span>
-                <span className="text-[9px] font-mono text-muted">{(Math.abs(netScore) * 100).toFixed(0)}% net</span>
+                <span className={`text-xl font-bold ${consensusColor}`}>{consensus}</span>
+                <div style={{ width: '100%', height: 4, background: 'var(--border-color)', borderRadius: 2, position: 'relative', overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${Math.abs(netScore) * 100}%`,
+                    borderRadius: 2,
+                    background: netScore > 0 ? 'var(--accent-green)' : 'var(--accent-red)',
+                    transition: 'width 0.5s ease',
+                    marginLeft: netScore < 0 ? `${(1 - Math.abs(netScore)) * 100}%` : 0,
+                  }} />
+                </div>
+                <span className="text-[8px] font-mono text-muted">{(Math.abs(netScore) * 100).toFixed(0)}% net sentiment</span>
               </div>
-            </Card>
-            <Card>
-              <div className="flex flex-col items-center py-2">
-                <span className="text-[9px] font-mono uppercase tracking-wider text-muted">Bullish</span>
-                <span className="text-lg font-bold text-up">{bullish}</span>
-                <span className="text-[9px] font-mono text-muted">of {opinions.length}</span>
+              <div className="flex gap-3 items-center">
+                <div className="flex flex-col items-center px-3 py-1 rounded-sm" style={{ background: 'color-mix(in srgb, var(--accent-green) 10%, transparent)' }}>
+                  <span className="text-lg font-bold text-up">{bullish}</span>
+                  <span className="text-[8px] font-mono text-muted">BULLISH</span>
+                </div>
+                <div className="flex flex-col items-center px-3 py-1 rounded-sm" style={{ background: 'color-mix(in srgb, var(--accent-red) 10%, transparent)' }}>
+                  <span className="text-lg font-bold text-down">{bearish}</span>
+                  <span className="text-[8px] font-mono text-muted">BEARISH</span>
+                </div>
+                <div className="flex flex-col items-center px-3 py-1">
+                  <span className="text-lg font-bold text-primary">{(avgConf * 100).toFixed(0)}%</span>
+                  <span className="text-[8px] font-mono text-muted">CONFIDENCE</span>
+                </div>
               </div>
-            </Card>
-            <Card>
-              <div className="flex flex-col items-center py-2">
-                <span className="text-[9px] font-mono uppercase tracking-wider text-muted">Bearish</span>
-                <span className="text-lg font-bold text-down">{bearish}</span>
-                <span className="text-[9px] font-mono text-muted">of {opinions.length}</span>
-              </div>
-            </Card>
-            <Card>
-              <div className="flex flex-col items-center py-2">
-                <span className="text-[9px] font-mono uppercase tracking-wider text-muted">Confidence</span>
-                <span className="text-lg font-bold text-primary">{(avgConf * 100).toFixed(0)}%</span>
-                <span className="text-[9px] font-mono text-muted">average</span>
-              </div>
-            </Card>
-          </div>
+              <button
+                onClick={handleShare}
+                className="px-2 py-1 text-[9px] font-mono cursor-pointer rounded-sm self-center"
+                style={{
+                  background: copied ? 'color-mix(in srgb, var(--accent-green) 15%, transparent)' : 'var(--bg-hover)',
+                  border: `1px solid ${copied ? 'var(--accent-green)' : 'var(--border-color)'}`,
+                  color: copied ? 'var(--accent-green)' : 'var(--text-muted)',
+                }}
+              >
+                {copied ? 'COPIED' : 'SHARE'}
+              </button>
+            </div>
+          </Card>
 
-          <div className="flex items-center justify-between">
-            <span className="text-[9px] font-mono uppercase tracking-wider text-muted">
-              Council Votes ({opinions.length})
-            </span>
-            <button
-              onClick={handleShare}
-              className={`px-2 py-0.5 text-[9px] font-mono cursor-pointer rounded-sm border ${copied ? 'border-up' : 'border-default'}`}
-              style={{
-                background: copied ? 'rgba(34,197,94,0.15)' : 'var(--bg-hover)',
-                color: copied ? 'var(--accent-green)' : 'var(--text-muted)',
-              }}
-            >
-              {copied ? 'Copied!' : 'Share Results'}
-            </button>
-          </div>
-
+          {/* Council Votes - War Room Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {PERSONAS.map((persona) => {
               const opinion = opinions.find((o) => o.agent === persona.name)
+              const signalColor = opinion?.signal === 'bullish' ? 'var(--accent-green)' : opinion?.signal === 'bearish' ? 'var(--accent-red)' : 'var(--accent-yellow)'
               return (
                 <div
                   key={persona.id}
-                  className="flex items-start gap-3 p-3 rounded-sm bg-card transition-all duration-300"
+                  className="flex items-start gap-2.5 p-2.5 rounded-sm transition-all duration-300"
                   style={{
-                    border: `1px solid ${opinion ? `${persona.color}40` : 'var(--border-color)'}`,
-                    opacity: opinion ? 1 : 0.4,
+                    background: opinion ? `${persona.color}08` : 'var(--bg-card)',
+                    border: `1px solid ${opinion ? `${persona.color}30` : 'var(--border-color)'}`,
+                    opacity: opinion ? 1 : 0.35,
+                    boxShadow: opinion ? `0 0 0 1px ${persona.color}15` : 'none',
                   }}
                 >
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0"
-                    style={{ background: `${persona.color}20`, border: `2px solid ${persona.color}` }}
-                  >
-                    {persona.emoji}
+                  {/* Avatar column */}
+                  <div className="flex flex-col items-center gap-1 shrink-0" style={{ width: 36 }}>
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-sm"
+                      style={{ background: `${persona.color}20`, border: `2px solid ${persona.color}` }}
+                    >
+                      {persona.emoji}
+                    </div>
+                    {opinion && (
+                      <div style={{
+                        width: 4, height: 4, borderRadius: '50%',
+                        background: signalColor,
+                        boxShadow: `0 0 4px ${signalColor}`,
+                      }} />
+                    )}
                   </div>
+
+                  {/* Content */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center justify-between gap-1.5">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span className="text-[11px] font-semibold whitespace-nowrap text-primary">
                           {persona.name}
                         </span>
-                        <span className="text-[9px] font-mono truncate text-muted">
+                        <span className="text-[8px] font-mono truncate text-muted">
                           {persona.style}
                         </span>
                       </div>
@@ -289,19 +317,49 @@ export default function PersonaCouncil() {
                         />
                       )}
                     </div>
+
+                    {/* Speech bubble */}
                     {opinion ? (
-                      <p className="text-[10px] font-mono mt-1 leading-relaxed text-secondary">
+                      <div
+                        className="mt-1.5 text-[10px] font-mono leading-relaxed p-2 rounded-sm relative"
+                        style={{
+                          background: `${persona.color}10`,
+                          border: `1px solid ${persona.color}20`,
+                          color: 'var(--text-secondary)',
+                          borderLeft: `2px solid ${persona.color}`,
+                        }}
+                      >
+                        <span style={{
+                          position: 'absolute', top: -5, left: 8,
+                          width: 0, height: 0,
+                          borderLeft: '5px solid transparent',
+                          borderRight: '5px solid transparent',
+                          borderBottom: `5px solid ${persona.color}20`,
+                        }} />
                         {opinion.reasoning || 'No detailed reasoning provided.'}
-                      </p>
+                      </div>
                     ) : loading ? (
-                      <div className="flex items-center gap-1.5 mt-1">
+                      <div className="flex items-center gap-1.5 mt-1.5">
                         <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: persona.color }} />
                         <span className="text-[9px] font-mono text-muted">
                           {opinions.length > 0 ? 'No vote cast' : 'Analyzing...'}
                         </span>
                       </div>
                     ) : (
-                      <span className="text-[9px] font-mono mt-1 block text-muted">Waiting for council...</span>
+                      <span className="text-[9px] font-mono mt-1.5 block text-muted">Waiting for council...</span>
+                    )}
+
+                    {/* Confidence bar */}
+                    {opinion && (
+                      <div className="mt-1.5" style={{ height: 2, background: 'var(--border-color)', borderRadius: 1, overflow: 'hidden' }}>
+                        <div style={{
+                          height: '100%',
+                          width: `${opinion.confidence * 100}%`,
+                          background: signalColor,
+                          borderRadius: 1,
+                          transition: 'width 0.3s ease',
+                        }} />
+                      </div>
                     )}
                   </div>
                 </div>

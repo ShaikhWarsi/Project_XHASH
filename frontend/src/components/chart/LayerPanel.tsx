@@ -75,7 +75,7 @@ export default function LayerPanel({ layers, onVisibilityToggle, onOpacityChange
           opacity: layer.visible ? 1 : 0.4,
         }}>
           <button onClick={() => onVisibilityToggle(layer.id)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: layer.visible ? '#3b82f6' : '#333', padding: 0, fontSize: 10 }}>
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: layer.visible ? 'var(--accent-blue)' : 'var(--text-muted)', padding: 0, fontSize: 10 }}>
             {layer.visible ? <Eye size={10} /> : <EyeOff size={10} />}
           </button>
 
@@ -89,7 +89,7 @@ export default function LayerPanel({ layers, onVisibilityToggle, onOpacityChange
 
           <input type="range" min={0} max={1} step={0.05} value={layer.opacity}
             onChange={(e) => onOpacityChange(layer.id, Number(e.target.value))}
-            style={{ width: 40, height: 2, accentColor: '#3b82f6', cursor: 'pointer' }} />
+            style={{ width: 40, height: 2, accentColor: 'var(--accent-blue)', cursor: 'pointer' }} />
 
           <span style={{ fontSize: 8, color: '#5d6b7e', width: 22, textAlign: 'right' }}>
             {Math.round(layer.opacity * 100)}%

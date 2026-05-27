@@ -40,7 +40,7 @@ export function CompareSymbol({ onCompare, onClose }: CompareSymbolProps) {
       />
       <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
         <button onClick={handleSubmit}
-          style={{ flex: 1, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '2px', padding: '2px', cursor: 'pointer', fontSize: '10px' }}>
+          style={{ flex: 1, background: 'var(--accent-blue)', color: '#fff', border: 'none', borderRadius: '2px', padding: '2px', cursor: 'pointer', fontSize: '10px' }}>
           Add
         </button>
         <button onClick={onClose}

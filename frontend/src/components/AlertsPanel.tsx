@@ -56,27 +56,27 @@ export default function AlertsPanel({ symbol: defaultSymbol }: { symbol?: string
   return (
     <Card>
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-[#9aa0a6] flex items-center gap-2">
-          <Bell className="w-4 h-4 text-yellow-500" />
+        <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+          <Bell className="w-4 h-4" style={{ color: 'var(--accent-yellow)' }} />
           Price Alerts
         </h3>
         <button
           onClick={() => setShowCreate(v => !v)}
           aria-label={showCreate ? 'Cancel new alert' : 'Create new alert'}
-          className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+          className="flex items-center gap-1 cursor-pointer" style={{ fontSize: 10, color: 'var(--accent-blue)' }}
         >
           <Plus className="w-3 h-3" /> New Alert
         </button>
       </div>
 
       {showCreate && (
-        <div className="mb-3 p-3 rounded-lg bg-[#2a2d3e]/50 border border-[#3a3d4e] space-y-2">
+        <div className="mb-3 p-3 rounded-lg space-y-2" style={{ background: 'color-mix(in srgb, var(--bg-card) 80%, transparent)', border: '1px solid var(--border-color)' }}>
           <div className="flex gap-2">
             <input
               value={newSymbol}
               onChange={e => setNewSymbol(e.target.value.toUpperCase())}
               placeholder="SYMBOL"
-              className="w-24 bg-[#1e2235] border border-[#3a3d4e] rounded px-2 py-1.5 text-xs text-white uppercase"
+              className="uppercase" style={{ width: 80, background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: 3, padding: '4px 8px', fontSize: 10, color: 'var(--text-primary)' }}
             />
             <input
               value={targetPrice}
@@ -84,43 +84,43 @@ export default function AlertsPanel({ symbol: defaultSymbol }: { symbol?: string
               placeholder={currentPrice ? `$${currentPrice}` : quoteError ? 'Price unavailable' : 'Price'}
               type="number"
               step="0.01"
-              className="flex-1 bg-[#1e2235] border border-[#3a3d4e] rounded px-2 py-1.5 text-xs text-white"
+              className="flex-1" style={{ background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: 3, padding: '4px 8px', fontSize: 10, color: 'var(--text-primary)' }}
             />
             <select
               value={condition}
               onChange={e => setCondition(e.target.value as 'ABOVE' | 'BELOW')}
-              className="bg-[#1e2235] border border-[#3a3d4e] rounded px-2 py-1.5 text-xs text-white"
+              style={{ background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: 3, padding: '4px 8px', fontSize: 10, color: 'var(--text-primary)' }}
             >
               <option value="ABOVE">Above</option>
               <option value="BELOW">Below</option>
             </select>
           </div>
           <div className="flex justify-end gap-2">
-            <button onClick={() => setShowCreate(false)} className="text-xs text-[#9aa0a6] px-2 py-1">Cancel</button>
-            <button onClick={handleCreate} aria-label="Create alert" className="text-xs bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600">Create</button>
+            <button onClick={() => setShowCreate(false)} className="cursor-pointer" style={{ fontSize: 10, color: 'var(--text-secondary)', padding: '2px 8px', background: 'none', border: 'none' }}>Cancel</button>
+            <button onClick={handleCreate} aria-label="Create alert" className="cursor-pointer" style={{ fontSize: 10, background: 'var(--accent-blue)', color: '#fff', padding: '4px 12px', borderRadius: 3, border: 'none' }}>Create</button>
           </div>
         </div>
       )}
 
-      <div className="space-y-2 max-h-60 overflow-y-auto">
+      <div className="space-y-2" style={{ maxHeight: 240, overflowY: 'auto' }}>
         {alerts.length === 0 && (
-          <div className="text-xs text-[#5f6368] text-center py-4">No active alerts. Create one above.</div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', textAlign: 'center', padding: '16px 0' }}>No active alerts. Create one above.</div>
         )}
         {alerts.map(a => (
-          <div key={a.id} className="flex items-center justify-between p-2 rounded-lg bg-[#2a2d3e]/30 border border-[#3a3d4e]/50 group">
+          <div key={a.id} className="flex items-center justify-between p-2 rounded-lg group" style={{ background: 'color-mix(in srgb, var(--bg-card) 70%, transparent)', border: '1px solid color-mix(in srgb, var(--border-color) 50%, transparent)' }}>
             <div>
-              <div className="text-sm font-medium text-white">{a.symbol}</div>
-              <div className="text-xs text-[#9aa0a6]">
+              <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)' }}>{a.symbol}</div>
+              <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>
                 {a.condition === 'ABOVE' ? '>' : '<'} ${a.targetPrice.toFixed(2)}
-                {!a.active && <span className="text-yellow-500 ml-2">(inactive)</span>}
+                {!a.active && <span style={{ color: 'var(--accent-yellow)' }} className="ml-2">(inactive)</span>}
               </div>
             </div>
-            <button onClick={() => handleDelete(a.id)} aria-label={`Delete alert for ${a.symbol}`} className="opacity-0 group-hover:opacity-100 p-1 text-[#9aa0a6] hover:text-red-400 transition-all">
+            <button onClick={() => handleDelete(a.id)} aria-label={`Delete alert for ${a.symbol}`} className="opacity-0 group-hover:opacity-100 p-1 transition-all cursor-pointer" style={{ color: 'var(--text-secondary)', background: 'none', border: 'none' }}>
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
         ))}
-      </div>
+    </div>
     </Card>
   )
 }

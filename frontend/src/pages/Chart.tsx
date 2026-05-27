@@ -1,15 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
-import { fetchOHLCV, fetchTechnicalAnalysis, fetchTAChart } from '../api/client'
+import { fetchOHLCV, fetchTechnicalAnalysis, fetchTAChart, fetchSignals, fetchStructure } from '../api/client'
 import type { BarData } from '../api/types'
+import DepthChart from '../components/chart/DepthChart'
+import VolumeProfile from '../components/chart/VolumeProfile'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { useToastStore } from '../store/toast'
-import { ChartEngine } from '../components/chart/ChartEngine'
+import { ChartEngine, type SignalMarker, type StructureOverlay } from '../components/chart/ChartEngine'
+import SignalTimeline from '../components/chart/SignalTimeline'
+import { MultiChartGrid } from '../components/chart/MultiChartGrid'
+import type { MultiChartGridHandle } from '../components/chart/MultiChartGrid'
 import { ChartToolbar } from '../components/chart/ChartToolbar'
 import { TimeframeSelector } from '../components/chart/TimeframeSelector'
 import { ObjectTree } from '../components/chart/ui/ObjectTree'
-import { IndicatorSearch } from '../components/chart/ui/IndicatorSearch'
-import { IndicatorParams } from '../components/chart/ui/IndicatorParams'
 import { IndicatorPane } from '../components/chart/drawings/indicators/IndicatorPane'
 import { DrawingProperties } from '../components/chart/ui/DrawingProperties'
 import { CompareSymbol } from '../components/chart/ui/CompareSymbol'
@@ -21,7 +25,7 @@ import ErrorBoundary from '../components/ErrorBoundary'
 import TimeMachine from '../components/chart/TimeMachine'
 import LayerPanel from '../components/chart/LayerPanel'
 import type { ChartLayer } from '../components/chart/LayerPanel'
-import { type IndicatorPreset } from '../components/chart/drawings/indicators/IndicatorManager'
+import { type IndicatorPreset, PRESET_INDICATORS } from '../components/chart/drawings/indicators/IndicatorManager'
 import type { ToolType, DrawingStyle } from '../components/chart/DrawingTypes'
 import type { IndicatorConfig } from '../components/chart/DrawingTypes'
 import { MultiChartSync } from '../components/chart/MultiChartSync'
@@ -32,6 +36,9 @@ import Spinner from '../components/Spinner'
 import CorrelationHeatmap from '../components/CorrelationHeatmap'
 import WorkspaceManager from '../components/WorkspaceManager'
 import type { SupportResistanceLevel } from '../components/chart/drawings/LevelsManager'
+import ContextMenu from '../components/ui/ContextMenu'
+import type { ContextMenuItem } from '../components/ui/ContextMenu'
+import type { IChartApi } from 'lightweight-charts'
 
 type ChartStyle = 'candle' | 'line' | 'area'
 
@@ -47,7 +54,9 @@ export default function ChartPage() {
   const [activeTool, setActiveTool] = useState<ToolType | null>(null)
   const [canUndo, setCanUndo] = useState(false)
   const [canRedo, setCanRedo] = useState(false)
-  const [showIndicatorSearch, setShowIndicatorSearch] = useState(false)
+  const [showInlineSearch, setShowInlineSearch] = useState(false)
+  const [inlineQuery, setInlineQuery] = useState('')
+  const [showInlineParams, setShowInlineParams] = useState(false)
   const [selectedIndicatorPreset, setSelectedIndicatorPreset] = useState<IndicatorPreset | null>(null)
   const [indicatorParams, setIndicatorParams] = useState<Record<string, number>>({})
   const [indicators, setIndicators] = useState<IndicatorConfig[]>([])
@@ -77,15 +86,30 @@ export default function ChartPage() {
   const [comparisonSymbols, setComparisonSymbols] = useState<string[]>([])
   const [chartSync] = useState(() => new MultiChartSync())
   const [timeMachineSynced, setTimeMachineSynced] = useState(false)
+  const [layoutMode, setLayoutMode] = useState<'single' | '2x1' | '1x2' | '2x2'>('single')
   const [showSignals, setShowSignals] = useState(false)
   const [signalsData, setSignalsData] = useState<any>(null)
   const [showWorkspace, setShowWorkspace] = useState(false)
   const [levels, setLevels] = useState<SupportResistanceLevel[]>([])
+  const [showStructureOverlay, setShowStructureOverlay] = useState(false)
+  const [structureData, setStructureDataState] = useState<StructureOverlay | null>(null)
+  const [showDepthChart, setShowDepthChart] = useState(false)
+  const [showVolumeProfile, setShowVolumeProfile] = useState(false)
+  const [contextMenu, setContextMenu] = useState<{
+    show: boolean
+    position: { x: number; y: number }
+    items: ContextMenuItem[]
+  }>({ show: false, position: { x: 0, y: 0 }, items: [] })
 
   const addToast = useToastStore((s) => s.addToast)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const [focusedCell, setFocusedCell] = useState(0)
+  const [signalMarkers, setSignalMarkers] = useState<SignalMarker[]>([])
+  const [showSignalTimeline, setShowSignalTimeline] = useState(false)
+  const [chartApi, setChartApi] = useState<IChartApi | null>(null)
+  const [showExportMenu, setShowExportMenu] = useState(false)
+  const multiChartGridRef = useRef<MultiChartGridHandle>(null)
+  const chartPanelRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<ChartEngine | null>(null)
-  const chartInitialized = useRef(false)
   const dataRef = useRef<BarData[]>([])
   const loadingDataRef = useRef(false)
 
@@ -103,6 +127,13 @@ export default function ChartPage() {
       volume: bar.volume,
     }))
     chartRef.current.setMainSeries(chartData)
+    const mainEngine = chartRef.current
+    for (let i = 0; i < 4; i++) {
+      const engine = multiChartGridRef.current?.getEngine(i)
+      if (engine && engine !== mainEngine) {
+        engine.setMainSeries(chartData)
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -130,47 +161,90 @@ export default function ChartPage() {
   }, [symbol, interval, setChartData])
 
   useEffect(() => {
-    if (!containerRef.current || chartInitialized.current) return
-    chartInitialized.current = true
-
-    const container = containerRef.current
-    const engine = new ChartEngine({
-      symbol,
-      interval,
-      data: [],
-      container,
-      width: container.clientWidth,
-      height: 500,
-      theme: themeColors,
-    })
-
-    chartRef.current = engine
-
-    chartSync.register(
-      { id: 'main', symbol, chart: engine.chart },
-      (index) => {
-        if (timeMachineSynced) {
-          setReplayIndex(index)
-          engine.seekToIndex(index, dataRef.current.map((bar) => ({
-            time: bar.time as any, open: bar.open, high: bar.high, low: bar.low, close: bar.close, volume: bar.volume,
-          })))
+    if (!chartRef.current) return
+    fetchSignals()
+      .then((sigData) => {
+        const markers: SignalMarker[] = []
+        const symbolSigs = sigData.signals[symbol]
+        if (symbolSigs) {
+          for (const s of symbolSigs) {
+            const timeStr = s.timestamp || sigData.timestamp
+            const time = Math.floor(new Date(timeStr).getTime() / 1000) as any
+            markers.push({
+              time,
+              type: s.direction > 0 ? 'buy' : 'sell',
+              price: s.price || 0,
+              strength: s.strength || s.confidence || 1,
+            })
+          }
         }
-      },
-    )
+        chartRef.current!.setSignals(markers)
+        setSignalMarkers(markers)
+      })
+      .catch(() => {})
+  }, [symbol, interval])
 
-    engine.drawingManager.setOnChanged(() => {
-      setCanUndo(engine.drawingManager.canUndo())
-      setCanRedo(engine.drawingManager.canRedo())
-      setDrawingsCount(engine.drawingManager.getDrawings().length)
-    })
-    engine.drawingManager.setOnError((msg) => addToast(msg, 'error'))
-
-    return () => {
-      engine.destroy()
-      chartRef.current = null
-      chartInitialized.current = false
+  useEffect(() => {
+    if (!showStructureOverlay) {
+      setStructureDataState(null)
+      chartRef.current?.setStructureData(null)
+      return
     }
-  }, [])
+    const load = async () => {
+      try {
+        const raw = await fetchStructure(symbol, interval)
+        const mapped: StructureOverlay = {
+          orderBlocks: (raw as any).active_order_blocks ?? [],
+          fvgs: (raw as any).active_fvgs ?? [],
+          liquidityLevels: (raw as any).liquidity_levels ?? [],
+          keyLevels: (raw as any).key_levels ?? [],
+        }
+        setStructureDataState(mapped)
+      } catch { /* silent */ }
+    }
+    load()
+  }, [showStructureOverlay, symbol, interval])
+
+  useEffect(() => {
+    chartRef.current?.setStructureData(showStructureOverlay ? structureData : null)
+  }, [structureData, showStructureOverlay])
+
+  const handleEngineReady = useCallback((index: number, engine: ChartEngine) => {
+    if (index === 0) {
+      setChartApi(engine.chart)
+      chartSync.register(
+        { id: 'main', symbol, chart: engine.chart },
+        (idx) => {
+          if (timeMachineSynced) {
+            setReplayIndex(idx)
+            engine.seekToIndex(idx, dataRef.current.map((bar) => ({
+              time: bar.time as any, open: bar.open, high: bar.high, low: bar.low, close: bar.close, volume: bar.volume,
+            })))
+          }
+        },
+      )
+      engine.drawingManager.setOnChanged(() => {
+        setCanUndo(engine.drawingManager.canUndo())
+        setCanRedo(engine.drawingManager.canRedo())
+        setDrawingsCount(engine.drawingManager.getDrawings().length)
+      })
+      engine.drawingManager.setOnError((msg) => addToast(msg, 'error'))
+    }
+    chartRef.current = engine
+  }, [symbol, timeMachineSynced, chartSync, addToast])
+
+  useEffect(() => {
+    const engine = multiChartGridRef.current?.getEngine(focusedCell)
+    if (engine) {
+      chartRef.current = engine
+    }
+  }, [focusedCell])
+
+  useEffect(() => {
+    return () => {
+      chartSync.unregister('main')
+    }
+  }, [chartSync])
 
   useEffect(() => {
     if (!wsPriceData || !chartRef.current) return
@@ -234,31 +308,156 @@ export default function ChartPage() {
     }
   }, [])
 
-  const handleIndicatorAddClick = useCallback(() => {
-    setShowIndicatorSearch(!showIndicatorSearch)
-    setSelectedIndicatorPreset(null)
-  }, [showIndicatorSearch])
-
-  const handleIndicatorSelect = useCallback((preset: IndicatorPreset) => {
-    setSelectedIndicatorPreset(preset)
-    setIndicatorParams({ ...preset.defaultParams })
-    setShowIndicatorSearch(false)
+  const toggleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen()
+    } else {
+      document.documentElement.requestFullscreen()
+    }
   }, [])
 
-  const handleIndicatorConfirm = useCallback(() => {
-    if (!selectedIndicatorPreset) return
+  const handleExportDrawings = useCallback(() => {
+    const allDrawings = chartRef.current?.drawingManager.getDrawings() ?? []
+    if (allDrawings.length === 0) return
+    const json = JSON.stringify(
+      allDrawings.map((d) => ({ type: d.type, points: d.points, style: d.style })),
+    )
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `drawings_${symbol}_${Date.now()}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [symbol])
+
+  const chartMenuItems = useMemo<ContextMenuItem[]>(
+    () => [
+      {
+        label: 'Add Indicator',
+        onClick: () => setShowIndicatorSearch(true),
+        shortcut: 'I',
+      },
+      {
+        label: 'Add Drawing',
+        submenu: [
+          {
+            label: 'Trend Line',
+            onClick: () => handleToolSelect('trendline'),
+          },
+          {
+            label: 'Fibonacci',
+            onClick: () => handleToolSelect('fib_retracement'),
+          },
+          {
+            label: 'Rectangle',
+            onClick: () => handleToolSelect('rectangle'),
+          },
+          { label: 'Text', onClick: () => handleToolSelect('text_label') },
+        ],
+      },
+      {
+        label: 'Change Interval',
+        submenu: ['1m', '5m', '15m', '1h', '4h', '1d', '1w'].map((i) => ({
+          label: i,
+          onClick: () => handleIntervalChange(i),
+        })),
+      },
+      { divider: true },
+      {
+        label: 'Export Chart',
+        onClick: handleExportDrawings,
+        shortcut: 'Ctrl+E',
+      },
+      { label: 'Fullscreen', onClick: toggleFullscreen, shortcut: 'F11' },
+      { divider: true },
+      {
+        label: 'Chart Settings',
+        onClick: () => setShowChartSettings(true),
+      },
+      { label: 'Layout', onClick: () => setShowLayout(true) },
+    ],
+    [handleToolSelect, handleIntervalChange, toggleFullscreen, handleExportDrawings],
+  )
+
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+      setContextMenu({
+        show: true,
+        position: { x: e.clientX, y: e.clientY },
+        items: chartMenuItems,
+      })
+    },
+    [chartMenuItems],
+  )
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+    e.currentTarget.style.borderColor = 'var(--accent-blue)'
+    e.currentTarget.style.borderStyle = 'dashed'
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.currentTarget.style.borderColor = 'var(--border-color)'
+    e.currentTarget.style.borderStyle = 'solid'
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.currentTarget.style.borderColor = 'var(--border-color)'
+    e.currentTarget.style.borderStyle = 'solid'
+    const symbol = e.dataTransfer.getData('text/plain')
+    if (symbol && symbol.length <= 10) {
+      _setSymbol(symbol)
+      addToast(`Loaded ${symbol}`, 'info')
+    }
+  }, [addToast])
+
+  const handleIndicatorAddClick = useCallback(() => {
+    setShowInlineSearch(true)
+    setSelectedIndicatorPreset(null)
+    setInlineQuery('')
+    setShowInlineParams(false)
+  }, [])
+
+  const handleInlineSelect = useCallback((preset: IndicatorPreset) => {
+    const params = { ...preset.defaultParams } as Record<string, number>
+    setSelectedIndicatorPreset(preset)
+    setIndicatorParams(params)
+    setShowInlineSearch(false)
+    const paramKeys = Object.keys(preset.defaultParams).filter(k => Number(preset.defaultParams[k]) !== 0)
+    if (paramKeys.length > 2) {
+      setShowInlineParams(true)
+    } else {
+      handleIndicatorConfirm(preset, params)
+    }
+  }, [handleIndicatorConfirm])
+
+  const handleIndicatorConfirm = useCallback((preset?: IndicatorPreset, params?: Record<string, number>) => {
+    const p = preset ?? selectedIndicatorPreset
+    const pr = params ?? indicatorParams
+    if (!p) return
     const indConfig: IndicatorConfig = {
       id: `ind_${Date.now()}`,
-      name: selectedIndicatorPreset.name,
-      params: indicatorParams,
+      name: p.name,
+      params: pr,
       paneId: `pane_${indicators.length + 1}`,
       visible: true,
-      style: { color: selectedIndicatorPreset.color },
+      style: { color: p.color },
     }
     setIndicators((prev) => [...prev, indConfig])
     chartRef.current?.addIndicator(indConfig)
     setSelectedIndicatorPreset(null)
+    setShowInlineParams(false)
   }, [selectedIndicatorPreset, indicatorParams, indicators.length])
+
+  const handleInlineCancel = useCallback(() => {
+    setShowInlineParams(false)
+    setShowInlineSearch(false)
+    setInlineQuery('')
+  }, [])
 
   const handleIndicatorRemove = useCallback((id: string) => {
     setIndicators((prev) => prev.filter((i) => i.id !== id))
@@ -559,7 +758,7 @@ export default function ChartPage() {
         </div>
         {showCompare && <CompareSymbol onCompare={handleCompareSymbol} onClose={() => setShowCompare(false)} />}
         {showChartSettings && <ChartSettings chartStyle={chartStyle} onChartStyleChange={setChartStyle} onClose={() => setShowChartSettings(false)} />}
-        {showLayout && <LayoutBuilder currentLayout="single" onLayoutChange={() => {}} onClose={() => setShowLayout(false)} />}
+        {showLayout && <LayoutBuilder currentLayout={layoutMode} onLayoutChange={setLayoutMode} onClose={() => setShowLayout(false)} />}
       </div>
 
       {comparisonSymbols.length > 0 && (
@@ -574,8 +773,19 @@ export default function ChartPage() {
         </div>
       )}
 
-      <div className="relative flex-1 bg-card border border-default min-h-[400px]">
-        <div ref={containerRef} className="w-full h-full" />
+      <div ref={chartPanelRef} className="relative flex-1 bg-card border border-default min-h-[400px]" onContextMenu={handleContextMenu}
+        onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
+        <MultiChartGrid
+          ref={multiChartGridRef}
+          layoutMode={layoutMode}
+          data={data}
+          symbol={symbol}
+          interval={interval}
+          themeColors={themeColors}
+          focusedCell={focusedCell}
+          onFocusCell={setFocusedCell}
+          onChartReady={handleEngineReady}
+        />
 
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/70">
@@ -602,27 +812,103 @@ export default function ChartPage() {
           </div>
         )}
 
-        {showIndicatorSearch && (
-          <div className="absolute top-0 left-0 z-50">
-            <IndicatorSearch
-              onSelect={handleIndicatorSelect}
-              onClose={() => setShowIndicatorSearch(false)}
+        {showInlineSearch && (
+          <div style={{
+            position: 'absolute', top: 4, left: '50%', transform: 'translateX(-50%)',
+            zIndex: 60, width: 220,
+            background: 'var(--bg-card)', border: '1px solid var(--accent-blue)',
+            borderRadius: 4, fontFamily: 'JetBrains Mono, monospace',
+            fontSize: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+          }}>
+            <input
+              autoFocus
+              type="text"
+              value={inlineQuery}
+              onChange={e => setInlineQuery(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Escape') { setShowInlineSearch(false); setInlineQuery('') }
+              }}
+              placeholder="Search indicators..."
+              style={{ width: '100%', background: 'transparent', border: 'none', padding: '6px 8px', color: 'var(--text-primary)', outline: 'none', fontFamily: 'inherit', fontSize: 10 }}
             />
+            {inlineQuery && (
+              <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+                {PRESET_INDICATORS.filter(p => p.name.toLowerCase().includes(inlineQuery.toLowerCase())).slice(0, 12).map(preset => (
+                  <div key={preset.name}
+                    onClick={() => handleInlineSelect(preset)}
+                    style={{ padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, borderBottom: '1px solid var(--border-color)' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: preset.color }} />
+                    <span style={{ flex: 1, color: 'var(--text-primary)' }}>{preset.name}</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: 8 }}>{preset.category || ''}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {selectedIndicatorPreset && (
-          <div className="absolute top-0 left-[220px] z-50">
-            <IndicatorParams
-              preset={selectedIndicatorPreset}
-              params={indicatorParams}
-              onChange={setIndicatorParams}
-              onConfirm={handleIndicatorConfirm}
-              onCancel={() => setSelectedIndicatorPreset(null)}
-            />
+        {showInlineParams && selectedIndicatorPreset && (
+          <div style={{
+            position: 'absolute', top: 40, left: '50%', transform: 'translateX(-50%)',
+            zIndex: 60, width: 200,
+            background: 'var(--bg-card)', border: '1px solid var(--border-color)',
+            borderRadius: 4, padding: 8,
+            fontFamily: 'JetBrains Mono, monospace', fontSize: 10,
+          }}>
+            <div style={{ marginBottom: 6, color: 'var(--text-primary)', fontWeight: 600, fontSize: 9 }}>
+              {selectedIndicatorPreset.name} params
+            </div>
+            {Object.entries(selectedIndicatorPreset.defaultParams).map(([key, val]) => (
+              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                <label style={{ color: 'var(--text-secondary)', fontSize: 9, minWidth: 40 }}>{key}</label>
+                <input
+                  type="number"
+                  value={indicatorParams[key] ?? Number(val)}
+                  onChange={e => setIndicatorParams(prev => ({ ...prev, [key]: Number(e.target.value) }))}
+                  style={{ flex: 1, background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 2, padding: '2px 4px', color: 'var(--text-primary)', fontSize: 9, fontFamily: 'inherit' }}
+                />
+              </div>
+            ))}
+            <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
+              <button onClick={handleIndicatorConfirm} style={{ flex: 1, background: 'var(--accent-blue)', border: 'none', color: '#fff', padding: '2px 8px', borderRadius: 2, cursor: 'pointer', fontSize: 9 }}>Add</button>
+              <button onClick={handleInlineCancel} style={{ background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-muted)', padding: '2px 8px', borderRadius: 2, cursor: 'pointer', fontSize: 9 }}>Cancel</button>
+            </div>
           </div>
         )}
+
+        {chartPanelRef.current && showDepthChart && createPortal(
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 20 }}>
+            <DepthChart
+              symbol={symbol}
+              data={data}
+              onClose={() => setShowDepthChart(false)}
+            />
+          </div>,
+          chartPanelRef.current
+        )}
+
+        {chartPanelRef.current && showVolumeProfile && createPortal(
+          <div style={{ position: 'absolute', top: 0, right: 0, zIndex: 20, height: '100%', overflow: 'hidden' }}>
+            <VolumeProfile
+              data={data}
+              onClose={() => setShowVolumeProfile(false)}
+            />
+          </div>,
+          chartPanelRef.current
+        )}
       </div>
+
+      <SignalTimeline
+        signals={signalMarkers}
+        data={data}
+        chart={chartApi}
+        height={48}
+        symbol={symbol}
+        visible={showSignalTimeline}
+      />
 
       {showTimeMachine && (
         <div className="flex flex-col">
@@ -655,9 +941,25 @@ export default function ChartPage() {
         {drawingsCount > 0 && <span>{drawingsCount} drawings</span>}
         {indicators.length > 0 && <span>{indicators.length} indicators</span>}
         <div className="flex-1" />
+        <button onClick={() => setShowSignalTimeline(!showSignalTimeline)}
+          className={`cursor-pointer text-[10px] transition-colors ${showSignalTimeline ? 'bg-accent-subtle text-accent-blue' : 'text-muted'}`}>
+          SigLine
+        </button>
         <button onClick={() => setShowTimeMachine(!showTimeMachine)}
           className={`cursor-pointer text-[10px] transition-colors ${showTimeMachine ? 'bg-accent-subtle text-accent-blue' : 'text-muted'}`}>
           {'\u23F1'} Replay
+        </button>
+        <button onClick={() => setShowStructureOverlay(!showStructureOverlay)}
+          className={`cursor-pointer text-[10px] transition-colors ${showStructureOverlay ? 'bg-accent-subtle text-accent-blue' : 'text-muted'}`}>
+          Struct
+        </button>
+        <button onClick={() => setShowDepthChart(!showDepthChart)}
+          className={`cursor-pointer text-[10px] transition-colors ${showDepthChart ? 'bg-accent-subtle text-accent-blue' : 'text-muted'}`}>
+          Depth
+        </button>
+        <button onClick={() => setShowVolumeProfile(!showVolumeProfile)}
+          className={`cursor-pointer text-[10px] transition-colors ${showVolumeProfile ? 'bg-accent-subtle text-accent-blue' : 'text-muted'}`}>
+          Profile
         </button>
         <button onClick={() => setShowLayerPanel(!showLayerPanel)}
           className={`cursor-pointer text-[10px] transition-colors ${showLayerPanel ? 'bg-accent-subtle text-accent-blue' : 'text-muted'}`}>
@@ -698,18 +1000,16 @@ export default function ChartPage() {
           </div>
         )}
         {showWorkspace && (
-          <div className="absolute bottom-full right-0 z-50">
-            <WorkspaceManager
-              currentConfig={{
-                symbol, interval, chart_style: chartStyle, theme,
-                indicators, layout: 'single',
-                drawings: drawings.map((d) => ({ type: d.type, points: d.points, style: d.style })),
-                layers,
-              }}
-              onLoadConfig={handleWorkspaceLoad}
-              onClose={() => setShowWorkspace(false)}
-            />
-          </div>
+          <WorkspaceManager
+            currentConfig={{
+              symbol, interval, chart_style: chartStyle, theme,
+              indicators, layout: 'single',
+              drawings: drawings.map((d) => ({ type: d.type, points: d.points, style: d.style })),
+              layers,
+            }}
+            onLoadConfig={handleWorkspaceLoad}
+            onClose={() => setShowWorkspace(false)}
+          />
         )}
         {levels.length > 0 && (
           <div className="absolute bottom-full right-0 z-50" style={{ marginRight: 100 }}>
@@ -761,22 +1061,53 @@ export default function ChartPage() {
           className="bg-transparent text-muted cursor-pointer text-[10px]">
           Signals
         </button>
-        <button
-          onClick={() => {
-            const allDrawings = chartRef.current?.drawingManager.getDrawings() ?? []
-            if (allDrawings.length === 0) return
-            const json = JSON.stringify(allDrawings.map((d) => ({ type: d.type, points: d.points, style: d.style })))
-            const blob = new Blob([json], { type: 'application/json' })
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url; a.download = `drawings_${symbol}_${Date.now()}.json`; a.click()
-            URL.revokeObjectURL(url)
-          }}
-          className="bg-transparent text-muted cursor-pointer text-[10px]"
-          title="Export drawings"
-        >
-          Export
-        </button>
+        <div style={{ position: 'relative', display: 'inline-block' }}>
+          <button onClick={() => setShowExportMenu(v => !v)}
+            className="bg-transparent text-muted cursor-pointer text-[10px]"
+            title="Export chart">
+            Export
+          </button>
+          {showExportMenu && (
+            <div className="absolute bottom-full right-0 z-50" style={{ marginRight: 80 }}>
+              <div style={{
+                background: 'var(--bg-card)', border: '1px solid var(--border-color)',
+                borderRadius: 4, padding: 4, fontSize: 10,
+                fontFamily: 'JetBrains Mono, monospace',
+                minWidth: 140, boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+              }}>
+                <div style={{ fontSize: 9, fontWeight: 600, color: '#8b95a5', padding: '2px 4px', borderBottom: '1px solid var(--border-color)', marginBottom: 2 }}>
+                  EXPORT
+                </div>
+                <button onClick={() => {
+                  setShowExportMenu(false)
+                  const canvas = document.querySelector('#chart-main-container canvas') as HTMLCanvasElement
+                  if (!canvas) { addToast('No chart canvas to export', 'error'); return }
+                  const link = document.createElement('a')
+                  link.download = `chart_${symbol}_${interval}_${Date.now()}.png`
+                  link.href = canvas.toDataURL('image/png')
+                  link.click()
+                }}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '3px 6px', background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 10 }}>
+                  PNG Image
+                </button>
+                <button onClick={() => {
+                  setShowExportMenu(false)
+                  const allDrawings = chartRef.current?.drawingManager.getDrawings() ?? []
+                  if (allDrawings.length === 0) { addToast('No drawings to export', 'info'); return }
+                  const json = JSON.stringify(allDrawings.map((d) => ({ type: d.type, points: d.points, style: d.style })))
+                  const blob = new Blob([json], { type: 'application/json' })
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement('a')
+                  a.href = url; a.download = `drawings_${symbol}_${Date.now()}.json`; a.click()
+                  URL.revokeObjectURL(url)
+                }}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '3px 6px', background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 10 }}>
+                  JSON Drawings
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
         <button
           onClick={() => {
             const input = document.createElement('input')
@@ -824,6 +1155,19 @@ export default function ChartPage() {
             <DrawingProperties drawing={selectedDrawing!} onChange={handleDrawingStyleChange} onClose={() => setShowDrawingProps(false)} />
           </div>
         )}
+        <button onClick={() => {
+          const libs = chartRef.current?.drawingManager.listLibraries(symbol, interval) ?? []
+          if (libs.length === 0) {
+            chartRef.current?.drawingManager.saveToLibrary(symbol, interval)
+            addToast('Drawings saved to library', 'success')
+            return
+          }
+          const latest = libs[libs.length - 1]
+          chartRef.current?.drawingManager.loadFromLibrary(symbol, interval, latest.id)
+          addToast(`Loaded ${latest.drawingCount} drawings from library`, 'success')
+        }} className="bg-transparent text-muted cursor-pointer text-[10px]" title="Drawing Library">
+          Library
+        </button>
         <ObjectTree
           drawings={drawings}
           selectedId={chartRef.current?.drawingManager.getSelectedDrawing()?.id ?? null}
@@ -935,6 +1279,15 @@ export default function ChartPage() {
             ))}
           </div>
         </div>
+      )}
+
+      {contextMenu.show && (
+        <ContextMenu
+          items={contextMenu.items}
+          position={contextMenu.position}
+          onClose={() => setContextMenu((prev) => ({ ...prev, show: false }))}
+          id="chart-context-menu"
+        />
       )}
     </div>
   )

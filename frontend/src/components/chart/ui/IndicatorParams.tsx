@@ -39,7 +39,7 @@ export function IndicatorParams({ preset, params, onChange, onConfirm, onCancel 
       ))}
       <div style={{ display: 'flex', gap: '4px', marginTop: '8px' }}>
         <button onClick={onConfirm}
-          style={{ flex: 1, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '2px', padding: '3px', cursor: 'pointer', fontSize: '10px' }}>
+          style={{ flex: 1, background: 'var(--accent-blue)', color: '#fff', border: 'none', borderRadius: '2px', padding: '3px', cursor: 'pointer', fontSize: '10px' }}>
           Add
         </button>
         <button onClick={onCancel}

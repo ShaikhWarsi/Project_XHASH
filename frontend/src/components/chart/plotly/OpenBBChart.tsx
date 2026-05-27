@@ -48,7 +48,7 @@ export default function OpenBBChart({ figureJSON, style }: OpenBBChartProps) {
           orientation: 'h',
           bgcolor: 'rgba(10,14,20,0.9)',
           color: '#5d6b7e',
-          activecolor: '#3b82f6',
+          activecolor: 'var(--accent-blue)',
         },
       }
 

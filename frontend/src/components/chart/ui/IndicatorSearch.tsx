@@ -5,13 +5,58 @@ import type { IndicatorPreset } from '../drawings/indicators/IndicatorManager'
 interface IndicatorSearchProps {
   onSelect: (preset: IndicatorPreset) => void
   onClose: () => void
+  inline?: boolean
+  onAddImmediate?: (preset: IndicatorPreset) => void
+  searchQuery?: string
 }
 
-export function IndicatorSearch({ onSelect }: IndicatorSearchProps) {
-  const [query, setQuery] = React.useState('')
+export function IndicatorSearch({ onSelect, onClose, inline, onAddImmediate, searchQuery }: IndicatorSearchProps) {
+  const [internalQuery, setInternalQuery] = React.useState('')
+  const query = searchQuery !== undefined ? searchQuery : internalQuery
+  const setQuery = searchQuery !== undefined ? () => {} : setInternalQuery
   const filtered = query
     ? PRESET_INDICATORS.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()) || p.description.toLowerCase().includes(query.toLowerCase()))
     : PRESET_INDICATORS
+
+  if (inline) {
+    return (
+      <div style={{
+        fontFamily: 'JetBrains Mono, monospace', fontSize: 10, width: '100%',
+      }}>
+        <input
+          autoFocus
+          placeholder="Search indicators..."
+          value={query}
+          onChange={(e) => { setQuery(e); (e as any).stopPropagation?.() }}
+          onKeyDown={(e) => { if (e.key === 'Escape') onClose() }}
+          style={{
+            width: '100%', background: 'transparent', border: 'none', padding: '6px 8px',
+            color: 'var(--text-primary)', outline: 'none', fontFamily: 'inherit', fontSize: 10,
+            boxSizing: 'border-box',
+          }}
+        />
+        {query && (
+          <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+            {filtered.slice(0, 12).map((p) => (
+              <div key={p.id}
+                onClick={() => onAddImmediate ? onAddImmediate(p) : onSelect(p)}
+                style={{
+                  padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                  borderBottom: '1px solid var(--border-color)',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: p.color }} />
+                <span style={{ flex: 1, color: 'var(--text-primary)' }}>{p.name}</span>
+                <span style={{ color: 'var(--text-muted)', fontSize: 8 }}>{p.category || ''}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div style={{

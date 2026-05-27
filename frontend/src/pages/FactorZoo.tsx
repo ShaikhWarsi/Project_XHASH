@@ -86,10 +86,9 @@ export default function FactorZoo() {
         <span className="text-muted">|</span>
         <button onClick={() => setTab('browse')}
           className="border-0 cursor-pointer px-2 py-0.5"
-          style={{ background: tab === 'browse' ? 'rgba(59,130,246,0.15)' : 'none', color: tab === 'browse' ? '#3b82f6' : '#5d6b7e' }}>BROWSE</button>
+          style={{ background: tab === 'browse' ? 'color-mix(in srgb, var(--accent-blue) 15%, transparent)' : 'none', color: tab === 'browse' ? 'var(--accent-blue)' : 'var(--text-muted)' }}>BROWSE</button>
         <button onClick={() => setTab('bench')}
-          className="border-0 cursor-pointer px-2 py-0.5"
-          style={{ background: tab === 'bench' ? 'rgba(59,130,246,0.15)' : 'none', color: tab === 'bench' ? '#3b82f6' : '#5d6b7e' }}>BENCH</button>
+          style={{ background: tab === 'bench' ? 'color-mix(in srgb, var(--accent-blue) 15%, transparent)' : 'none', color: tab === 'bench' ? 'var(--accent-blue)' : 'var(--text-muted)' }}>BENCH</button>
         {health && <span className="ml-auto text-[9px] text-muted">{health.loaded} loaded / {health.failed} failed</span>}
       </div>
 
@@ -181,7 +180,7 @@ export default function FactorZoo() {
             </select>
             <button onClick={runBench} disabled={benchLoading}
               className="border-0 text-white cursor-pointer px-3 py-1 text-[10px]"
-              style={{ background: '#3b82f6', opacity: benchLoading ? 0.6 : 1 }}>
+              style={{ background: 'var(--accent-blue)', opacity: benchLoading ? 0.6 : 1 }}>
               {benchLoading ? 'RUNNING...' : 'RUN BENCH'}
             </button>
           </div>
@@ -231,7 +230,7 @@ export default function FactorZoo() {
                             <tr key={r.id} style={{ borderBottom: '1px solid rgba(26,35,50,0.3)' }}>
                               <td className="py-[3px] px-2 text-accent-blue">{r.id}</td>
                               <td className="py-[3px] px-2">{r.ic_mean?.toFixed(4)}</td>
-                              <td className="py-[3px] px-2 font-semibold" style={{ color: r.ir > 0.5 ? '#22c55e' : r.ir < -0.5 ? '#ef4444' : '#e6edf3' }}>{r.ir?.toFixed(3)}</td>
+                              <td className="py-[3px] px-2 font-semibold" style={{ color: r.ir > 0.5 ? 'var(--accent-green)' : r.ir < -0.5 ? 'var(--accent-red)' : 'var(--text-primary)' }}>{r.ir?.toFixed(3)}</td>
                               <td className="py-[3px] px-2">{(r.ic_positive_ratio * 100).toFixed(1)}%</td>
                               <td className="py-[3px] px-2">{r._category}</td>
                             </tr>

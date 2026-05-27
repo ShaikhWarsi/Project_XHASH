@@ -37,8 +37,11 @@ function getHeatColor(change: number): string {
   return 'var(--text-muted)'
 }
 
-function getBgOpacity(change: number): number {
-  return Math.min(Math.abs(change) / 3, 0.6) + 0.15
+function getGridArea(weight: number, totalWeight: number): { colSpan: number; rowSpan: number } {
+  const ratio = weight / totalWeight
+  if (ratio > 0.2) return { colSpan: 2, rowSpan: 2 }
+  if (ratio > 0.12) return { colSpan: 2, rowSpan: 1 }
+  return { colSpan: 1, rowSpan: 1 }
 }
 
 export default function HeatMapWidget({ id, onRemove }: { id: string; onRemove?: () => void }) {
@@ -62,6 +65,7 @@ export default function HeatMapWidget({ id, onRemove }: { id: string; onRemove?:
     } catch { return [] }
   }, [])
 
+  const totalWeight = useMemo(() => sectors.reduce((s, x) => s + x.weight, 0), [sectors])
   const sortedSectors = useMemo(() => [...sectors].sort((a, b) => b.weight - a.weight), [sectors])
   const isLoading = sectors.length === 0
 
@@ -81,61 +85,63 @@ export default function HeatMapWidget({ id, onRemove }: { id: string; onRemove?:
         </div>
 
         {isLoading ? (
-          <div className="flex flex-wrap gap-px content-start">
-            {SECTOR_ETFS.map((symbol, idx) => {
-              const cfg = SECTOR_CONFIG[symbol] || { weight: 2 }
-              return (
-                <div key={symbol} className="animate-pulse rounded-sm"
-                  style={{
-                    flexBasis: cfg.weight >= 4 ? 'calc(50% - 2px)' : cfg.weight >= 3 ? 'calc(33.33% - 2px)' : 'calc(25% - 2px)',
-                    minHeight: cfg.weight >= 4 ? '52px' : '40px',
-                    backgroundColor: 'var(--border-color)',
-                    border: '1px solid var(--border-color)',
-                    animationDelay: `${idx * 0.1}s`,
-                  }}
-                />
-              )
-            })}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 2, flex: 1 }}>
+            {SECTOR_ETFS.map((symbol, idx) => (
+              <div key={symbol} className="animate-pulse rounded-sm"
+                style={{
+                  aspectRatio: '1',
+                  backgroundColor: 'var(--border-color)',
+                  animationDelay: `${idx * 0.1}s`,
+                }}
+              />
+            ))}
           </div>
         ) : sectors.length === 0 ? (
           <div className="flex-1 flex items-center justify-center font-mono-data text-[10px]" style={{ color: 'var(--text-muted)' }}>
             No sector data available
           </div>
         ) : (
-          <div className="flex flex-wrap gap-px content-start flex-1">
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gridAutoRows: '1fr',
+            gap: 2,
+            flex: 1,
+          }}>
             {sortedSectors.map((sector) => {
               const isHovered = hoveredSector === sector.symbol
-              const bgColor = getHeatColor(sector.change)
+              const area = getGridArea(sector.weight, totalWeight)
               return (
                 <div
                   key={sector.symbol}
                   onMouseEnter={() => setHoveredSector(sector.symbol)}
                   onMouseLeave={() => setHoveredSector(null)}
-                  className="flex flex-col items-center justify-center cursor-pointer overflow-hidden rounded-sm"
+                  className="flex flex-col items-center justify-center cursor-pointer overflow-hidden"
                   style={{
-                    flexBasis: sector.weight >= 4 ? 'calc(50% - 2px)' : sector.weight >= 3 ? 'calc(33.33% - 2px)' : 'calc(25% - 2px)',
-                    minHeight: sector.weight >= 4 ? '52px' : '40px',
-                    backgroundColor: bgColor,
-                    opacity: getBgOpacity(sector.change) + (isHovered ? 0.2 : 0),
-                    border: isHovered ? '1px solid rgba(255,255,255,0.3)' : '1px solid var(--border-color)',
-                    transition: 'all 0.2s',
-                    textShadow: '0 1px 2px rgba(0,0,0,0.8)',
+                    gridColumn: `span ${area.colSpan}`,
+                    gridRow: `span ${area.rowSpan}`,
+                    backgroundColor: getHeatColor(sector.change),
+                    border: isHovered ? '1px solid rgba(255,255,255,0.4)' : '1px solid var(--border-color)',
+                    transition: 'all 0.2s ease, transform 0.15s ease',
+                    transform: isHovered ? 'scale(1.02)' : 'scale(1)',
+                    zIndex: isHovered ? 2 : 1,
+                    textShadow: '0 1px 3px rgba(0,0,0,0.8)',
                   }}
                 >
                   <div className="font-bold tracking-wider" style={{
-                    fontSize: sector.weight >= 4 ? '10px' : '9px',
+                    fontSize: area.colSpan > 1 ? '11px' : '9px',
                     color: '#fff',
                   }}>
                     {sector.name}
                   </div>
                   <div className="font-bold" style={{
-                    fontSize: sector.weight >= 4 ? '12px' : '10px',
+                    fontSize: area.colSpan > 1 ? '13px' : '11px',
                     color: '#fff',
                   }}>
                     {sector.change >= 0 ? '+' : ''}{sector.change.toFixed(2)}%
                   </div>
                   {isHovered && (
-                    <div className="font-mono-data text-[8px]" style={{ color: '#fff', marginTop: '1px' }}>
+                    <div className="font-mono-data" style={{ color: 'rgba(255,255,255,0.8)', marginTop: 2, fontSize: 8 }}>
                       {sector.symbol} | ${sector.price.toFixed(2)}
                     </div>
                   )}

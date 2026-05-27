@@ -6,10 +6,10 @@ interface BadgeProps {
 
 const COLORS = {
   default: { bg: 'var(--bg-hover)', text: 'var(--text-secondary)' },
-  success: { bg: 'rgba(34,197,94,0.15)', text: 'var(--accent-green)' },
-  warning: { bg: 'rgba(234,179,8,0.15)', text: 'var(--accent-yellow)' },
-  error: { bg: 'rgba(239,68,68,0.15)', text: 'var(--accent-red)' },
-  info: { bg: 'rgba(59,130,246,0.15)', text: 'var(--accent-blue)' },
+  success: { bg: 'color-mix(in srgb, var(--accent-green) 15%, transparent)', text: 'var(--accent-green)' },
+  warning: { bg: 'color-mix(in srgb, var(--accent-yellow) 15%, transparent)', text: 'var(--accent-yellow)' },
+  error: { bg: 'color-mix(in srgb, var(--accent-red) 15%, transparent)', text: 'var(--accent-red)' },
+  info: { bg: 'color-mix(in srgb, var(--accent-blue) 15%, transparent)', text: 'var(--accent-blue)' },
 }
 
 export default function Badge({ label, variant = 'default', size = 'sm' }: BadgeProps) {

@@ -23,7 +23,11 @@ export function useWebSocket<T = unknown>(url: string, options: UseWebSocketOpti
 
   const connect = useCallback(() => {
     if (!mountedRef.current) return
-    if (wsRef.current) wsRef.current.close()
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.close()
+    }
+
+    if (!url) return
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.host
@@ -64,12 +68,17 @@ export function useWebSocket<T = unknown>(url: string, options: UseWebSocketOpti
   }, [url, onMessage, onError, maxRetries, retryDelay])
 
   useEffect(() => {
+    if (!url) return
     connect()
     return () => {
       if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
-      if (wsRef.current) wsRef.current.close()
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.close()
+      }
     }
-  }, [connect])
+  }, [connect, url])
+
+
 
   const send = useCallback((data: T | string) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {

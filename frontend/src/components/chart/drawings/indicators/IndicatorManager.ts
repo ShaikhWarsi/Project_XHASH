@@ -21,12 +21,63 @@ export class IndicatorManager {
     this.dataCache = data
   }
 
-  addIndicator(config: IndicatorConfig): IndicatorResult | null {
-    const result = this.compute(config.name, config.params)
+  async addIndicator(config: IndicatorConfig): Promise<IndicatorResult | null> {
+    const supportsWorker = typeof Worker !== 'undefined'
+    let result: IndicatorResult | null = null
+
+    if (supportsWorker) {
+      try {
+        result = await this.useWorker(config.name, config.params, this.dataCache)
+      } catch {
+        result = this.compute(config.name, config.params)
+      }
+    } else {
+      result = this.compute(config.name, config.params)
+    }
+
     if (!result) return null
 
+    result.config = config
     this.indicators.set(config.id, result)
     return result
+  }
+
+  private useWorker(indicator: string, params: any, data: any[]): Promise<IndicatorResult> {
+    return new Promise((resolve, reject) => {
+      try {
+        const worker = new Worker(new URL('../../../../workers/indicatorWorker.ts', import.meta.url), { type: 'module' })
+        worker.onmessage = (e) => {
+          const plugin = getPlugin(indicator)
+          if (!plugin) {
+            reject(new Error(`Indicator plugin "${indicator}" not found`))
+            worker.terminate()
+            return
+          }
+          const mergedParams: IndicatorParams = { ...plugin.defaultParams, ...params }
+          const rawData = e.data.result
+          const signals = plugin.signals
+            ? plugin.signals(this.dataCache, rawData, mergedParams)
+            : undefined
+          const result: IndicatorResult = {
+            id: plugin.id,
+            name: plugin.name,
+            type: plugin.outputType,
+            data: rawData,
+            config: { id: plugin.id, name: plugin.name, params: mergedParams as Record<string, number>, paneId: '', visible: true, style: {} },
+            signals: signals && signals.length > 0 ? signals : undefined,
+          }
+          resolve(result)
+          worker.terminate()
+        }
+        worker.onerror = (e) => {
+          reject(e)
+          worker.terminate()
+        }
+        worker.postMessage({ type: 'compute', id: indicator, indicator, params, data })
+      } catch {
+        reject(new Error('Web Worker not available'))
+      }
+    })
   }
 
   removeIndicator(id: string) {

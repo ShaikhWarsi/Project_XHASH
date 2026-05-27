@@ -12,17 +12,22 @@ interface KpiCardProps {
 export default function KpiCard({ label, value, change, icon, subtitle, trend }: KpiCardProps) {
   return (
     <div
+      className="group"
       style={{
         background: 'var(--bg-card)',
         border: '1px solid var(--border-color)',
         borderRadius: 'var(--card-radius)',
-        padding: '10px 12px',
+        padding: '8px 10px',
         display: 'flex',
         flexDirection: 'column',
         gap: 2,
         position: 'relative',
         overflow: 'hidden',
+        boxShadow: 'var(--widget-shadow)',
+        transition: 'box-shadow 0.2s ease, transform 0.2s ease',
       }}
+      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = 'var(--widget-shadow-hover)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--widget-shadow)'; e.currentTarget.style.transform = 'translateY(0)' }}
     >
       <div
         style={{

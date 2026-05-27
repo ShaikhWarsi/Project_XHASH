@@ -7,6 +7,7 @@ import { LivePricesProvider } from './contexts/LivePricesContext'
 import { EventBusProvider } from './contexts/EventBusContext'
 import { WorkspaceProvider } from './contexts/WorkspaceContext'
 import { AudioAlertProvider } from './contexts/AudioAlertContext'
+import { InterfaceModeProvider } from './contexts/InterfaceModeContext'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const ChartPage = lazy(() => import('./pages/Chart'))
@@ -60,13 +61,25 @@ const MarketScreener = lazy(() => import('./pages/MarketScreener'))
 const Infrastructure = lazy(() => import('./pages/Infrastructure'))
 const AuditLogPage = lazy(() => import('./pages/AuditLogPage'))
 const BotsPage = lazy(() => import('./pages/BotsPage'))
+const AlertsPage = lazy(() => import('./pages/Alerts'))
 
-import Spinner from './components/Spinner'
+import Skeleton from './components/Skeleton'
 
 function PageFallback() {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
-      <Spinner size={24} label="Loading page..." />
+    <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <Skeleton width={200} height={16} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+        <Skeleton height={64} variant="rect" />
+        <Skeleton height={64} variant="rect" />
+        <Skeleton height={64} variant="rect" />
+        <Skeleton height={64} variant="rect" />
+      </div>
+      <Skeleton height={200} variant="rect" />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+        <Skeleton height={120} variant="rect" />
+        <Skeleton height={120} variant="rect" />
+      </div>
     </div>
   )
 }
@@ -78,6 +91,7 @@ function LazyPage({ children, category = 'page' }: { children: ReactNode; catego
 export default function App() {
   return (
     <BrowserRouter>
+      <InterfaceModeProvider>
       <LivePricesProvider>
         <EventBusProvider>
           <WorkspaceProvider>
@@ -85,8 +99,9 @@ export default function App() {
               <ToastContainer />
               <Routes>
                 <Route element={<Layout />}>
-                  <Route path="/" element={<LazyPage><PersonaCouncil /></LazyPage>} />
+                  <Route path="/" element={<LazyPage><Dashboard /></LazyPage>} />
                   <Route path="/markets/dashboard" element={<LazyPage><Dashboard /></LazyPage>} />
+                  <Route path="/markets/persona-council" element={<LazyPage><PersonaCouncil /></LazyPage>} />
                   <Route path="/markets/chart" element={<LazyPage><ChartPage /></LazyPage>} />
                   <Route path="/markets/watchlist" element={<LazyPage><WatchlistPage /></LazyPage>} />
                   <Route path="/markets/signals" element={<LazyPage><Signals /></LazyPage>} />
@@ -138,12 +153,14 @@ export default function App() {
                   <Route path="/settings/infrastructure" element={<LazyPage><Infrastructure /></LazyPage>} />
                   <Route path="/settings/audit-log" element={<LazyPage><AuditLogPage /></LazyPage>} />
                   <Route path="/settings/bots" element={<LazyPage><BotsPage /></LazyPage>} />
+                  <Route path="/alerts" element={<LazyPage><AlertsPage /></LazyPage>} />
                 </Route>
               </Routes>
             </AudioAlertProvider>
           </WorkspaceProvider>
         </EventBusProvider>
       </LivePricesProvider>
+      </InterfaceModeProvider>
     </BrowserRouter>
   )
 }

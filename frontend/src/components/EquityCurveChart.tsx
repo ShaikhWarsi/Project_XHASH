@@ -120,7 +120,7 @@ export default function EquityCurveChart({ equity, trades, benchmark }: EquityCu
     }
 
     let peak = sorted[0].value
-    ctx.fillStyle = 'rgba(239, 68, 68, 0.12)'
+    ctx.fillStyle = 'color-mix(in srgb, var(--accent-red) 12%, transparent)'
     ctx.beginPath()
     for (let i = 0; i < sorted.length; i++) {
       const v = sorted[i].value

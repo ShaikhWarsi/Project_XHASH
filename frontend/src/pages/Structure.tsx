@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Card from '../components/ui/Card'
-import { fetchStructure } from '../api/client'
+import { fetchStructure, fetchOHLCV } from '../api/client'
+import { ChartEngine, type StructureOverlay } from '../components/chart/ChartEngine'
 import { useToastStore } from '../store/toast'
 
 interface StructureLevel {
@@ -31,6 +32,9 @@ export default function Structure() {
   const [state, setState] = useState<StructureState | null>(null)
   const [symbol, setSymbol] = useState('AAPL')
   const [timeframe, setTimeframe] = useState('1h')
+  const [chartView, setChartView] = useState(false)
+  const miniChartRef = useRef<HTMLDivElement>(null)
+  const miniEngineRef = useRef<ChartEngine | null>(null)
   const addToast = useToastStore((s) => s.addToast)
 
   useEffect(() => {
@@ -47,6 +51,63 @@ export default function Structure() {
     return () => clearInterval(interval)
   }, [symbol, timeframe, addToast])
 
+  useEffect(() => {
+    if (!chartView || !miniChartRef.current || !state) return
+    const container = miniChartRef.current
+    let engine: ChartEngine | null = null
+
+    const init = async () => {
+      try {
+        const bars = await fetchOHLCV(symbol, timeframe)
+        const chartData = bars.map((b: any) => ({
+          time: b.time as any,
+          open: b.open,
+          high: b.high,
+          low: b.low,
+          close: b.close,
+          volume: b.volume ?? 0,
+        }))
+
+        engine = new ChartEngine({
+          symbol,
+          interval: timeframe,
+          data: chartData,
+          container,
+          width: container.clientWidth,
+          height: 300,
+        })
+        miniEngineRef.current = engine
+
+        const overlay: StructureOverlay = {
+          orderBlocks: state.active_order_blocks ?? [],
+          fvgs: state.active_fvgs ?? [],
+          liquidityLevels: state.liquidity_levels ?? [],
+          keyLevels: state.key_levels ?? [],
+        }
+        engine.setStructureData(overlay)
+      } catch (e: any) {
+        addToast(`Mini chart init failed: ${e?.message}`, 'error')
+      }
+    }
+    init()
+
+    return () => {
+      engine?.destroy()
+      miniEngineRef.current = null
+    }
+  }, [chartView, symbol, timeframe, state, addToast])
+
+  useEffect(() => {
+    if (!miniEngineRef.current || !state) return
+    const overlay: StructureOverlay = {
+      orderBlocks: state.active_order_blocks ?? [],
+      fvgs: state.active_fvgs ?? [],
+      liquidityLevels: state.liquidity_levels ?? [],
+      keyLevels: state.key_levels ?? [],
+    }
+    miniEngineRef.current.setStructureData(overlay)
+  }, [state])
+
   const biasColor = (bias: string) => {
     if (bias === 'BULLISH') return 'text-up'
     if (bias === 'BEARISH') return 'text-down'
@@ -61,6 +122,12 @@ export default function Structure() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-xl font-bold text-primary">Market Structure</h1>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setChartView(!chartView)}
+            className={`cursor-pointer text-[10px] px-2 py-0.5 rounded-sm transition-colors ${chartView ? 'bg-accent-subtle text-accent-blue' : 'bg-input text-muted'}`}
+          >
+            {chartView ? 'Cards' : 'Chart View'}
+          </button>
           <input
             type="text"
             value={symbol}
@@ -116,58 +183,62 @@ export default function Structure() {
             </Card>
           </div>
 
-          <div className="relative h-[320px] rounded p-3 overflow-hidden bg-secondary border border-default">
-            <div className="absolute inset-0 flex items-end px-4 pb-4">
-              {state.key_levels.length > 0 && (
-                <svg className="w-full h-full" viewBox="0 0 400 240" preserveAspectRatio="none">
-                  {state.active_order_blocks.map((ob, i) => (
-                    <line
-                      key={`ob-${i}`}
-                      x1={i * 120 + 40}
-                      y1={200 - (ob.level - Math.min(...state.key_levels)) / (Math.max(...state.key_levels) - Math.min(...state.key_levels)) * 180 - 10}
-                      x2={i * 120 + 40}
-                      y2={200 - (ob.level - Math.min(...state.key_levels)) / (Math.max(...state.key_levels) - Math.min(...state.key_levels)) * 180 + 10}
-                      style={{
-                        stroke: directionColor(ob.direction),
-                        strokeWidth: 3,
-                        strokeOpacity: ob.confidence,
-                      }}
-                    />
-                  ))}
-                  {state.active_fvgs.map((fvg, i) => (
-                    <rect
-                      key={`fvg-${i}`}
-                      x={i * 100 + 150}
-                      y={200 - (Math.max(fvg.top, fvg.bottom) - Math.min(...state.key_levels)) / (Math.max(...state.key_levels) - Math.min(...state.key_levels)) * 180}
-                      width={20}
-                      height={(Math.abs(fvg.top - fvg.bottom)) / (Math.max(...state.key_levels) - Math.min(...state.key_levels)) * 180}
-                      style={{
-                        fill: directionColor(fvg.direction),
-                        fillOpacity: 0.3,
-                      }}
-                    />
-                  ))}
-                  {state.liquidity_levels.map((liq, i) => (
-                    <line
-                      key={`liq-${i}`}
-                      x1={i * 80 + 60}
-                      y1={200 - (liq.level - Math.min(...state.key_levels)) / (Math.max(...state.key_levels) - Math.min(...state.key_levels)) * 180}
-                      x2={i * 80 + 100}
-                      y2={200 - (liq.level - Math.min(...state.key_levels)) / (Math.max(...state.key_levels) - Math.min(...state.key_levels)) * 180}
-                      style={{
-                        stroke: directionColor(liq.direction),
-                        strokeWidth: 2,
-                        strokeDasharray: '6 3',
-                      }}
-                    />
-                  ))}
-                </svg>
-              )}
+          {chartView ? (
+            <div ref={miniChartRef} className="relative h-[300px] rounded overflow-hidden bg-secondary border border-default" />
+          ) : (
+            <div className="relative h-[320px] rounded p-3 overflow-hidden bg-secondary border border-default">
+              <div className="absolute inset-0 flex items-end px-4 pb-4">
+                {state.key_levels.length > 0 && (
+                  <svg className="w-full h-full" viewBox="0 0 400 240" preserveAspectRatio="none">
+                    {state.active_order_blocks.map((ob, i) => (
+                      <line
+                        key={`ob-${i}`}
+                        x1={i * 120 + 40}
+                        y1={200 - (ob.level - Math.min(...state.key_levels)) / (Math.max(...state.key_levels) - Math.min(...state.key_levels)) * 180 - 10}
+                        x2={i * 120 + 40}
+                        y2={200 - (ob.level - Math.min(...state.key_levels)) / (Math.max(...state.key_levels) - Math.min(...state.key_levels)) * 180 + 10}
+                        style={{
+                          stroke: directionColor(ob.direction),
+                          strokeWidth: 3,
+                          strokeOpacity: ob.confidence,
+                        }}
+                      />
+                    ))}
+                    {state.active_fvgs.map((fvg, i) => (
+                      <rect
+                        key={`fvg-${i}`}
+                        x={i * 100 + 150}
+                        y={200 - (Math.max(fvg.top, fvg.bottom) - Math.min(...state.key_levels)) / (Math.max(...state.key_levels) - Math.min(...state.key_levels)) * 180}
+                        width={20}
+                        height={(Math.abs(fvg.top - fvg.bottom)) / (Math.max(...state.key_levels) - Math.min(...state.key_levels)) * 180}
+                        style={{
+                          fill: directionColor(fvg.direction),
+                          fillOpacity: 0.3,
+                        }}
+                      />
+                    ))}
+                    {state.liquidity_levels.map((liq, i) => (
+                      <line
+                        key={`liq-${i}`}
+                        x1={i * 80 + 60}
+                        y1={200 - (liq.level - Math.min(...state.key_levels)) / (Math.max(...state.key_levels) - Math.min(...state.key_levels)) * 180}
+                        x2={i * 80 + 100}
+                        y2={200 - (liq.level - Math.min(...state.key_levels)) / (Math.max(...state.key_levels) - Math.min(...state.key_levels)) * 180}
+                        style={{
+                          stroke: directionColor(liq.direction),
+                          strokeWidth: 2,
+                          strokeDasharray: '6 3',
+                        }}
+                      />
+                    ))}
+                  </svg>
+                )}
+              </div>
+              <div className="absolute bottom-2 left-3 text-xs text-muted">
+                Key levels: {state.key_levels.map((l) => `$${l.toFixed(1)}`).join(', ')}
+              </div>
             </div>
-            <div className="absolute bottom-2 left-3 text-xs text-muted">
-              Key levels: {state.key_levels.map((l) => `$${l.toFixed(1)}`).join(', ')}
-            </div>
-          </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card title="Order Blocks">

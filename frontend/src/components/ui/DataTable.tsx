@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useMemo, type ReactNode } from 'react'
-import { Download, Search, Eye, EyeOff } from 'lucide-react'
+import { Download, Search, Eye, EyeOff, GripVertical } from 'lucide-react'
 import { useToastStore } from '../../store/toast'
 
 interface Column<T> {
@@ -34,8 +34,8 @@ export default function DataTable<T extends { id?: string }>({
   onRowClick, emptyMessage = 'No data',
   searchable = true, searchPlaceholder = 'Search...',
   exportable = true, exportFilename = 'export',
-  filterable = true, columnVisibility = true,
-  compact = false,
+  filterable: _filterable = true, columnVisibility = true,
+  compact = true,
 }: DataTableProps<T>) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [scrollTop, setScrollTop] = useState(0)
@@ -46,7 +46,10 @@ export default function DataTable<T extends { id?: string }>({
     Object.fromEntries(columns.map((c) => [c.key, true]))
   )
   const [showColMenu, setShowColMenu] = useState(false)
-  const [filterValues, setFilterValues] = useState<Record<string, string>>({})
+  const [filterValues, _setFilterValues] = useState<Record<string, string>>({})
+  const [colWidths, setColWidths] = useState<Record<string, number>>({})
+  const [resizing, setResizing] = useState<string | null>(null)
+  const resizeStartRef = useRef<{ key: string; startX: number; startWidth: number } | null>(null)
   const addToast = useToastStore((s) => s.addToast)
 
   const activeCols = columns.filter((c) => visibleCols[c.key] !== false)
@@ -130,7 +133,33 @@ export default function DataTable<T extends { id?: string }>({
     }
   }
 
-  const colGrid = activeCols.map((c) => c.width || '1fr').join(' ')
+  const handleResizeStart = useCallback((e: React.MouseEvent, key: string) => {
+    e.preventDefault()
+    const startX = e.clientX
+    const currentWidth = colWidths[key] || 100
+    resizeStartRef.current = { key, startX, startWidth: currentWidth }
+    setResizing(key)
+
+    const onMove = (ev: MouseEvent) => {
+      if (!resizeStartRef.current) return
+      const diff = ev.clientX - resizeStartRef.current.startX
+      const newWidth = Math.max(40, resizeStartRef.current.startWidth + diff)
+      setColWidths((prev) => ({ ...prev, [key]: newWidth }))
+    }
+    const onUp = () => {
+      setResizing(null)
+      resizeStartRef.current = null
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }, [colWidths])
+
+  const colGrid = activeCols.map((c) => {
+    const w = colWidths[c.key]
+    return w ? `${w}px` : c.width || '1fr'
+  }).join(' ')
 
   return (
     <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: compact ? 9 : 10 }}>
@@ -219,6 +248,8 @@ export default function DataTable<T extends { id?: string }>({
           borderBottom: '1px solid var(--border-color)',
           color: 'var(--text-muted)', fontSize: compact ? 8 : 9,
           textTransform: 'uppercase', letterSpacing: '0.05em',
+          position: 'sticky', top: 0, zIndex: 2,
+          background: 'var(--bg-card)',
         }}
       >
         {activeCols.map((c) => (
@@ -229,9 +260,21 @@ export default function DataTable<T extends { id?: string }>({
               padding: compact ? '2px 6px' : '4px 8px', textAlign: c.align || 'left',
               cursor: c.sortable ? 'pointer' : 'default',
               color: sortKey === c.key ? 'var(--accent-cyan)' : undefined,
+              transition: 'color 0.15s',
+              position: 'relative',
+              overflow: 'hidden',
             }}
           >
             {c.label}{sortKey === c.key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
+            <div
+              onMouseDown={(e) => handleResizeStart(e, c.key)}
+              style={{
+                position: 'absolute', right: 0, top: 0, bottom: 0, width: 4,
+                cursor: 'col-resize', background: resizing === c.key ? 'var(--accent-cyan)' : 'transparent',
+              }}
+              onMouseEnter={(e) => { if (resizing !== c.key) e.currentTarget.style.background = 'var(--border-color)' }}
+              onMouseLeave={(e) => { if (resizing !== c.key) e.currentTarget.style.background = 'transparent' }}
+            />
           </div>
         ))}
       </div>
@@ -239,19 +282,24 @@ export default function DataTable<T extends { id?: string }>({
       {/* Body */}
       <div ref={containerRef} onScroll={handleScroll} style={{ overflowY: 'auto', maxHeight: rowHeight * visibleRows, position: 'relative' }}>
         <div style={{ height: totalHeight, position: 'relative' }}>
-          {filtered.slice(startIdx, endIdx).map((item, i) => (
+          {filtered.slice(startIdx, endIdx).map((item, i) => {
+            const rowIdx = startIdx + i
+            const isEven = rowIdx % 2 === 0
+            return (
             <div
-              key={(item as any).id || startIdx + i}
+              key={(item as any).id || rowIdx}
               onClick={() => onRowClick?.(item)}
               style={{
-                position: 'absolute', top: (startIdx + i) * rowHeight, left: 0, right: 0,
+                position: 'absolute', top: rowIdx * rowHeight, left: 0, right: 0,
                 height: rowHeight, display: 'grid', gridTemplateColumns: colGrid,
                 alignItems: 'center', borderBottom: '1px solid var(--border-color)',
                 cursor: onRowClick ? 'pointer' : 'default',
                 fontSize: compact ? 9 : 10,
+                background: isEven ? 'var(--bg-card)' : 'color-mix(in srgb, var(--bg-card) 98%, var(--accent-cyan) 2%)',
+                transition: 'background 0.1s',
               }}
               onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = isEven ? 'var(--bg-card)' : 'color-mix(in srgb, var(--bg-card) 98%, var(--accent-cyan) 2%)' }}
             >
               {activeCols.map((c) => (
                 <div key={c.key} style={{ padding: compact ? '1px 6px' : '2px 8px', textAlign: c.align || 'left', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -259,7 +307,8 @@ export default function DataTable<T extends { id?: string }>({
                 </div>
               ))}
             </div>
-          ))}
+            )
+          })}
         </div>
         {filtered.length === 0 && (
           <div style={{ padding: compact ? 12 : 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: compact ? 9 : 10 }}>

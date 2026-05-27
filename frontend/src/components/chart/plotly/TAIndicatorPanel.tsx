@@ -34,7 +34,7 @@ const DEFAULT_INDICATORS: Record<string, IndicatorDef> = {
 }
 
 const CATEGORIES = [
-  { key: 'overlap', label: 'Moving Averages', color: '#3b82f6' },
+  { key: 'overlap', label: 'Moving Averages', color: 'var(--accent-blue)' },
   { key: 'momentum', label: 'Momentum', color: '#f59e0b' },
   { key: 'trend', label: 'Trend', color: '#10b981' },
   { key: 'volatility', label: 'Volatility', color: '#ec4899' },
@@ -84,7 +84,7 @@ export default function TAIndicatorPanel({ onIndicatorsChange, initialIndicators
       fontFamily: 'JetBrains Mono, monospace', fontSize: 10,
     }}>
       <div style={{ padding: '6px 8px', borderBottom: '1px solid var(--border-color, #1a2332)', fontWeight: 600, color: 'var(--text-primary)' }}>
-        INDICATORS {activeCount > 0 && <span style={{ color: '#3b82f6' }}>({activeCount})</span>}
+        INDICATORS {activeCount > 0 && <span style={{ color: 'var(--accent-blue)' }}>({activeCount})</span>}
       </div>
 
       {CATEGORIES.map((cat) => {

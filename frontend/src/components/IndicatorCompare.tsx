@@ -10,7 +10,7 @@ interface IndicatorCompareProps {
   indicators: IndicatorData[]
 }
 
-const PALETTE = ['#22c55e', '#3b82f6', '#eab308', '#ef4444', '#a855f7', '#06b6d4', '#ea580c', '#ec4899']
+const PALETTE = ['var(--accent-green)', 'var(--accent-blue)', 'var(--accent-yellow)', 'var(--accent-red)', 'var(--accent-purple)', 'var(--accent-cyan)', 'var(--accent-orange)', '#ec4899']
 
 function formatTime(t: string): string {
   if (t.length >= 16) return t.slice(5, 16)

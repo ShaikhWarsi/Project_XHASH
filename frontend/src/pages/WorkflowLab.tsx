@@ -41,17 +41,17 @@ export default function WorkflowLab() {
         <span className="text-muted">|</span>
         <button onClick={() => setTab('workflow')}
           className="border-0 cursor-pointer px-2 py-0.5 text-[10px]"
-          style={{ background: tab === 'workflow' ? 'rgba(59,130,246,0.15)' : 'none', color: tab === 'workflow' ? '#3b82f6' : '#5d6b7e' }}>
+          style={{ background: tab === 'workflow' ? 'color-mix(in srgb, var(--accent-blue) 15%, transparent)' : 'none', color: tab === 'workflow' ? 'var(--accent-blue)' : 'var(--text-muted)' }}>
           LangGraph Workflow
         </button>
         <button onClick={() => setTab('hyperopt')}
           className="border-0 cursor-pointer px-2 py-0.5 text-[10px]"
-          style={{ background: tab === 'hyperopt' ? 'rgba(59,130,246,0.15)' : 'none', color: tab === 'hyperopt' ? '#3b82f6' : '#5d6b7e' }}>
+          style={{ background: tab === 'hyperopt' ? 'color-mix(in srgb, var(--accent-blue) 15%, transparent)' : 'none', color: tab === 'hyperopt' ? 'var(--accent-blue)' : 'var(--text-muted)' }}>
           Hyperopt
         </button>
         <button onClick={() => setTab('mtf')}
           className="border-0 cursor-pointer px-2 py-0.5 text-[10px]"
-          style={{ background: tab === 'mtf' ? 'rgba(59,130,246,0.15)' : 'none', color: tab === 'mtf' ? '#3b82f6' : '#5d6b7e' }}>
+          style={{ background: tab === 'mtf' ? 'color-mix(in srgb, var(--accent-blue) 15%, transparent)' : 'none', color: tab === 'mtf' ? 'var(--accent-blue)' : 'var(--text-muted)' }}>
           Multi-TF Optimize
         </button>
       </div>
@@ -87,10 +87,9 @@ export default function WorkflowLab() {
           <div>
             <div className="flex gap-2 mb-3">
               <div className="bg-card py-[10px] px-[14px] rounded"
-                style={{ border: `1px solid ${result.consensus === 'bullish' ? '#22c55e' : result.consensus === 'bearish' ? '#ef4444' : '#f59e0b'}` }}>
-                <div className="text-[9px] text-muted">CONSENSUS</div>
-                <div className="text-lg font-bold"
-                  style={{ color: result.consensus === 'bullish' ? '#22c55e' : result.consensus === 'bearish' ? '#ef4444' : '#f59e0b' }}>
+                style={{ border: `1px solid ${result.consensus === 'bullish' ? 'var(--accent-green)' : result.consensus === 'bearish' ? 'var(--accent-red)' : 'var(--accent-yellow)'}` }}>
+                  <div
+                    style={{ color: result.consensus === 'bullish' ? 'var(--accent-green)' : result.consensus === 'bearish' ? 'var(--accent-red)' : 'var(--accent-yellow)' }}>
                   {result.consensus?.toUpperCase()}
                 </div>
                 <div className="text-[10px] text-muted">{(result.consensus_confidence * 100).toFixed(0)}%</div>
@@ -98,7 +97,7 @@ export default function WorkflowLab() {
               <div className="bg-card border border-default py-[10px] px-[14px] rounded">
                 <div className="text-[9px] text-muted">STATUS</div>
                 <div className="text-sm font-bold"
-                  style={{ color: result.status === 'completed' ? '#22c55e' : '#f59e0b' }}>
+                  style={{ color: result.status === 'completed' ? 'var(--accent-green)' : 'var(--accent-yellow)' }}>
                   {result.status}
                 </div>
               </div>
@@ -149,7 +148,7 @@ export default function WorkflowLab() {
               <div className="bg-card border border-green-500 py-[10px] px-[14px] rounded">
                 <div className="text-[9px] text-muted">COMPOSITE</div>
                 <div className="text-lg font-bold"
-                  style={{ color: result.best_composite > 0 ? '#22c55e' : '#ef4444' }}>
+                  style={{ color: result.best_composite > 0 ? 'var(--accent-green)' : 'var(--accent-red)' }}>
                   {result.best_composite}
                 </div>
               </div>
@@ -164,7 +163,7 @@ export default function WorkflowLab() {
                 <div key={tf} className="flex-1 bg-card border border-default py-1.5 px-2 rounded">
                   <div className="text-[9px] text-muted">{tf}</div>
                   <div className="text-xs font-bold"
-                    style={{ color: data.sharpe > 0 ? '#22c55e' : '#ef4444' }}>
+                    style={{ color: data.sharpe > 0 ? 'var(--accent-green)' : 'var(--accent-red)' }}>
                     {data.sharpe || 'N/A'}
                   </div>
                   <div className="text-[8px] text-muted">return: {data.return || 0}%</div>

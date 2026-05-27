@@ -113,9 +113,9 @@ export default function Agents() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold text-white">Council of Legends</h1>
-      <p className="text-sm text-[#9aa0a6]">
-        AI agents powered by investing legends deliberate and debate trading decisions
+      <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>AI Strategy Agents</h1>
+      <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+        Multi-agent deliberation system — each agent analyzes from a distinct investment philosophy
       </p>
 
       <div className="flex items-center gap-3">
@@ -123,34 +123,72 @@ export default function Agents() {
           type="text"
           value={selectedTicker}
           onChange={(e) => setSelectedTicker(e.target.value.toUpperCase())}
-          className="w-32 bg-[#2a2d3e] border border-[#3a3d4e] rounded-lg px-3 py-2 text-sm text-white text-center uppercase focus:outline-none focus:border-blue-500"
+          className="w-32 px-3 py-2 text-sm text-center uppercase rounded-lg focus:outline-none"
+          style={{
+            background: 'var(--input-bg)',
+            border: '1px solid var(--input-border)',
+            color: 'var(--text-primary)',
+          }}
           placeholder="Ticker"
         />
         <button
           onClick={runAnalysis}
           disabled={loading || !selectedTicker}
-          className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
+          className="text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
+          style={{
+            background: 'var(--accent-blue)',
+            opacity: loading || !selectedTicker ? 0.5 : 1,
+            cursor: loading || !selectedTicker ? 'not-allowed' : 'pointer',
+            border: 'none',
+          }}
         >
-          {loading ? 'Consulting Legends...' : 'Consult Council'}
+          {loading ? 'Analyzing...' : 'Run Analysis'}
         </button>
       </div>
 
       {error && (
-        <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2 text-sm text-red-400">
+        <div className="rounded-lg px-4 py-2 text-sm" style={{ background: 'color-mix(in srgb, var(--accent-red) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--accent-red) 20%, transparent)', color: 'var(--accent-red)' }}>
           {error}
         </div>
       )}
 
       {messages.length > 0 && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-4 gap-4">
           <Card title="Bullish">
-            <div className="text-2xl font-bold text-green-400">{bullishCount}/{messages.length}</div>
+            <div className="text-2xl font-bold" style={{ color: 'var(--accent-green)' }}>{bullishCount}/{messages.length}</div>
+            <div style={{ width: '100%', height: 4, background: 'var(--bg-hover)', borderRadius: 2, marginTop: 4 }}>
+              <div style={{ width: `${(bullishCount / messages.length) * 100}%`, height: 4, background: 'var(--accent-green)', borderRadius: 2 }} />
+            </div>
           </Card>
           <Card title="Bearish">
-            <div className="text-2xl font-bold text-red-400">{bearishCount}/{messages.length}</div>
+            <div className="text-2xl font-bold" style={{ color: 'var(--accent-red)' }}>{bearishCount}/{messages.length}</div>
+            <div style={{ width: '100%', height: 4, background: 'var(--bg-hover)', borderRadius: 2, marginTop: 4 }}>
+              <div style={{ width: `${(bearishCount / messages.length) * 100}%`, height: 4, background: 'var(--accent-red)', borderRadius: 2 }} />
+            </div>
           </Card>
           <Card title="Avg Confidence">
-            <div className="text-2xl font-bold text-white">{(avgConfidence * 100).toFixed(0)}%</div>
+            <div className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{(avgConfidence * 100).toFixed(0)}%</div>
+            <div style={{ width: '100%', height: 4, background: 'var(--bg-hover)', borderRadius: 2, marginTop: 4 }}>
+              <div style={{ width: `${avgConfidence * 100}%`, height: 4, background: 'var(--accent-blue)', borderRadius: 2 }} />
+            </div>
+          </Card>
+          <Card title="Consensus">
+            <div
+              className="text-lg font-bold"
+              style={{
+                color: avgConfidence > 0.6 && bullishCount > bearishCount
+                  ? 'var(--accent-green)'
+                  : avgConfidence > 0.6 && bearishCount > bullishCount
+                    ? 'var(--accent-red)'
+                    : 'var(--accent-yellow)',
+              }}
+            >
+              {avgConfidence > 0.6 && bullishCount > bearishCount
+                ? 'BULLISH'
+                : avgConfidence > 0.6 && bearishCount > bullishCount
+                  ? 'BEARISH'
+                  : 'NEUTRAL'}
+            </div>
           </Card>
         </div>
       )}
@@ -162,9 +200,12 @@ export default function Agents() {
           return (
             <div
               key={agent.id}
-              className={`bg-[#1e2235] rounded-xl border border-[#2a2d3e] p-4 transition-all ${
-                msg ? 'opacity-100' : 'opacity-60'
-              }`}
+              className="rounded-xl p-4 transition-all"
+              style={{
+                background: msg ? 'var(--bg-card)' : 'var(--bg-secondary)',
+                border: `1px solid ${msg ? 'var(--border-color)' : 'var(--border-color)'}`,
+                opacity: msg ? 1 : 0.5,
+              }}
             >
               <div className="flex items-start gap-4">
                 <div
@@ -174,35 +215,51 @@ export default function Agents() {
                 >
                   <Icon className="w-5 h-5" />
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
-                    <div>
-                      <span className="text-sm font-semibold text-white">{agent.name}</span>
-                      <span className="text-xs text-[#9aa0a6] ml-2">{agent.style}</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{agent.name}</span>
+                      <span className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{agent.style}</span>
                     </div>
                     {msg && (
                       <span
-                        className={`text-xs font-medium px-2 py-0.5 rounded ${
-                          msg.signal === 'bullish'
-                            ? 'bg-green-500/10 text-green-400'
+                        className="text-xs font-medium px-2 py-0.5 rounded shrink-0"
+                        style={{
+                          background: msg.signal === 'bullish'
+                            ? 'color-mix(in srgb, var(--accent-green) 15%, transparent)'
                             : msg.signal === 'bearish'
-                              ? 'bg-red-500/10 text-red-400'
-                              : 'bg-yellow-500/10 text-yellow-400'
-                        }`}
+                              ? 'color-mix(in srgb, var(--accent-red) 15%, transparent)'
+                              : 'color-mix(in srgb, var(--accent-yellow) 15%, transparent)',
+                          color: msg.signal === 'bullish'
+                            ? 'var(--accent-green)'
+                            : msg.signal === 'bearish'
+                              ? 'var(--accent-red)'
+                              : 'var(--accent-yellow)',
+                        }}
                       >
                         {msg.signal.toUpperCase()} {(msg.confidence * 100).toFixed(0)}%
                       </span>
                     )}
                   </div>
+                  {msg && (
+                    <div style={{ width: '100%', height: 3, background: 'var(--bg-hover)', borderRadius: 2, marginBottom: 4 }}>
+                      <div style={{
+                        width: `${msg.confidence * 100}%`,
+                        height: 3,
+                        background: msg.signal === 'bullish' ? 'var(--accent-green)' : msg.signal === 'bearish' ? 'var(--accent-red)' : 'var(--accent-yellow)',
+                        borderRadius: 2,
+                      }} />
+                    </div>
+                  )}
                   {msg ? (
-                    <p className="text-sm text-[#c4c7c5] leading-relaxed">{msg.reasoning}</p>
+                    <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{msg.reasoning}</p>
                   ) : loading ? (
-                    <div className="flex items-center gap-2 text-sm text-[#5f6368]">
-                      <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse-glow" />
-                      Thinking...
+                    <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
+                      <div className="w-1.5 h-1.5 rounded-full animate-pulse-glow" style={{ background: 'var(--accent-blue)' }} />
+                      Analyzing...
                     </div>
                   ) : (
-                    <div className="text-sm text-[#5f6368]">
+                    <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
                       Waiting for analysis...
                     </div>
                   )}
@@ -214,18 +271,19 @@ export default function Agents() {
       </div>
 
       {messages.length > 0 && (
-        <Card title="Consensus">
+        <Card title="Trading Decision">
           <div className="text-sm">
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-[#9aa0a6]">Weighted Consensus:</span>
+              <span style={{ color: 'var(--text-secondary)' }}>Weighted Consensus:</span>
               <span
-                className={`font-semibold ${
-                  avgConfidence > 0.6 && bullishCount > bearishCount
-                    ? 'text-green-400'
+                className="font-semibold"
+                style={{
+                  color: avgConfidence > 0.6 && bullishCount > bearishCount
+                    ? 'var(--accent-green)'
                     : avgConfidence > 0.6 && bearishCount > bullishCount
-                      ? 'text-red-400'
-                      : 'text-yellow-400'
-                }`}
+                      ? 'var(--accent-red)'
+                      : 'var(--accent-yellow)',
+                }}
               >
                 {avgConfidence > 0.6 && bullishCount > bearishCount
                   ? 'BULLISH'
@@ -235,10 +293,21 @@ export default function Agents() {
               </span>
               ({(avgConfidence * 100).toFixed(0)}% confidence)
             </div>
-            <button className="bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors mr-2">
+            <button
+              className="text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors mr-2"
+              style={{ background: 'var(--accent-green)', border: 'none', cursor: 'pointer' }}
+            >
               Execute Trade
             </button>
-            <button className="bg-[#2a2d3e] hover:bg-[#3a3d4e] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+            <button
+              className="text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+              style={{
+                background: 'var(--bg-hover)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-primary)',
+                cursor: 'pointer',
+              }}
+            >
               Override Decision
             </button>
           </div>

@@ -16,7 +16,7 @@ interface SectorAllocationChartProps {
 }
 
 const DEFAULT_COLORS = [
-  '#3b82f6', '#22c55e', '#ef4444', '#eab308', '#a855f7',
+  'var(--accent-blue)', 'var(--accent-green)', 'var(--accent-red)', 'var(--accent-yellow)', 'var(--accent-purple)',
   '#06b6d4', '#ea580c', '#ec4899', '#14b8a6', '#8b5cf6',
 ]
 

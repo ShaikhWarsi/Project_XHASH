@@ -22,16 +22,15 @@ type PipelineNode = Node<PipelineNodeData>
 const FONT = { fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }
 
 const STAGE_CONFIG = {
-  source: { bg: '#1a3a5c', border: '#3b82f6', icon: 'ðŸ“¡' },
-  process: { bg: '#1a3a1a', border: '#22c55e', icon: 'âš™ï¸' },
-  storage: { bg: '#3a2a1a', border: '#f59e0b', icon: 'ðŸ’¾' },
-  compute: { bg: '#2a1a3a', border: '#a855f7', icon: 'ðŸ§®' },
-  output: { bg: '#3a1a1a', border: '#ef4444', icon: 'ðŸ“Š' },
+  source: { bg: 'color-mix(in srgb, var(--accent-blue) 20%, var(--bg-card))', border: 'var(--accent-blue)', icon: 'ðŸ“¡' },
+  process: { bg: 'color-mix(in srgb, var(--accent-green) 20%, var(--bg-card))', border: 'var(--accent-green)', icon: 'âš™ï¸' },
+  storage: { bg: 'color-mix(in srgb, var(--accent-yellow) 20%, var(--bg-card))', border: 'var(--accent-yellow)', icon: 'ðŸ’¾' },
+  output: { bg: 'color-mix(in srgb, var(--accent-red) 20%, var(--bg-card))', border: 'var(--accent-red)', icon: 'ðŸ“Š' },
 }
 
 function PipelineNodeComponent({ data }: { data: PipelineNodeData }) {
   const cfg = STAGE_CONFIG[data.stage]
-  const statusColor = data.status === 'running' ? '#22c55e' : data.status === 'error' ? '#ef4444' : data.status === 'completed' ? '#3b82f6' : 'var(--text-muted)'
+  const statusColor = data.status === 'running' ? 'var(--accent-green)' : data.status === 'error' ? 'var(--accent-red)' : data.status === 'completed' ? 'var(--accent-blue)' : 'var(--text-muted)'
   return (
     <div style={{ background: cfg.bg, border: `1px solid ${cfg.border}66`, borderRadius: 8, padding: '10px 14px', minWidth: 160, ...FONT }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -101,10 +100,9 @@ export default function DataPipeline() {
         </ReactFlow>
       </div>
       <div style={{ display: 'flex', gap: 12, padding: '4px 0', ...FONT, fontSize: 10, color: 'var(--text-muted)' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e' }} /> Running</span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><div style={{ width: 8, height: 8, borderRadius: '50%', background: '#3b82f6' }} /> Completed</span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--text-muted)' }} /> Idle</span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444' }} /> Error</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent-green)' }} /> Running</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent-blue)' }} /> Completed</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent-red)' }} /> Error</span>
       </div>
     </div>
   )

@@ -10,7 +10,12 @@ import StatusBar from './StatusBar'
 import Breadcrumbs from './Breadcrumbs'
 import FavoritesBar from './FavoritesBar'
 import OfflineBanner from './OfflineBanner'
+import TabBar from './TabBar'
+import MenuBar from './MenuBar'
+import ChatModeInterface from './ChatModeInterface'
+import { TabProvider } from '../contexts/TabContext'
 import { useTheme } from '../contexts/ThemeContext'
+import { useInterfaceMode } from '../contexts/InterfaceModeContext'
 import { useBreakpoint } from '../hooks/useBreakpoint'
 import useHelp from '../hooks/useHelp'
 
@@ -23,7 +28,7 @@ const quickActions = [
 
 const SWIPE_THRESHOLD = 80
 
-export default function Layout() {
+function TerminalLayout() {
   const { setTheme } = useTheme()
   const [showNews] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -55,11 +60,13 @@ export default function Layout() {
     <div className="flex h-screen" style={{ background: 'var(--bg-primary)' }} onTouchStart={isMobile ? handleTouchStart : undefined} onTouchEnd={isMobile ? handleTouchEnd : undefined}>
       <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
       <div className="flex-1 flex flex-col min-w-0">
+        <MenuBar />
         <MarketTickerBar />
         {showNews && <BreakingNewsBanner />}
         <OfflineBanner />
         <FavoritesBar />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6" style={{ background: 'var(--bg-primary)' }}>
+        <TabBar />
+        <main className="flex-1 overflow-y-auto" style={{ background: 'var(--bg-primary)', padding: 'var(--space-4)' }}>
           <div className="flex items-center gap-2 mb-2">
               {isMobile && (
                 <button
@@ -139,4 +146,22 @@ export default function Layout() {
       {helpOverlay}
     </div>
   )
+}
+
+export default function Layout() {
+  const { mode } = useInterfaceMode()
+
+  if (mode === 'chat') {
+    return (
+      <TabProvider>
+        <div className="flex h-screen" style={{ background: 'var(--bg-primary)' }}>
+          <ChatModeInterface />
+          <CommandPalette onThemeChange={() => {}} />
+          <KeyboardShortcutListener />
+        </div>
+      </TabProvider>
+    )
+  }
+
+  return <TerminalLayout />
 }
