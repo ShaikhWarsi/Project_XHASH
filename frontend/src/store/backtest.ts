@@ -12,6 +12,7 @@ const ENGINE_DEFAULT_LEVERAGE: Record<string, number> = {
 interface BacktestStore {
   result: BacktestResult | null
   running: boolean
+  enginesLoading: boolean
   error: string | null
   engines: { id: string; label: string; description: string }[]
   config: {
@@ -35,6 +36,7 @@ export const useBacktestStore = create<BacktestStore>()(
     (set, get) => ({
       result: null,
       running: false,
+      enginesLoading: false,
       error: null,
       engines: [],
       config: {
@@ -51,11 +53,12 @@ export const useBacktestStore = create<BacktestStore>()(
       setConfig: (partial) => set((s) => ({ config: { ...s.config, ...partial } })),
 
       loadEngines: async () => {
+        set({ enginesLoading: true })
         try {
           const engines = await fetchBacktestEngines()
-          set({ engines })
+          set({ engines, enginesLoading: false })
         } catch {
-          // fallback if API unavailable
+          set({ enginesLoading: false })
         }
       },
 
@@ -84,6 +87,10 @@ export const useBacktestStore = create<BacktestStore>()(
 
       clear: () => set({ result: null, error: null }),
     }),
-    { name: 'te-backtest-config' },
+    {
+      name: 'te-backtest-config',
+      version: 1,
+      migrate: (state: unknown) => state as Partial<BacktestStore>,
+    },
   ),
 )

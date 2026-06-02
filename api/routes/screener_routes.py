@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import logging
+import time
 from datetime import datetime, timedelta
+from functools import lru_cache
 from typing import Any
 
 import numpy as np
@@ -11,6 +13,17 @@ from fastapi import APIRouter, HTTPException, Query
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/screener", tags=["screener"])
+
+_SCREENER_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
+_SCREENER_CACHE_TTL = 300.0
+
+
+def _get_cached_metrics(symbol: str) -> dict[str, Any] | None:
+    now = time.time()
+    cached = _SCREENER_CACHE.get(symbol)
+    if cached and now - cached[0] < _SCREENER_CACHE_TTL:
+        return cached[1]
+    return None
 
 
 SCREENER_PRESETS: dict[str, dict[str, Any]] = {
@@ -48,8 +61,8 @@ SCREENER_PRESETS: dict[str, dict[str, Any]] = {
 
 
 def _fetch_screener_data(symbol: str) -> pd.DataFrame | None:
+    import yfinance as yf
     try:
-        import yfinance as yf
         ticker = yf.Ticker(symbol)
         df = ticker.history(period="1y")
         if df.empty:
@@ -181,6 +194,8 @@ async def scan_symbols(
     change_pct_min: float | None = Query(None),
     golden_cross: bool | None = Query(None),
     macd_bullish: bool | None = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
 ):
     symbol_list = [s.strip() for s in symbols.split(",") if s.strip()]
     if not symbol_list:
@@ -203,12 +218,16 @@ async def scan_symbols(
 
     for symbol in symbol_list:
         try:
-            df = _fetch_screener_data(symbol)
-            if df is None or df.empty:
-                errors.append(f"No data for {symbol}")
-                continue
-
-            metrics = _compute_indicators(df)
+            cached = _get_cached_metrics(symbol)
+            if cached:
+                metrics = cached
+            else:
+                df = _fetch_screener_data(symbol)
+                if df is None or df.empty:
+                    errors.append(f"No data for {symbol}")
+                    continue
+                metrics = _compute_indicators(df)
+                _SCREENER_CACHE[symbol] = (time.time(), metrics)
             if not filters:
                 results.append({"symbol": symbol, **metrics})
             else:
@@ -219,12 +238,16 @@ async def scan_symbols(
 
     results.sort(key=lambda r: (r.get("match", True) is True, abs(r.get("change_pct", 0) or 0)), reverse=True)
 
+    total = len(results)
+    page = results[offset:offset + limit]
     return {
-        "results": results,
-        "total": len(results),
+        "results": page,
+        "total": total,
         "matches": sum(1 for r in results if r.get("match", True)),
         "errors": errors,
         "filters_applied": filters,
+        "limit": limit,
+        "offset": offset,
     }
 
 

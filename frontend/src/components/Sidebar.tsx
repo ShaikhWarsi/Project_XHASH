@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Wallet, Activity, ScrollText, FlaskConical,
@@ -96,6 +96,17 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const [workflowFilter, setWorkflowFilter] = useState<WorkflowGroup | null>(null)
 
+  const filteredNavGroups = useMemo(() => {
+    return NAV_GROUPS.map((g) => ({
+      ...g,
+      items: g.items.filter((item) => {
+        if (!workflowFilter) return true
+        const route = ROUTES.find((r) => r.path === item.to)
+        return route?.workflow === workflowFilter
+      }),
+    })).filter((g) => !hiddenGroups[g.label] && g.items.length > 0)
+  }, [workflowFilter, hiddenGroups])
+
   const WORKFLOW_OPTIONS: { id: WorkflowGroup; label: string; icon: any }[] = [
     { id: 'trader', label: 'Trader', icon: TrendingUp },
     { id: 'quant', label: 'Quant', icon: Sigma },
@@ -179,14 +190,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             </button>
           </div>
         )}
-        {NAV_GROUPS.map((g) => ({
-          ...g,
-          items: g.items.filter((item) => {
-            if (!workflowFilter) return true
-            const route = ROUTES.find((r) => r.path === item.to)
-            return route?.workflow === workflowFilter
-          }),
-        })).filter((g) => !hiddenGroups[g.label] && g.items.length > 0).map((group) => {
+        {filteredNavGroups.map((group) => {
           const isCollapsed = collapsedGroups[group.label]
           return (
             <div key={group.label} className="mb-3">

@@ -15,6 +15,8 @@ export function useWebSocket<T = unknown>(url: string, options: UseWebSocketOpti
   const retryCountRef = useRef(0)
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const mountedRef = useRef(true)
+  const urlRef = useRef(url)
+  urlRef.current = url
 
   useEffect(() => {
     mountedRef.current = true
@@ -22,16 +24,18 @@ export function useWebSocket<T = unknown>(url: string, options: UseWebSocketOpti
   }, [])
 
   const connect = useCallback(() => {
+    const currentUrl = urlRef.current
     if (!mountedRef.current) return
+    if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.close()
     }
 
-    if (!url) return
+    if (!currentUrl) return
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.host
-    const fullUrl = url.startsWith('ws') ? url : `${protocol}//${host}${url}`
+    const fullUrl = currentUrl.startsWith('ws') ? currentUrl : `${protocol}//${host}${currentUrl}`
 
     const ws = new WebSocket(fullUrl)
     wsRef.current = ws
@@ -65,7 +69,7 @@ export function useWebSocket<T = unknown>(url: string, options: UseWebSocketOpti
         retryTimerRef.current = setTimeout(connect, delay)
       }
     }
-  }, [url, onMessage, onError, maxRetries, retryDelay])
+  }, [onMessage, onError, maxRetries, retryDelay])
 
   useEffect(() => {
     if (!url) return

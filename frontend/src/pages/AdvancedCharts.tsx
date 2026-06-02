@@ -58,6 +58,11 @@ export default function AdvancedCharts() {
     if (!containerRef.current || chartRef.current) return
     const h = containerRef.current.clientHeight || 500
     const containerW = containerRef.current.clientWidth
+    const styles = getComputedStyle(document.documentElement)
+    const chartGrid = styles.getPropertyValue('--chart-grid').trim() || '#2a2d3e'
+    const accentBlue = styles.getPropertyValue('--accent-blue').trim() || '#3b82f6'
+    const chartBorder = styles.getPropertyValue('--chart-border').trim() || '#2a2d3e'
+    const accentGreen = styles.getPropertyValue('--accent-green').trim() || '#22c55e'
     const chart = createChart(containerRef.current, {
       width: containerW,
       height: h,
@@ -65,10 +70,10 @@ export default function AdvancedCharts() {
         background: { color: '#0a0e14' },
         textColor: '#5d6b7e',
       },
-      grid: { vertLines: { color: 'var(--chart-grid)' }, horzLines: { color: 'var(--chart-grid)' } },
-      crosshair: { vertLine: { color: 'var(--accent-blue)', width: 1, labelBackgroundColor: 'var(--accent-blue)' }, horzLine: { color: 'var(--accent-blue)', width: 1, labelBackgroundColor: 'var(--accent-blue)' } },
-      timeScale: { borderColor: 'var(--chart-border)', timeVisible: true },
-      rightPriceScale: { borderColor: 'var(--chart-border)' },
+      grid: { vertLines: { color: chartGrid }, horzLines: { color: chartGrid } },
+      crosshair: { vertLine: { color: accentBlue, width: 1, labelBackgroundColor: accentBlue }, horzLine: { color: accentBlue, width: 1, labelBackgroundColor: accentBlue } },
+      timeScale: { borderColor: chartBorder, timeVisible: true },
+      rightPriceScale: { borderColor: chartBorder },
     })
     chartRef.current = chart
 
@@ -95,7 +100,7 @@ export default function AdvancedCharts() {
       const avg = vals.reduce((a, b) => a + b, 0) / vals.length
       return { time: d.time, value: avg }
     })
-    const sma20 = chart.addSeries(LineSeries, { color: 'var(--accent-green)', lineWidth: 2 })
+    const sma20 = chart.addSeries(LineSeries, { color: accentGreen, lineWidth: 2 })
     sma20.setData(sma20Data.filter((d) => !isNaN(d.value)))
     seriesRef.current.set('sma20', sma20)
 

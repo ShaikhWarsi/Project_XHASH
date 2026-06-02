@@ -47,6 +47,8 @@ export const MultiChartGrid = forwardRef<MultiChartGridHandle, MultiChartGridPro
 ) {
   const engineMap = useRef<Map<number, ChartEngine>>(new Map())
   const containerRefs = useRef<(HTMLDivElement | null)[]>([])
+  const onChartReadyRef = useRef(onChartReady)
+  onChartReadyRef.current = onChartReady
 
   const { cols, rows } = GRID_CONFIG[layoutMode]
   const cellCount = cols * rows
@@ -86,7 +88,7 @@ export const MultiChartGrid = forwardRef<MultiChartGridHandle, MultiChartGridPro
       })
 
       engineMap.current.set(i, engine)
-      onChartReady?.(i, engine)
+      onChartReadyRef.current?.(i, engine)
     }
 
     return () => {
@@ -110,7 +112,7 @@ export const MultiChartGrid = forwardRef<MultiChartGridHandle, MultiChartGridPro
     for (const [, engine] of engineMap.current) {
       engine.setMainSeries(bars)
     }
-  }, [data])
+  }, [data, symbol])
 
   useEffect(() => {
     for (const [, engine] of engineMap.current) {

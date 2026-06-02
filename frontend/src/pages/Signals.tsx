@@ -87,11 +87,11 @@ export default function Signals() {
         </select>
         <button onClick={() => toggleSort('composite')}
           className="border border-default font-mono-data text-[10px] px-2 py-0.5 cursor-pointer" style={{ background: sortBy === 'composite' ? 'var(--accent-cyan)' : 'var(--bg-card)', color: sortBy === 'composite' ? '#000' : 'var(--text-secondary)' }}>
-          SCORE {sortBy === 'composite' ? (direction === 'desc' ? 'â†“' : 'â†‘') : ''}
+          SCORE {sortBy === 'composite' ? (direction === 'desc' ? '\u2193' : '\u2191') : ''}
         </button>
         <button onClick={() => toggleSort('symbol')}
           className="border border-default font-mono-data text-[10px] px-2 py-0.5 cursor-pointer" style={{ background: sortBy === 'symbol' ? 'var(--accent-cyan)' : 'var(--bg-card)', color: sortBy === 'symbol' ? '#000' : 'var(--text-secondary)' }}>
-          SYMBOL {sortBy === 'symbol' ? (direction === 'desc' ? 'â†“' : 'â†‘') : ''}
+          SYMBOL {sortBy === 'symbol' ? (direction === 'desc' ? '\u2193' : '\u2191') : ''}
         </button>
         {signals.timestamp && (
           <span className={`${FONT_SM} text-muted ml-auto`}>
@@ -155,11 +155,11 @@ export default function Signals() {
                   <div key={i} className="py-0 font-mono-data text-[11px] text-primary border-b border-default" style={{ display: 'grid', gridTemplateColumns: '1.5fr 0.8fr 0.8fr 0.8fr 0.8fr', gap: 0 }}>
                     <span className="text-secondary">{sig.type}</span>
                     <span className="text-center" style={{ color: sig.direction > 0 ? 'var(--accent-green)' : sig.direction < 0 ? 'var(--accent-red)' : 'var(--accent-yellow)' }}>
-                      {sig.direction > 0 ? 'â–²' : sig.direction < 0 ? 'â–¼' : 'â—†'}
+                      {sig.direction > 0 ? '\u25B2' : sig.direction < 0 ? '\u25BC' : '\u25C6'}
                     </span>
                     <span className="text-right">{(sig.strength * 100).toFixed(0)}%</span>
                     <span className="text-right">{(sig.confidence * 100).toFixed(0)}%</span>
-                    <span className="text-right">${sig.price?.toFixed(2) ?? 'â€”'}</span>
+                    <span className="text-right">${sig.price?.toFixed(2) ?? '\u2014'}</span>
                   </div>
                 ))}
               </div>

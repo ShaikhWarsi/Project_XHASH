@@ -17,7 +17,7 @@ from persistence.repositories import AlertRepository, WatchlistRepository
 from data.providers.finnhub import FinnhubDataSource
 from data.providers.yfinance import YFinanceDataSource
 
-router = APIRouter(prefix="/v1/market", tags=["market-data"])
+router = APIRouter(prefix="/market", tags=["market-data"])
 
 _finnhub: FinnhubDataSource | None = None
 _yfinance: YFinanceDataSource | None = None

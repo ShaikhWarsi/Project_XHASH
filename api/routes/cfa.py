@@ -15,7 +15,7 @@ from analytics.cfa.derivatives import (
 )
 from analytics.cfa.financial_statements import RatioAnalyzer, DuPontAnalyzer, EarningsQualityAnalyzer
 
-router = APIRouter(prefix="/v1/cfa", tags=["cfa"])
+router = APIRouter(prefix="/cfa", tags=["cfa"])
 
 
 class WACCRequest(BaseModel):

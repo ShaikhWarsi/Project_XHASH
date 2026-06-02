@@ -7,7 +7,7 @@ from signals.structure_state import StructureFusionEngine, StructureState
 from signals.engine_registry import create_engine
 from core.enums import SignalDir, RegimeType
 
-router = APIRouter(prefix="/v1/structure", tags=["structure"])
+router = APIRouter(prefix="/structure", tags=["structure"])
 _fusion = StructureFusionEngine()
 
 

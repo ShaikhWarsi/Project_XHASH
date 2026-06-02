@@ -85,7 +85,7 @@ function PageFallback() {
 }
 
 function LazyPage({ children, category = 'page' }: { children: ReactNode; category?: 'page' | 'widget' | 'chart' | 'data' }) {
-  return <Suspense fallback={<PageFallback />}><ErrorBoundary componentName="Page" category={category}>{children}</ErrorBoundary></Suspense>
+  return <ErrorBoundary componentName="Page" category={category}><Suspense fallback={<PageFallback />}>{children}</Suspense></ErrorBoundary>
 }
 
 export default function App() {

@@ -52,7 +52,7 @@ export default function MarketTickerBarEnhanced() {
     const load = async () => {
       try {
         const symbols = SYMBOLS.map(s => s.symbol)
-        const res = await fetch(`/api/v1/market/quotes?symbols=${symbols.join(',')}`)
+        const res = await fetch(`/api/market/quotes?symbols=${symbols.join(',')}`)
         if (!res.ok) throw new Error('Failed')
         const data = await res.json()
         const updated: (TickerItem & { label: string | null })[] = []

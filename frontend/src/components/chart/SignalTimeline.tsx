@@ -130,8 +130,10 @@ export default function SignalTimeline({
     const container = containerRef.current
     const dpr = window.devicePixelRatio || 1
 
+    const timeScale = chart.timeScale()
+
     const draw = () => {
-      const w = container.getBoundingClientRect().width
+      const w = timeScale.width() || container.getBoundingClientRect().width
       if (w <= 0) return
       canvas.width = w * dpr
       canvas.height = height * dpr
@@ -148,7 +150,6 @@ export default function SignalTimeline({
     const ro = new ResizeObserver(draw)
     ro.observe(container)
 
-    const timeScale = chart.timeScale()
     timeScale.subscribeVisibleTimeRangeChange(draw)
 
     draw()

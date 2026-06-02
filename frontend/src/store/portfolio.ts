@@ -42,6 +42,10 @@ export const usePortfolioStore = create<PortfolioStore>()(
       updatePortfolio: (portfolio) => set({ portfolio }),
       updateMetrics: (metrics) => set({ metrics }),
     }),
-    { name: 'te-portfolio-storage' },
+    {
+      name: 'te-portfolio-storage',
+      version: 1,
+      migrate: (state: unknown) => state as Partial<PortfolioStore>,
+    },
   ),
 )

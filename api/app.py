@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import time
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -15,6 +16,7 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from .routes import backtest_routes, bars_routes, cfa, chart_routes, config, flows, hedge_fund, market_data, metrics, mmc, portfolio, signals, stream, structure, trades, global_market
 from .routes.ws import router as ws_router
+from .websocket_manager import manager as ws_manager
 from .state import seed_demo_data
 from .routes.orders import router as orders_router
 from .routes.positions import router as positions_router
@@ -61,6 +63,7 @@ from .routes.analytics_routes import router as analytics_router
 from .routes.audit_routes import router as audit_router
 from .routes.providers_v2 import router as providers_v2_router
 from .routes.hypotheses_v2 import router as hypotheses_v2_router
+from .routes.market_intel import router as market_intel_router
 from persistence import init_db, close_db
 from persistence.database import _engine as db_engine
 
@@ -68,12 +71,121 @@ logger = logging.getLogger(__name__)
 
 _start_time = time.time()
 
+_background_tasks: list[asyncio.Task] = []
+
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _env_int(name: str, default: int, minimum: int | None = None) -> int:
+    try:
+        value = int(os.getenv(name, str(default)))
+    except Exception:
+        value = default
+    if minimum is not None:
+        value = max(minimum, value)
+    return value
+
+
+async def _market_news_loop():
+    from .market_intel import refresh_market_news_snapshots
+
+    refresh_interval = _env_int("MARKET_NEWS_REFRESH_INTERVAL", 3600, minimum=300)
+    await asyncio.sleep(3)
+    while True:
+        try:
+            result = await asyncio.to_thread(refresh_market_news_snapshots)
+            logger.info("Market Intel: Refreshed news snapshots: inserted=%s errors=%d",
+                        result.get("inserted_categories", 0), len(result.get("errors", {})))
+        except Exception as e:
+            logger.error("Market Intel Error: %s", e)
+        logger.info("Market Intel: Next news refresh in %d seconds", refresh_interval)
+        await asyncio.sleep(refresh_interval)
+
+
+async def _macro_signal_loop():
+    from .market_intel import refresh_macro_signal_snapshot
+
+    refresh_interval = _env_int("MACRO_SIGNAL_REFRESH_INTERVAL", 3600, minimum=300)
+    await asyncio.sleep(6)
+    while True:
+        try:
+            result = await asyncio.to_thread(refresh_macro_signal_snapshot)
+            logger.info("Market Intel: Refreshed macro signals: verdict=%s signals=%d",
+                        result.get("verdict"), result.get("total_count", 0))
+        except Exception as e:
+            logger.error("Macro Signal Error: %s", e)
+        logger.info("Market Intel: Next macro signal refresh in %d seconds", refresh_interval)
+        await asyncio.sleep(refresh_interval)
+
+
+async def _etf_flow_loop():
+    from .market_intel import refresh_etf_flow_snapshot
+
+    refresh_interval = _env_int("ETF_FLOW_REFRESH_INTERVAL", 3600, minimum=300)
+    await asyncio.sleep(9)
+    while True:
+        try:
+            result = await asyncio.to_thread(refresh_etf_flow_snapshot)
+            logger.info("Market Intel: Refreshed ETF flows: direction=%s tracked=%d",
+                        result.get("direction"), result.get("tracked_count", 0))
+        except Exception as e:
+            logger.error("ETF Flow Error: %s", e)
+        logger.info("Market Intel: Next ETF flow refresh in %d seconds", refresh_interval)
+        await asyncio.sleep(refresh_interval)
+
+
+async def _stock_analysis_loop():
+    from .market_intel import refresh_stock_analysis_snapshots
+
+    refresh_interval = _env_int("STOCK_ANALYSIS_REFRESH_INTERVAL", 7200, minimum=600)
+    await asyncio.sleep(12)
+    while True:
+        try:
+            result = await asyncio.to_thread(refresh_stock_analysis_snapshots)
+            logger.info("Market Intel: Refreshed stock analysis: inserted=%s errors=%d",
+                        result.get("inserted_symbols", 0), len(result.get("errors", {})))
+        except Exception as e:
+            logger.error("Stock Analysis Error: %s", e)
+        logger.info("Market Intel: Next stock analysis refresh in %d seconds", refresh_interval)
+        await asyncio.sleep(refresh_interval)
+
+
+_BACKGROUND_TASK_REGISTRY: dict[str, callable] = {
+    "market_news": _market_news_loop,
+    "macro_signals": _macro_signal_loop,
+    "etf_flows": _etf_flow_loop,
+    "stock_analysis": _stock_analysis_loop,
+}
+
+
+def get_enabled_background_tasks() -> list[str]:
+    raw = os.getenv("TRADING_ENGINE_BACKGROUND_TASKS", "market_news,macro_signals,etf_flows,stock_analysis")
+    return [name.strip() for name in raw.split(",") if name.strip() in _BACKGROUND_TASK_REGISTRY]
+
+
+def start_background_tasks():
+    global _background_tasks
+    for name in get_enabled_background_tasks():
+        task_func = _BACKGROUND_TASK_REGISTRY[name]
+        logger.info("Starting background task: %s", name)
+        _background_tasks.append(asyncio.create_task(task_func(), name=f"trading-engine:{name}"))
+    _background_tasks.append(asyncio.create_task(ws_manager.periodic_cleanup(), name="trading-engine:ws-cleanup"))
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
     await seed_demo_data()
+    if _env_bool("TRADING_ENGINE_MARKET_INTEL_ENABLED", True):
+        start_background_tasks()
     yield
+    for task in _background_tasks:
+        task.cancel()
     await close_db()
 
 
@@ -172,6 +284,7 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
     app.include_router(audit_router)
     app.include_router(providers_v2_router)
     app.include_router(hypotheses_v2_router)
+    app.include_router(market_intel_router)
 
     @app.get("/")
     async def root():
@@ -189,3 +302,6 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
         }
 
     return app
+
+
+app = create_app()

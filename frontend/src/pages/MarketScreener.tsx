@@ -207,7 +207,7 @@ export default function MarketScreener() {
                         fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.5px',
                       }}
                     >
-                      {col} {sortKey === col.toLowerCase() ? (sortDir === 'desc' ? '▼' : '▲') : ''}
+                      {col} {sortKey === keyMap[col] ? (sortDir === 'desc' ? '▼' : '▲') : ''}
                     </th>
                   ))}
                 </tr>

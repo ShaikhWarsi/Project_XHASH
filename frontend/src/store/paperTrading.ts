@@ -73,6 +73,10 @@ export const usePaperTradingStore = create<PaperTradingStore>()(
       updateAccount: (updates) =>
         set((state) => ({ account: { ...state.account, ...updates } })),
     }),
-    { name: 'te-paper-trading' }
+    {
+      name: 'te-paper-trading',
+      version: 1,
+      migrate: (state: unknown) => state as Partial<PaperTradingStore>,
+    }
   )
 )

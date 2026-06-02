@@ -65,6 +65,7 @@ function computeVolumeProfile(data: BarData[], bucketCount = 30): { buckets: Vol
 
 export default function VolumeProfile({ data, onClose }: VolumeProfileProps) {
   const { buckets, poc, maxVol } = useMemo(() => computeVolumeProfile(data), [data])
+  const isEmpty = data.length === 0 || buckets.length === 0
 
   return (
     <div
@@ -119,6 +120,21 @@ export default function VolumeProfile({ data, onClose }: VolumeProfileProps) {
           </button>
         )}
       </div>
+      {isEmpty ? (
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 9,
+            color: 'var(--text-muted)',
+            padding: 16,
+          }}
+        >
+          No data
+        </div>
+      ) : (
       <div
         style={{
           flex: 1,
@@ -189,6 +205,7 @@ export default function VolumeProfile({ data, onClose }: VolumeProfileProps) {
           )
         })}
       </div>
+      )}
     </div>
   )
 }

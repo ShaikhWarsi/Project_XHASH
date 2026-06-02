@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 
 interface BatchItem {
   id: string
@@ -30,6 +30,17 @@ export default function BatchOperations({ items, onSelectionChange, onBatchActio
     items.forEach((item) => { if (item.selected) initial.add(item.id) })
     return initial
   })
+
+  useEffect(() => {
+    setSelected((prev) => {
+      const itemIds = new Set(items.map((i) => i.id))
+      const valid = new Set(Array.from(prev).filter((id) => itemIds.has(id)))
+      items.forEach((item) => {
+        if (item.selected) valid.add(item.id)
+      })
+      return valid
+    })
+  }, [items])
 
   const notify = useCallback((next: Set<string>) => {
     onSelectionChange(Array.from(next))

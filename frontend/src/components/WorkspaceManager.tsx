@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useToastStore } from '../store/toast'
 import { Save, FolderOpen, X, Search } from 'lucide-react'
-
-const API_BASE = import.meta.env.VITE_API_BASE ?? ''
+import { api } from '../api/client'
 
 interface WorkspaceSummary {
   id: string
@@ -50,8 +49,7 @@ export default function WorkspaceManager({ currentConfig, onLoadConfig, onClose 
   const loadList = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/api/workspace/`)
-      const data = await res.json()
+      const { data } = await api.get('/workspace/')
       setWorkspaces(data.workspaces ?? [])
     } catch {
       addToast('Failed to load workspaces', 'error')
@@ -69,13 +67,7 @@ export default function WorkspaceManager({ currentConfig, onLoadConfig, onClose 
       return
     }
     try {
-      const res = await fetch(`${API_BASE}/api/workspace/save`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...currentConfig, name: saveName.trim() }),
-      })
-      if (!res.ok) throw new Error('Save failed')
-      const data = await res.json()
+      const { data } = await api.post('/workspace/save', { ...currentConfig, name: saveName.trim() })
       addToast(`Saved "${data.name}"`, 'success')
       setShowSave(false)
       setSaveName('')
@@ -87,9 +79,7 @@ export default function WorkspaceManager({ currentConfig, onLoadConfig, onClose 
 
   const handleLoad = useCallback(async (id: string) => {
     try {
-      const res = await fetch(`${API_BASE}/api/workspace/${id}`)
-      if (!res.ok) throw new Error('Load failed')
-      const data = await res.json()
+      const { data } = await api.get(`/workspace/${id}`)
       onLoadConfig(data)
       addToast(`Loaded "${data.name}"`, 'success')
       onClose()
@@ -100,8 +90,7 @@ export default function WorkspaceManager({ currentConfig, onLoadConfig, onClose 
 
   const handleDelete = useCallback(async (id: string, name: string) => {
     try {
-      const res = await fetch(`${API_BASE}/api/workspace/${id}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Delete failed')
+      await api.delete(`/workspace/${id}`)
       addToast(`Deleted "${name}"`, 'success')
       loadList()
     } catch (e: any) {

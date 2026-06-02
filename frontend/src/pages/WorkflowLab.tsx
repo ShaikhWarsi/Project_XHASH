@@ -11,7 +11,7 @@ export default function WorkflowLab() {
 
   const runWorkflow = async () => {
     setLoading(true); setResult(null)
-    try { const r = await api.post('/workflows/run', null, { params: { symbol } }); setResult(r.data) }
+    try { const r = await api.get('/workflows/run', { params: { symbol } }); setResult(r.data) }
     catch (e: any) { setResult({ error: e.message }) }
     setLoading(false)
   }

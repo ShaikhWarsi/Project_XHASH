@@ -51,7 +51,7 @@ export default function OrderBook({ symbol = '', levels = 12 }: OrderBookProps) 
   const [wsSymbol, setWsSymbol] = useState('')
   const [flashKey, setFlashKey] = useState(0)
 
-  const wsUrl = symbol ? `/api/ws/orderbook/${symbol.toUpperCase()}` : ''
+  const wsUrl = symbol ? `/ws/orderbook/${symbol.toUpperCase()}` : ''
   const { connected: wsConnected, lastData } = useWebSocket<{ type: string; data: OrderBookData }>(wsUrl, { maxRetries: 3, retryDelay: 5000 })
 
   useEffect(() => {

@@ -9,6 +9,8 @@ from fastapi import WebSocket
 logger = logging.getLogger(__name__)
 
 class ConnectionManager:
+    MAX_CONNECTIONS_PER_CHANNEL = 20
+
     def __init__(self):
         self._connections: dict[str, list[WebSocket]] = {}
         self._lock = asyncio.Lock()
@@ -16,7 +18,14 @@ class ConnectionManager:
     async def connect(self, channel: str, ws: WebSocket):
         await ws.accept()
         async with self._lock:
-            self._connections.setdefault(channel, []).append(ws)
+            conns = self._connections.setdefault(channel, [])
+            if len(conns) >= self.MAX_CONNECTIONS_PER_CHANNEL:
+                stale = conns.pop(0)
+                try:
+                    await stale.close(code=1001)
+                except Exception:
+                    pass
+            conns.append(ws)
 
     async def disconnect(self, channel: str, ws: WebSocket):
         async with self._lock:
@@ -91,5 +100,13 @@ class ConnectionManager:
                     self._connections[channel] = alive
                 else:
                     del self._connections[channel]
+
+    async def periodic_cleanup(self, interval: float = 60.0):
+        while True:
+            await asyncio.sleep(interval)
+            try:
+                await self.cleanup_zombies()
+            except Exception:
+                pass
 
 manager = ConnectionManager()

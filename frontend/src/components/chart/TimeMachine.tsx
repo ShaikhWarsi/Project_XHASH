@@ -57,12 +57,22 @@ export default function TimeMachine({ data, onSeek, currentIndex, disabled, mult
   useEffect(() => {
     if (!showOverview || !overviewCanvasRef.current || data.length < 2) return
     const canvas = overviewCanvasRef.current
+    const dpr = window.devicePixelRatio || 1
+    const cssW = 120
+    const cssH = 24
+    canvas.width = cssW * dpr
+    canvas.height = cssH * dpr
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    const w = canvas.width
-    const h = canvas.height
+    ctx.scale(dpr, dpr)
+    const styles = getComputedStyle(document.documentElement)
+    const bgCard = styles.getPropertyValue('--bg-card').trim() || '#0d1117'
+    const accentCyan = styles.getPropertyValue('--accent-cyan').trim() || '#00e5ff'
+    const accentGreen = styles.getPropertyValue('--accent-green').trim() || '#22c55e'
+    const w = cssW
+    const h = cssH
     ctx.clearRect(0, 0, w, h)
-    ctx.fillStyle = 'var(--bg-card)'
+    ctx.fillStyle = bgCard
     ctx.fillRect(0, 0, w, h)
 
     const closes = data.map((d) => d.close)
@@ -77,12 +87,12 @@ export default function TimeMachine({ data, onSeek, currentIndex, disabled, mult
       const y = h - ((data[i].close - min) / range) * (h - 2) - 1
       i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
     }
-    ctx.strokeStyle = 'var(--accent-cyan)'
+    ctx.strokeStyle = accentCyan
     ctx.lineWidth = 1
     ctx.stroke()
 
     const vpX = (curIdx / data.length) * w
-    ctx.fillStyle = 'var(--accent-green)'
+    ctx.fillStyle = accentGreen
     ctx.fillRect(vpX - 1, 0, 2, h)
   }, [showOverview, data, currentIndex])
 
@@ -331,8 +341,8 @@ export default function TimeMachine({ data, onSeek, currentIndex, disabled, mult
       {playing && <span style={{ color: 'var(--accent-red)', fontSize: 8, fontWeight: 600 }}>LIVE</span>}
 
       {showOverview && data.length > 1 && (
-        <canvas ref={overviewCanvasRef} width={120} height={24}
-          style={{ borderRadius: 2, border: '1px solid var(--border-color)' }} />
+        <canvas ref={overviewCanvasRef}
+          style={{ width: 120, height: 24, borderRadius: 2, border: '1px solid var(--border-color)' }} />
       )}
 
       {multiChartSync && multiChartSync.getChartCount() > 1 && (

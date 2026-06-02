@@ -398,6 +398,7 @@ export class ChartEngine {
   get symbol() { return this._symbol }
   get interval() { return this._interval }
   get theme() { return this._theme }
+  get mainSeriesData() { return this.mainSeries }
 
   setSignals(signals: SignalMarker[]) {
     this._signals = signals

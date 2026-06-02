@@ -20,7 +20,7 @@ const LivePricesContext = createContext<LivePricesContextType | null>(null)
 
 export function LivePricesProvider({ children }: { children: ReactNode }) {
   const [prices, setPrices] = useState<Record<string, PriceData | null>>({})
-  const { connected, lastData } = useWebSocket<{ type: string; data: Record<string, PriceData | null> }>('/api/ws/prices', { maxRetries: 999 })
+  const { connected, lastData } = useWebSocket<{ type: string; data: Record<string, PriceData | null> }>('/ws/prices', { maxRetries: 999 })
 
   useEffect(() => {
     if (lastData?.type === 'prices' && lastData?.data) {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
-import { fetchOHLCV, fetchTechnicalAnalysis, fetchTAChart, fetchSignals, fetchStructure } from '../api/client'
+import { api, fetchOHLCV, fetchTechnicalAnalysis, fetchTAChart, fetchSignals, fetchStructure } from '../api/client'
 import type { BarData } from '../api/types'
 import DepthChart from '../components/chart/DepthChart'
 import VolumeProfile from '../components/chart/VolumeProfile'
@@ -40,13 +40,71 @@ import ContextMenu from '../components/ui/ContextMenu'
 import type { ContextMenuItem } from '../components/ui/ContextMenu'
 import type { IChartApi } from 'lightweight-charts'
 
-type ChartStyle = 'candle' | 'line' | 'area'
+// Chart state store
+import { useChartStore } from '../store/chartStore'
+// Keyboard navigation
+import { useChartKeyboard } from '../components/chart/hooks/useChartKeyboard'
+// Symbol search
+import { SymbolSearch } from '../components/chart/ui/SymbolSearch'
+// Time & Sales
+import TimeAndSales from '../components/chart/TimeAndSales'
+// Chart animations
+import { useChartAnimations } from '../components/chart/hooks/useChartAnimations'
+// Layout presets
+import { LayoutPresets } from '../components/chart/ui/LayoutPresets'
+// Delta calculator
+import { calculateCumulativeDelta, getDeltaColor } from '../components/chart/delta/DeltaCalculator'
+// Delta candle renderer
+import { renderDeltaCandles, renderVolumeDeltas } from '../components/chart/delta/DeltaCandleRenderer'
+// Professional structure overlays
+import { renderFVG, renderOrderBlock, renderLiquidityLevel, renderKeyLevels } from '../components/chart/overlays/ProfessionalStructureRenderer'
+// Volume profile
+import { renderVolumeProfile } from '../components/chart/overlays/VolumeProfileRenderer'
+// Signal timeline
+import { renderSignalsOnChart } from '../components/chart/overlays/SignalTimelineRenderer'
+// Signal timeline integrated
+import SignalTimelineIntegrated from '../components/chart/SignalTimelineIntegrated'
+// Chart alerts
+import { ChartAlertSystem } from '../components/chart/alerts/ChartAlertSystem'
+import { AlertDialog } from '../components/chart/alerts/AlertDialog'
+// Multi-timeframe overlay
+import MultiTimeframeOverlay from '../components/chart/overlays/MultiTimeframeOverlay'
+// Anchored VWAP
+import { computeAnchoredVWAP } from '../components/chart/AnchoredVWAP'
+// Pattern detector
+import { PatternDetector, type DetectedPattern } from '../components/chart/patterns/PatternDetector'
+// Tick engine
+import { TickEngine } from '../components/chart/data/TickEngine'
+// Streaming indicators
+import { StreamingIndicatorCalculator } from '../components/chart/data/StreamingIndicatorCalculator'
+// Fullscreen hook
+import { useChartFullscreen } from '../components/chart/hooks/useChartFullscreen'
+// Workspace detacher
+import { WorkspaceDetacher } from '../components/chart/workspace/WorkspaceDetacher'
+// Alternative chart engine
+import { AlternativeChartEngine } from '../components/chart/alternatives/AlternativeChartEngine'
+// Market Profile
+import { MarketProfile } from '../components/chart/alternatives/MarketProfile'
+// Drawing snap (utilities used via DrawingManager, no import needed here)
+// Chart screenshot
+import { ChartScreenshot } from '../components/chart/export/ChartScreenshot'
+// Tick sounds
+import { TickSounds } from '../components/chart/audio/TickSounds'
+// Script editor
+import ScriptEditor from '../components/chart/scripting/ScriptEditor'
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? ''
+type ChartStyle = 'candle' | 'line' | 'area'
 
 export default function ChartPage() {
   const [searchParams] = useSearchParams()
   const [symbol, _setSymbol] = useState(() => searchParams.get('symbol') || 'AAPL')
+
+  const urlSymbol = searchParams.get('symbol')
+  useEffect(() => {
+    if (urlSymbol && urlSymbol !== symbol) {
+      _setSymbol(urlSymbol)
+    }
+  }, [urlSymbol])
   const [interval, setIntervalState] = useState('1d')
   const [data, setData] = useState<BarData[]>([])
   const [loading, setLoading] = useState(false)
@@ -103,13 +161,27 @@ export default function ChartPage() {
 
   const addToast = useToastStore((s) => s.addToast)
   const [focusedCell, setFocusedCell] = useState(0)
+  const chartContainerRef = useRef<HTMLDivElement>(null)
+  const chartRef = useRef<ChartEngine | null>(null)
+  const { locked: crosshairLocked } = useChartKeyboard(chartRef as any, chartContainerRef)
+  const { isFullscreen, toggle: toggleChartFullscreen } = useChartFullscreen(chartContainerRef)
+  const tickEngineRef = useRef<TickEngine | null>(null)
+  const streamingIndicatorRef = useRef<StreamingIndicatorCalculator | null>(null)
+  const alertSystemRef = useRef(new ChartAlertSystem())
+  const workspaceDetacherRef = useRef(new WorkspaceDetacher())
+  const tickSoundsRef = useRef<TickSounds | null>(null)
+  const [showTimeAndSales, setShowTimeAndSales] = useState(false)
+  const [showMultiTimeframe, setShowMultiTimeframe] = useState(false)
+  const [showScriptEditor, setShowScriptEditor] = useState(false)
+  const [showPatterns, setShowPatterns] = useState(false)
+  const [detectedPatterns, setDetectedPatterns] = useState<DetectedPattern[]>([])
+  const [showSymbolSearch, setShowSymbolSearch] = useState(false)
   const [signalMarkers, setSignalMarkers] = useState<SignalMarker[]>([])
   const [showSignalTimeline, setShowSignalTimeline] = useState(false)
   const [chartApi, setChartApi] = useState<IChartApi | null>(null)
   const [showExportMenu, setShowExportMenu] = useState(false)
   const multiChartGridRef = useRef<MultiChartGridHandle>(null)
   const chartPanelRef = useRef<HTMLDivElement>(null)
-  const chartRef = useRef<ChartEngine | null>(null)
   const dataRef = useRef<BarData[]>([])
   const loadingDataRef = useRef(false)
 
@@ -141,11 +213,13 @@ export default function ChartPage() {
   }, [themeColors])
 
   useEffect(() => {
+    const abort = new AbortController()
     setLoading(true)
     setError('')
     loadingDataRef.current = true
     fetchOHLCV(symbol, interval)
       .then((d) => {
+        if (abort.signal.aborted) return
         setData(d)
         dataRef.current = d
         setLoading(false)
@@ -153,17 +227,21 @@ export default function ChartPage() {
         setChartData(d)
       })
       .catch((e) => {
+        if (abort.signal.aborted) return
         setError(e?.message ?? 'Failed to load data')
         addToast(e?.message ?? 'Failed to load chart data', 'error')
         setLoading(false)
         loadingDataRef.current = false
       })
+    return () => abort.abort()
   }, [symbol, interval, setChartData])
 
   useEffect(() => {
     if (!chartRef.current) return
+    const abort = new AbortController()
     fetchSignals()
       .then((sigData) => {
+        if (abort.signal.aborted) return
         const markers: SignalMarker[] = []
         const symbolSigs = sigData.signals[symbol]
         if (symbolSigs) {
@@ -182,6 +260,7 @@ export default function ChartPage() {
         setSignalMarkers(markers)
       })
       .catch(() => {})
+    return () => abort.abort()
   }, [symbol, interval])
 
   useEffect(() => {
@@ -190,9 +269,11 @@ export default function ChartPage() {
       chartRef.current?.setStructureData(null)
       return
     }
+    const abort = new AbortController()
     const load = async () => {
       try {
         const raw = await fetchStructure(symbol, interval)
+        if (abort.signal.aborted) return
         const mapped: StructureOverlay = {
           orderBlocks: (raw as any).active_order_blocks ?? [],
           fvgs: (raw as any).active_fvgs ?? [],
@@ -203,6 +284,7 @@ export default function ChartPage() {
       } catch { /* silent */ }
     }
     load()
+    return () => abort.abort()
   }, [showStructureOverlay, symbol, interval])
 
   useEffect(() => {
@@ -335,7 +417,7 @@ export default function ChartPage() {
     () => [
       {
         label: 'Add Indicator',
-        onClick: () => setShowIndicatorSearch(true),
+        onClick: () => handleIndicatorAddClick(),
         shortcut: 'I',
       },
       {
@@ -422,19 +504,6 @@ export default function ChartPage() {
     setShowInlineParams(false)
   }, [])
 
-  const handleInlineSelect = useCallback((preset: IndicatorPreset) => {
-    const params = { ...preset.defaultParams } as Record<string, number>
-    setSelectedIndicatorPreset(preset)
-    setIndicatorParams(params)
-    setShowInlineSearch(false)
-    const paramKeys = Object.keys(preset.defaultParams).filter(k => Number(preset.defaultParams[k]) !== 0)
-    if (paramKeys.length > 2) {
-      setShowInlineParams(true)
-    } else {
-      handleIndicatorConfirm(preset, params)
-    }
-  }, [handleIndicatorConfirm])
-
   const handleIndicatorConfirm = useCallback((preset?: IndicatorPreset, params?: Record<string, number>) => {
     const p = preset ?? selectedIndicatorPreset
     const pr = params ?? indicatorParams
@@ -452,6 +521,19 @@ export default function ChartPage() {
     setSelectedIndicatorPreset(null)
     setShowInlineParams(false)
   }, [selectedIndicatorPreset, indicatorParams, indicators.length])
+
+  const handleInlineSelect = useCallback((preset: IndicatorPreset) => {
+    const params = { ...preset.defaultParams } as Record<string, number>
+    setSelectedIndicatorPreset(preset)
+    setIndicatorParams(params)
+    setShowInlineSearch(false)
+    const paramKeys = Object.keys(preset.defaultParams).filter(k => Number(preset.defaultParams[k]) !== 0)
+    if (paramKeys.length > 2) {
+      setShowInlineParams(true)
+    } else {
+      handleIndicatorConfirm(preset, params)
+    }
+  }, [handleIndicatorConfirm])
 
   const handleInlineCancel = useCallback(() => {
     setShowInlineParams(false)
@@ -498,15 +580,13 @@ export default function ChartPage() {
     setFigureJSON(null)
     setTAIndicators({})
     setTAChartKey((k) => k + 1)
-    let analysisHtml = ''
     try {
-      analysisHtml = await fetchTechnicalAnalysis(symbol, interval, 50)
-      void analysisHtml
+      await fetchTechnicalAnalysis(symbol, interval, 50)
     } catch (e: any) {
-      void analysisHtml
+      addToast(e?.message || 'Failed to load technical analysis', 'error')
     }
     setAnalysisLoading(false)
-  }, [symbol, interval])
+  }, [symbol, interval, addToast])
 
   const handleGenerateTA = useCallback(async (indicators: Record<string, Record<string, number | number[]>>) => {
     setTAIndicators(indicators)
@@ -659,9 +739,7 @@ export default function ChartPage() {
     }
     setCorrelationLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/api/correlation/matrix?symbols=${syms.join(',')}&interval=1d&period_days=250`)
-      if (!res.ok) throw new Error('Failed to fetch correlation data')
-      const data = await res.json()
+      const { data } = await api.get('/correlation/matrix', { params: { symbols: syms.join(','), interval: '1d', period_days: 250 } })
       setCorrelationData(data)
     } catch (e: any) {
       addToast(e?.message ?? 'Correlation fetch failed', 'error')
@@ -707,15 +785,29 @@ export default function ChartPage() {
 
   const handleFetchSignals = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/chart/ta/signals/${symbol}?interval=${interval}&period_days=100`)
-      if (!res.ok) throw new Error('Failed to fetch signals')
-      const data = await res.json()
+      const { data } = await api.get(`/chart/ta/signals/${symbol}`, { params: { interval, period_days: 100 } })
       setSignalsData(data.signals)
       setShowSignals(true)
     } catch (e: any) {
       addToast(e?.message ?? 'Signal fetch failed', 'error')
     }
   }, [symbol, interval, addToast])
+
+  const deltaData = useMemo(() => {
+    if (data.length === 0) return []
+    return calculateCumulativeDelta(data as any)
+  }, [data])
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.code === 'Space') {
+        e.preventDefault()
+        setShowSymbolSearch(prev => !prev)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
 
   return (
     <div className="flex flex-col gap-0.5 h-full relative">
@@ -732,6 +824,17 @@ export default function ChartPage() {
         onTemplates={() => setShowTemplates(v => !v)}
       />
 
+      {showLayout && (
+        <div className="border-b border-default">
+          <LayoutPresets
+            active={layoutMode === 'single' ? 'Single' : layoutMode === '2x1' ? '2 Grid' : layoutMode === '2x2' ? '4 Grid' : 'Stack'}
+            onSelect={(preset) => {
+              const modeMap: Record<string, any> = { 'Single': 'single', '2 Grid': '2x1', 'Stack': '1x2', '4 Grid': '2x2' }
+              if (modeMap[preset.name]) setLayoutMode(modeMap[preset.name])
+            }}
+          />
+        </div>
+      )}
       <div className="flex items-center bg-card border-b border-default px-1 min-h-[22px]">
         <TimeframeSelector interval={interval} onIntervalChange={handleIntervalChange} />
         <div className="flex-1" />
@@ -899,6 +1002,25 @@ export default function ChartPage() {
           </div>,
           chartPanelRef.current
         )}
+
+        {showTimeAndSales && chartPanelRef.current && createPortal(
+          <div style={{ position: 'absolute', top: 0, right: 0, zIndex: 30, height: '100%' }}>
+            <TimeAndSales
+              basePrice={data.length > 0 ? data[data.length - 1].close : 150}
+              onClose={() => setShowTimeAndSales(false)}
+            />
+          </div>,
+          chartPanelRef.current
+        )}
+
+        {showMultiTimeframe && chartRef.current && (
+          <MultiTimeframeOverlay
+            chartEngine={chartRef.current}
+            data={data as any}
+            visible={showMultiTimeframe}
+            symbol={symbol}
+          />
+        )}
       </div>
 
       <SignalTimeline
@@ -948,6 +1070,34 @@ export default function ChartPage() {
         <button onClick={() => setShowTimeMachine(!showTimeMachine)}
           className={`cursor-pointer text-[10px] transition-colors ${showTimeMachine ? 'bg-accent-subtle text-accent-blue' : 'text-muted'}`}>
           {'\u23F1'} Replay
+        </button>
+        <button onClick={() => setShowTimeAndSales(!showTimeAndSales)}
+          className={`cursor-pointer text-[10px] transition-colors ${showTimeAndSales ? 'bg-accent-subtle text-accent-blue' : 'text-muted'}`}>
+          T&S
+        </button>
+        <button onClick={() => setShowMultiTimeframe(!showMultiTimeframe)}
+          className={`cursor-pointer text-[10px] transition-colors ${showMultiTimeframe ? 'bg-accent-subtle text-accent-blue' : 'text-muted'}`}>
+          HTF
+        </button>
+        <button onClick={() => {
+          if (!showPatterns && data.length > 0) {
+            const detector = new PatternDetector()
+            const patterns = detector.detectAll(data as any)
+            setDetectedPatterns(patterns)
+            addToast(`Detected ${patterns.length} patterns`, 'success')
+          }
+          setShowPatterns(!showPatterns)
+        }}
+          className={`cursor-pointer text-[10px] transition-colors ${showPatterns ? 'bg-accent-subtle text-accent-blue' : 'text-muted'}`}>
+          Patterns
+        </button>
+        <button onClick={() => setShowScriptEditor(!showScriptEditor)}
+          className={`cursor-pointer text-[10px] transition-colors ${showScriptEditor ? 'bg-accent-subtle text-accent-blue' : 'text-muted'}`}>
+          Script
+        </button>
+        <button onClick={() => setShowSymbolSearch(true)}
+          className="bg-transparent text-muted cursor-pointer text-[10px]">
+          Search
         </button>
         <button onClick={() => setShowStructureOverlay(!showStructureOverlay)}
           className={`cursor-pointer text-[10px] transition-colors ${showStructureOverlay ? 'bg-accent-subtle text-accent-blue' : 'text-muted'}`}>
@@ -1279,6 +1429,25 @@ export default function ChartPage() {
             ))}
           </div>
         </div>
+      )}
+
+      {showSymbolSearch && (
+        <SymbolSearch
+          onSelect={(sym) => {
+            _setSymbol(sym)
+            setShowSymbolSearch(false)
+          }}
+          onClose={() => setShowSymbolSearch(false)}
+        />
+      )}
+
+      {showScriptEditor && (
+        <ScriptEditor
+          onScriptRun={(result) => {
+            addToast(`Script "${result.name}" computed ${result.values.length} values`, 'success')
+          }}
+          onClose={() => setShowScriptEditor(false)}
+        />
       )}
 
       {contextMenu.show && (

@@ -28,16 +28,19 @@ _VALID_INTERVALS = {"1m", "2m", "5m", "15m", "30m", "60m", "1h", "1d", "1wk", "1
 async def get_bars(
     symbol: str,
     interval: str = Query("1d"),
-    range: str = Query("1mo"),
+    range: str = Query(None),
+    period_days: Optional[int] = Query(None),
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
 ):
     interval = interval if interval in _VALID_INTERVALS else "1d"
     if start_date:
         start = start_date
+    elif period_days is not None:
+        start = (datetime.now() - timedelta(days=period_days)).strftime("%Y-%m-%d")
     else:
-        range = range if range in _RANGE_MAP else "1mo"
-        period_delta = _RANGE_MAP[range]
+        resolved_range = range if range in _RANGE_MAP else "1mo"
+        period_delta = _RANGE_MAP[resolved_range]
         start = None if period_delta is None else (datetime.now() - period_delta).strftime("%Y-%m-%d")
 
     yf_interval = interval

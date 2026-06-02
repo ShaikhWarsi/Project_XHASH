@@ -22,8 +22,10 @@ import type {
   WhatIfResult,
 } from './types'
 
+const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
+
 export const api = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE,
   timeout: 30000,
 })
 
@@ -39,6 +41,22 @@ api.interceptors.response.use(
     return api(config)
   },
 )
+
+const DEDUP_MAP = new Map<string, Promise<any>>()
+
+export function dedupGet<T = any>(url: string, params?: Record<string, any>): Promise<T> {
+  const key = url + '?' + JSON.stringify(params ?? {})
+  if (!DEDUP_MAP.has(key)) {
+    DEDUP_MAP.set(key, api.get(url, { params }).then((res) => {
+      DEDUP_MAP.delete(key)
+      return res.data
+    }).catch((err) => {
+      DEDUP_MAP.delete(key)
+      throw err
+    }))
+  }
+  return DEDUP_MAP.get(key)!
+}
 
 let _apiKey: string | null = null
 
@@ -122,6 +140,8 @@ export function connectDashboardSSE(
   const baseDelay = 1000
   let disconnected = false
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  let recoveryTimer: ReturnType<typeof setTimeout> | null = null
+  let gaveUp = false
 
   function createConnection(): EventSource {
     const es = new EventSource('/api/stream/live')
@@ -134,6 +154,7 @@ export function connectDashboardSSE(
         if (!hasEverConnected) {
           hasEverConnected = true
           retryCount = 0
+          gaveUp = false
           onStale?.(false)
         }
       } catch {
@@ -144,6 +165,7 @@ export function connectDashboardSSE(
     es.onopen = () => {
       hasEverConnected = true
       retryCount = 0
+      gaveUp = false
       onStale?.(false)
     }
 
@@ -164,76 +186,111 @@ export function connectDashboardSSE(
         }, jitter)
       } else if (!disconnected) {
         console.debug('SSE max retries reached, giving up')
+        gaveUp = true
         onStale?.(true)
+        scheduleRecovery()
       }
     }
 
     return es
   }
 
+  function scheduleRecovery() {
+    clearTimeout(recoveryTimer)
+    recoveryTimer = setTimeout(() => {
+      if (!disconnected && gaveUp) {
+        console.debug('SSE recovery check — attempting reconnect')
+        retryCount = 0
+        gaveUp = false
+        esRef.current = createConnection()
+      }
+    }, 30000)
+  }
+
+  function onNetworkOnline() {
+    if (!disconnected) {
+      console.debug('SSE network recovered — reconnecting')
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      if (recoveryTimer) clearTimeout(recoveryTimer)
+      retryCount = 0
+      gaveUp = false
+      esRef.current.close()
+      esRef.current = createConnection()
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('online', onNetworkOnline)
+  }
+
   const esRef: { current: EventSource } = { current: createConnection() }
-  return {
+  const result = {
     close() {
       disconnected = true
       if (reconnectTimer) clearTimeout(reconnectTimer)
+      if (recoveryTimer) clearTimeout(recoveryTimer)
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('online', onNetworkOnline)
+      }
       esRef.current.close()
     },
   } as EventSource
+  return result
 }
 
 export async function searchStocks(query: string): Promise<{ symbol: string; description: string; type: string }[]> {
   if (!query.trim()) return []
-  const { data } = await api.get('/v1/market/search', { params: { q: query } })
+  const { data } = await api.get('/market/search', { params: { q: query } })
   return data.results || []
 }
 
 export async function fetchQuote(symbol: string): Promise<FinnhubQuote> {
-  const { data } = await api.get(`/v1/market/quote/${symbol}`)
+  const { data } = await api.get(`/market/quote/${symbol}`)
   return data
 }
 
 export async function fetchQuotes(symbols: string[]): Promise<Record<string, FinnhubQuote | null>> {
-  const { data } = await api.get('/v1/market/quotes', { params: { symbols: symbols.join(',') } })
+  const { data } = await api.get('/market/quotes', { params: { symbols: symbols.join(',') } })
   return data
 }
 
 export async function fetchWatchlist(userId = 'default'): Promise<WatchlistItem[]> {
-  const { data } = await api.get('/v1/market/watchlist', { params: { user_id: userId } })
+  const { data } = await api.get('/market/watchlist', { params: { user_id: userId } })
   return data.watchlist || []
 }
 
 export async function addToWatchlist(symbol: string, company = '', userId = 'default'): Promise<WatchlistItem[]> {
-  const { data } = await api.post('/v1/market/watchlist', { user_id: userId, symbol, company })
+  const { data } = await api.post('/market/watchlist', { user_id: userId, symbol, company })
   return data.watchlist || []
 }
 
 export async function removeFromWatchlist(symbol: string, userId = 'default'): Promise<WatchlistItem[]> {
-  const { data } = await api.delete(`/v1/market/watchlist/${symbol}`, { params: { user_id: userId } })
+  const { data } = await api.delete(`/market/watchlist/${symbol}`, { params: { user_id: userId } })
   return data.watchlist || []
 }
 
 export async function getAlerts(userId = 'default'): Promise<Alert[]> {
-  const { data } = await api.get('/v1/market/alerts', { params: { user_id: userId } })
+  const { data } = await api.get('/market/alerts', { params: { user_id: userId } })
   return data.alerts || []
 }
 
 export async function createAlert(symbol: string, targetPrice: number, condition: 'ABOVE' | 'BELOW', userId = 'default'): Promise<Alert> {
-  const { data } = await api.post('/v1/market/alerts', { user_id: userId, symbol, target_price: targetPrice, condition })
+  const { data } = await api.post('/market/alerts', { user_id: userId, symbol, target_price: targetPrice, condition })
   return data.alert
 }
 
 export async function deleteAlert(alertId: number, userId = 'default'): Promise<boolean> {
-  const { data } = await api.delete(`/v1/market/alerts/${alertId}`, { params: { user_id: userId } })
+  const { data } = await api.delete(`/market/alerts/${alertId}`, { params: { user_id: userId } })
   return data.success
 }
 
 export async function fetchCompanyProfile(symbol: string): Promise<Record<string, unknown>> {
-  const { data } = await api.get(`/v1/market/profile/${symbol}`)
+  const { data } = await api.get(`/market/profile/${symbol}`)
   return data
 }
 
 export async function fetchCompanyNews(symbol: string): Promise<{ headline: string; summary: string; url: string; source: string; datetime: number; image: string }[]> {
-  const { data } = await api.get(`/v1/market/news/${symbol}`)
+  const { data } = await api.get(`/market/news/${symbol}`)
   return data.articles || []
 }
 
@@ -274,7 +331,7 @@ export async function fetchMMCAnalysis(symbol = 'BTC-USD', period = '1mo', inter
 }
 
 export async function fetchStructure(symbol: string, timeframe: string): Promise<Record<string, unknown>> {
-  const { data } = await api.get(`/v1/structure/${symbol}`, { params: { timeframe } })
+  const { data } = await api.get(`/structure/${symbol}`, { params: { timeframe } })
   return data
 }
 

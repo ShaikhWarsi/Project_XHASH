@@ -78,6 +78,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.style.setProperty('--font-size-lg', `${fontSize + 1}px`)
     root.style.setProperty('--font-size-xl', `${fontSize + 6}px`)
     root.style.setProperty('--card-padding', density === 'compact' ? '0.75rem' : '1.25rem')
+    root.style.setProperty('--card-gap', density === 'compact' ? '0.5rem' : '1rem')
     root.style.setProperty('--card-radius', density === 'compact' ? '0.5rem' : '0.75rem')
     root.style.setProperty('--sidebar-width', density === 'compact' ? '180px' : '220px')
   }, [theme, density, fontSize])

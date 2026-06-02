@@ -66,56 +66,56 @@ interface RatioInput {
 }
 
 export async function calcWACC(input: WACCInput): Promise<Record<string, unknown>> {
-  const { data } = await api.post('/v1/cfa/wacc', input)
+  const { data } = await api.post('/cfa/wacc', input)
   return data
 }
 
 export async function calcDCF(input: DCFInput): Promise<Record<string, unknown>> {
-  const { data } = await api.post('/v1/cfa/dcf', input)
+  const { data } = await api.post('/cfa/dcf', input)
   return data
 }
 
 export async function calcComps(params: Record<string, unknown>): Promise<Record<string, unknown>> {
-  const { data } = await api.get('/v1/cfa/comps', { params })
+  const { data } = await api.get('/cfa/comps', { params })
   return data
 }
 
 export async function calcStartupBerkus(params: Record<string, unknown>): Promise<Record<string, unknown>> {
-  const { data } = await api.post('/v1/cfa/startup/berkus', null, { params })
+  const { data } = await api.post('/cfa/startup/berkus', null, { params })
   return data
 }
 
 export async function calcStartupVC(params: Record<string, unknown>): Promise<Record<string, unknown>> {
-  const { data } = await api.post('/v1/cfa/startup/vc', null, { params })
+  const { data } = await api.post('/cfa/startup/vc', null, { params })
   return data
 }
 
 export async function calcBondPrice(input: BondPriceInput): Promise<Record<string, unknown>> {
-  const { data } = await api.post('/v1/cfa/bond/price', input)
+  const { data } = await api.post('/cfa/bond/price', input)
   return data
 }
 
 export async function calcBondYTM(input: BondYTMInput): Promise<Record<string, unknown>> {
-  const { data } = await api.post('/v1/cfa/bond/ytm', input)
+  const { data } = await api.post('/cfa/bond/ytm', input)
   return data
 }
 
 export async function calcOptionPrice(input: OptionPriceInput): Promise<Record<string, unknown>> {
-  const { data } = await api.post('/v1/cfa/options/price', input)
+  const { data } = await api.post('/cfa/options/price', input)
   return data
 }
 
 export async function calcOptionGreeks(params: Record<string, unknown>): Promise<Record<string, unknown>> {
-  const { data } = await api.post('/v1/cfa/options/greeks', null, { params })
+  const { data } = await api.post('/cfa/options/greeks', null, { params })
   return data
 }
 
 export async function calcRatioAnalysis(input: RatioInput): Promise<Record<string, unknown>> {
-  const { data } = await api.post('/v1/cfa/ratios', input)
+  const { data } = await api.post('/cfa/ratios', input)
   return data
 }
 
 export async function calcDuPont(params: Record<string, unknown>): Promise<Record<string, unknown>> {
-  const { data } = await api.post('/v1/cfa/dupont', null, { params })
+  const { data } = await api.post('/cfa/dupont', null, { params })
   return data
 }

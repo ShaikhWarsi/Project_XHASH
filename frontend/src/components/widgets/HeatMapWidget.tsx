@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import BaseWidget from './BaseWidget'
+import { fetchQuotes } from '../../api/client'
 
 const SECTOR_ETFS = ['XLK', 'XLV', 'XLF', 'XLY', 'XLE', 'XLI', 'XLB', 'XLRE', 'XLU', 'XLC', 'XLP']
 
@@ -46,13 +47,33 @@ function getGridArea(weight: number, totalWeight: number): { colSpan: number; ro
 
 export default function HeatMapWidget({ id, onRemove }: { id: string; onRemove?: () => void }) {
   const [hoveredSector, setHoveredSector] = useState<string | null>(null)
+  const [sectorQuotes, setSectorQuotes] = useState<any[] | null>(() => {
+    try {
+      const raw = sessionStorage.getItem('sector_quotes')
+      return raw ? JSON.parse(raw) : null
+    } catch { return null }
+  })
+
+  useEffect(() => {
+    if (sectorQuotes) return
+    fetchQuotes(SECTOR_ETFS).then((quotes) => {
+      const data = SECTOR_ETFS.map((symbol) => {
+        const q = quotes[symbol]
+        return {
+          symbol,
+          price: q?.c ?? 0,
+          change_percent: q?.dp ?? 0,
+        }
+      })
+      sessionStorage.setItem('sector_quotes', JSON.stringify(data))
+      setSectorQuotes(data)
+    })
+  }, [sectorQuotes])
 
   const sectors: SectorData[] = useMemo(() => {
-    const raw = sessionStorage.getItem('sector_quotes')
-    if (!raw) return []
+    if (!sectorQuotes) return []
     try {
-      const quotes = JSON.parse(raw)
-      return quotes.map((q: any) => {
+      return sectorQuotes.map((q: any) => {
         const config = SECTOR_CONFIG[q.symbol] || { name: q.symbol, weight: 2 }
         return {
           symbol: q.symbol,
@@ -63,7 +84,7 @@ export default function HeatMapWidget({ id, onRemove }: { id: string; onRemove?:
         }
       }).filter((s: SectorData) => s.price > 0)
     } catch { return [] }
-  }, [])
+  }, [sectorQuotes])
 
   const totalWeight = useMemo(() => sectors.reduce((s, x) => s + x.weight, 0), [sectors])
   const sortedSectors = useMemo(() => [...sectors].sort((a, b) => b.weight - a.weight), [sectors])

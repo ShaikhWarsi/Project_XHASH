@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import OrderEntryPanel from '../components/OrderEntryPanel'
 import OrderBook from '../components/OrderBook'
 import PositionTable from '../components/PositionTable'
-import TimeAndSales from '../components/TimeAndSales'
+import LiveTimeAndSales from '../components/LiveTimeAndSales'
 import Card from '../components/ui/Card'
 import Skeleton from '../components/Skeleton'
 import EmptyState from '../components/ui/EmptyState'
@@ -32,7 +32,7 @@ export default function Orders() {
   const [batchSelection, setBatchSelection] = useState<string[]>([])
   const { push: pushUndo, undo, redo, canUndo, canRedo, reset: resetUndo } = useUndoRedo<OrderResponse[]>(orders)
 
-  const wsOrders = useWebSocket<{ type: string; data: OrderResponse[] }>('/api/ws/orders', { maxRetries: 999 })
+  const wsOrders = useWebSocket<{ type: string; data: OrderResponse[] }>('/ws/orders', { maxRetries: 999 })
 
   useEffect(() => {
     if (wsOrders.lastData?.type === 'orders' && Array.isArray(wsOrders.lastData.data)) {
@@ -102,7 +102,7 @@ export default function Orders() {
         </ErrorBoundary>
         <ErrorBoundary>
           <Card title="TIME & SALES">
-            <TimeAndSales symbol="AAPL" />
+            <LiveTimeAndSales symbol="AAPL" />
           </Card>
         </ErrorBoundary>
       </div>

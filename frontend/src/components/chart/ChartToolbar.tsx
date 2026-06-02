@@ -16,9 +16,7 @@ interface ChartToolbarProps {
   canUndo: boolean
   canRedo: boolean
   symbol: string
-  onSymbolChange?: (symbol: string) => void
   interval: string
-  onIntervalChange?: (interval: string) => void
   onIndicatorAdd?: () => void
   onTemplates?: () => void
 }

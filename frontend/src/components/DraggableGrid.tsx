@@ -68,6 +68,8 @@ export default function DraggableGrid({ items, onReorder, storageKey = STORAGE_K
   const ghostEl = useRef<HTMLDivElement | null>(null)
   const resizeStartY = useRef(0)
   const resizeStartH = useRef(0)
+  const dragIdxRef = useRef<number | null>(null)
+  const overIdxRef = useRef<number | null>(null)
   const cols = useResponsiveColumns(columns)
 
   useEffect(() => {
@@ -107,7 +109,10 @@ export default function DraggableGrid({ items, onReorder, storageKey = STORAGE_K
 
   const handleDragStart = useCallback((e: React.MouseEvent, idx: number) => {
     e.preventDefault()
+    dragIdxRef.current = idx
+    overIdxRef.current = null
     setDragIdx(idx)
+    setOverIdx(null)
     const target = e.currentTarget as HTMLDivElement
     dragEl.current = target
 
@@ -137,6 +142,7 @@ export default function DraggableGrid({ items, onReorder, storageKey = STORAGE_K
           newOverIdx = parseInt(child.getAttribute('data-grid-idx') || '0', 10)
         }
       })
+      overIdxRef.current = newOverIdx
       setOverIdx(newOverIdx)
     }
 
@@ -151,21 +157,25 @@ export default function DraggableGrid({ items, onReorder, storageKey = STORAGE_K
         dragEl.current.style.opacity = '1'
         dragEl.current = null
       }
-      if (dragIdx !== null && overIdx !== null && dragIdx !== overIdx) {
+      const dIdx = dragIdxRef.current
+      const oIdx = overIdxRef.current
+      if (dIdx !== null && oIdx !== null && dIdx !== oIdx) {
         setOrder((prev) => {
           const next = [...prev]
-          const [moved] = next.splice(dragIdx, 1)
-          next.splice(overIdx, 0, moved)
+          const [moved] = next.splice(dIdx, 1)
+          next.splice(oIdx, 0, moved)
           if (onReorder) onReorder(next)
           return next
         })
       }
+      dragIdxRef.current = null
+      overIdxRef.current = null
       setDragIdx(null)
       setOverIdx(null)
     }
     document.addEventListener('mousemove', handleMove)
     document.addEventListener('mouseup', handleUp)
-  }, [dragIdx, overIdx, onReorder])
+  }, [onReorder])
 
   const handleResizeStart = useCallback((e: React.MouseEvent, id: string) => {
     e.preventDefault()

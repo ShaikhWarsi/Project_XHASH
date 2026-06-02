@@ -60,11 +60,11 @@ export default function LayerPanel({ layers, onVisibilityToggle, onOpacityChange
     }}>
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '2px 4px', borderBottom: '1px solid #1a2332', marginBottom: 2,
-        color: '#8b95a5', fontSize: 9, fontWeight: 600,
+        padding: '2px 4px', borderBottom: '1px solid var(--border-color, #1a2332)', marginBottom: 2,
+        color: 'var(--text-muted, #8b95a5)', fontSize: 9, fontWeight: 600,
       }}>
         <span><Layers size={10} style={{ marginRight: 4 }} />LAYERS ({layers.length})</span>
-        {onClose && <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#5d6b7e', cursor: 'pointer', fontSize: 9 }}>?</button>}
+        {onClose && <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted, #5d6b7e)', cursor: 'pointer', fontSize: 9 }}>?</button>}
       </div>
 
       {sorted.map((layer) => (
@@ -91,7 +91,7 @@ export default function LayerPanel({ layers, onVisibilityToggle, onOpacityChange
             onChange={(e) => onOpacityChange(layer.id, Number(e.target.value))}
             style={{ width: 40, height: 2, accentColor: 'var(--accent-blue)', cursor: 'pointer' }} />
 
-          <span style={{ fontSize: 8, color: '#5d6b7e', width: 22, textAlign: 'right' }}>
+          <span style={{ fontSize: 8, color: 'var(--text-muted, #5d6b7e)', width: 22, textAlign: 'right' }}>
             {Math.round(layer.opacity * 100)}%
           </span>
 

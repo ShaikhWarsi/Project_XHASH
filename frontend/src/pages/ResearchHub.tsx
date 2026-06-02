@@ -46,7 +46,13 @@ export default function ResearchHub() {
 
   const filtered = hypotheses.filter((h) => {
     if (filter !== 'all' && h.status !== filter) return false
-    if (search && !h.title.toLowerCase().includes(search.toLowerCase()) && !h.description.toLowerCase().includes(search.toLowerCase())) return false
+    if (search) {
+      const q = search.toLowerCase()
+      const matchesTitle = h.title.toLowerCase().includes(q)
+      const matchesDesc = h.description.toLowerCase().includes(q)
+      const matchesTag = h.tags.some((t) => t.toLowerCase().includes(q))
+      if (!matchesTitle && !matchesDesc && !matchesTag) return false
+    }
     return true
   })
 

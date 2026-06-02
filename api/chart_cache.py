@@ -16,8 +16,9 @@ def configure_cache(ttl_seconds: float = 300.0) -> None:
     _chart_cache_ttl = ttl_seconds
 
 
-def get_chart_cache_key(symbol: str, **params) -> str:
-    raw = f"{symbol}:{sorted(params.items())}"
+def get_chart_cache_key(symbol: str, user_id: str = "", **params) -> str:
+    items = sorted((k, str(v)) for k, v in params.items())
+    raw = f"{symbol}:{user_id}:{items}"
     return hashlib.md5(raw.encode()).hexdigest()
 
 
@@ -52,9 +53,8 @@ def get_cache_stats() -> dict[str, Any]:
 
 
 def invalidate_symbol(symbol: str) -> int:
-    count = 0
-    keys_to_delete = [k for k in _chart_cache if k.startswith(hashlib.md5(f"{symbol}:".encode()).hexdigest()[:8])]
+    prefix = hashlib.md5(f"{symbol}:".encode()).hexdigest()[:8]
+    keys_to_delete = [k for k in _chart_cache if k.startswith(prefix)]
     for key in keys_to_delete:
         del _chart_cache[key]
-        count += 1
-    return count
+    return len(keys_to_delete)

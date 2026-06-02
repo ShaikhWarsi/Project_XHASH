@@ -242,8 +242,9 @@ async def get_chart(
     interval: str = Query("15m"),
     period_days: int = Query(50),
     provider: str = Query("yfinance"),
+    user_id: str = Query(""),
 ):
-    cache_key = get_chart_cache_key(symbol, interval=interval, period=period_days, provider=provider)
+    cache_key = get_chart_cache_key(symbol, user_id=user_id, interval=interval, period=period_days, provider=provider)
     cached = get_chart_html(cache_key)
     if cached:
         from fastapi.responses import HTMLResponse
@@ -251,7 +252,10 @@ async def get_chart(
 
     btc = _fetch_data(symbol, interval, period_days, provider)
     if btc is None or btc.empty:
-        return {"error": f"No data found for {symbol}"}
+        return HTMLResponse(f"""<html><body style="background:#0a0f1a;color:#8892a6;font-family:monospace;padding:40px;text-align:center">
+<h2>No data available</h2><p>Could not fetch data for <b>{symbol}</b>. Both data providers failed.</p>
+<p style="font-size:11px">Try a different symbol or check your data source configuration.</p>
+</body></html>""")
 
     levels = _compute_indicators(btc)
     fig = _build_chart(btc, symbol, levels)

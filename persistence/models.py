@@ -249,3 +249,60 @@ class AgentPaperOrder(Base):
     status = Column(String(16), nullable=False, default="filled")
     note = Column(SA_Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class MarketNewsSnapshot(Base):
+    __tablename__ = "market_news_snapshots"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    category = Column(String(50), nullable=False)
+    snapshot_key = Column(String(200), nullable=False)
+    items_json = Column(Text, nullable=False)
+    summary_json = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class MacroSignalSnapshot(Base):
+    __tablename__ = "macro_signal_snapshots"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    snapshot_key = Column(String(200), nullable=False)
+    verdict = Column(String(50), nullable=False)
+    bullish_count = Column(Integer, default=0)
+    total_count = Column(Integer, default=0)
+    signals_json = Column(Text, nullable=False)
+    meta_json = Column(Text, nullable=False)
+    source_json = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class EtfFlowSnapshot(Base):
+    __tablename__ = "etf_flow_snapshots"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    snapshot_key = Column(String(200), nullable=False)
+    summary_json = Column(Text, nullable=False)
+    etfs_json = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class StockAnalysisSnapshot(Base):
+    __tablename__ = "stock_analysis_snapshots"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    symbol = Column(String(20), nullable=False)
+    market = Column(String(20), nullable=False)
+    analysis_id = Column(String(200), nullable=False)
+    current_price = Column(Float, nullable=False)
+    currency = Column(String(10), default="USD")
+    signal = Column(String(20), nullable=False)
+    signal_score = Column(Float, nullable=False)
+    trend_status = Column(String(50), nullable=False)
+    support_levels_json = Column(Text, nullable=False)
+    resistance_levels_json = Column(Text, nullable=False)
+    bullish_factors_json = Column(Text, nullable=False)
+    risk_factors_json = Column(Text, nullable=False)
+    summary_text = Column(Text, nullable=False)
+    analysis_json = Column(Text, nullable=False)
+    news_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

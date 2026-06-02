@@ -14,19 +14,20 @@ router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 async def get_portfolio(session: AsyncSession = Depends(get_session)):
     p = await app_state.async_get_portfolio()
     positions = {}
-    for s, pos in p.positions.items():
-        positions[s] = {
-            "symbol": s,
-            "quantity": pos.quantity,
-            "side": pos.side.value if hasattr(pos.side, "value") else "LONG",
-            "entry_price": pos.entry_price,
-            "current_price": pos.current_price,
-            "unrealized_pnl": pos.unrealized_pnl,
-            "realized_pnl": pos.realized_pnl,
-            "market_value": pos.market_value,
-        }
+    if p.positions and isinstance(p.positions, dict):
+        for s, pos in p.positions.items():
+            positions[s] = {
+                "symbol": s,
+                "quantity": getattr(pos, "quantity", 0),
+                "side": pos.side.value if hasattr(pos, "side") and hasattr(pos.side, "value") else "LONG",
+                "entry_price": getattr(pos, "entry_price", 0),
+                "current_price": getattr(pos, "current_price", 0),
+                "unrealized_pnl": getattr(pos, "unrealized_pnl", 0),
+                "realized_pnl": getattr(pos, "realized_pnl", 0),
+                "market_value": getattr(pos, "market_value", 0),
+            }
     realized_pnl = 0.0
-    if isinstance(p.realized_gains, dict):
+    if p.realized_gains and isinstance(p.realized_gains, dict):
         for v in p.realized_gains.values():
             if isinstance(v, dict):
                 realized_pnl += v.get("long", 0) + v.get("short", 0)
@@ -36,10 +37,10 @@ async def get_portfolio(session: AsyncSession = Depends(get_session)):
     await PortfolioRepository.snapshot(session, p)
 
     return {
-        "cash": p.cash,
-        "total_value": p.total_value,
-        "margin_used": p.margin_used,
-        "margin_req": p.margin_requirement,
+        "cash": getattr(p, "cash", 0),
+        "total_value": getattr(p, "total_value", 0),
+        "margin_used": getattr(p, "margin_used", 0),
+        "margin_req": getattr(p, "margin_requirement", 0),
         "realized_gains": realized_pnl,
         "positions": positions,
     }

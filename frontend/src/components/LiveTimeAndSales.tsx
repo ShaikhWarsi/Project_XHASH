@@ -37,7 +37,7 @@ export default function TimeAndSales({ symbol = '' }: TimeAndSalesProps) {
   const prevPriceRef = useRef<number | null>(null)
   const hasLiveWsRef = useRef(false)
 
-  const wsUrl = symbol ? `/api/ws/trades/${symbol.toUpperCase()}` : ''
+  const wsUrl = symbol ? `/ws/trades/${symbol.toUpperCase()}` : ''
   const { connected: wsConnected, lastData } = useWebSocket<{ type: string; data: { price: number; size: number; time: string; side: string }[] }>(wsUrl, { maxRetries: 3, retryDelay: 5000 })
 
   useEffect(() => {

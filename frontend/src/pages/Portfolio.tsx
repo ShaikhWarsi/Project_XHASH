@@ -42,7 +42,7 @@ export default function Portfolio() {
   const [equityHistory, setEquityHistory] = useState<{ time: string; value: number }[]>([])
   const [viewMode, setViewMode] = useUrlState('view', 'table')
   const [loading, setLoading] = useState(true)
-  const { lastData: wsPortfolio } = useWebSocket<{ type: string; data: { portfolio: any; metrics: any } }>('/api/ws/portfolio', { maxRetries: 999 })
+  const { lastData: wsPortfolio } = useWebSocket<{ type: string; data: { portfolio: any; metrics: any } }>('/ws/portfolio', { maxRetries: 999 })
 
   useEffect(() => {
     if (wsPortfolio?.type === 'portfolio' && wsPortfolio?.data) {

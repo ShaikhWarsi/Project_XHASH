@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { usePortfolioStore } from '../store/portfolio'
 import { useSignalStore } from '../store/signals'
 import { connectDashboardSSE, fetchPortfolioHistory, fetchOHLCV, fetchTrades } from '../api/client'
@@ -81,37 +81,61 @@ export default function Dashboard() {
   const { playSuccess, playError, playAlert, playNotification } = useAudio()
   const addToast = useToastStore((s) => s.addToast)
 
+  const loadPortfolioRef = useRef(loadPortfolio)
+  loadPortfolioRef.current = loadPortfolio
+  const loadSignalsRef = useRef(loadSignals)
+  loadSignalsRef.current = loadSignals
+  const onRef = useRef(on)
+  onRef.current = on
+  const emitRef = useRef(emit)
+  emitRef.current = emit
+  const addToastRef = useRef(addToast)
+  addToastRef.current = addToast
+  const setSSERef = useRef(setSSE)
+  setSSERef.current = setSSE
+  const playSuccessRef = useRef(playSuccess)
+  playSuccessRef.current = playSuccess
+  const playErrorRef = useRef(playError)
+  playErrorRef.current = playError
+  const playAlertRef = useRef(playAlert)
+  playAlertRef.current = playAlert
+  const playNotificationRef = useRef(playNotification)
+  playNotificationRef.current = playNotification
+
   useEffect(() => {
-    const unsubRefresh = on(EVENTS.REFRESH_REQUESTED, () => {
-      loadPortfolio()
-      loadSignals()
+    let cancelled = false
+    const unsubRefresh = onRef.current(EVENTS.REFRESH_REQUESTED, () => {
+      loadPortfolioRef.current()
+      loadSignalsRef.current()
     })
 
-    const unsubBacktest = on(EVENTS.BACKTEST_COMPLETE, () => {
-      addToast('Backtest results ready', 'success')
-      playSuccess()
+    const unsubBacktest = onRef.current(EVENTS.BACKTEST_COMPLETE, () => {
+      addToastRef.current('Backtest results ready', 'success')
+      playSuccessRef.current()
     })
 
-    const unsubOrder = on(EVENTS.ORDER_PLACED, () => {
-      loadPortfolio()
-      playNotification()
+    const unsubOrder = onRef.current(EVENTS.ORDER_PLACED, () => {
+      loadPortfolioRef.current()
+      playNotificationRef.current()
     })
 
-    const unsubSignal = on(EVENTS.SIGNAL_SELECTED, () => {
-      playAlert()
+    const unsubSignal = onRef.current(EVENTS.SIGNAL_SELECTED, () => {
+      playAlertRef.current()
     })
 
     Promise.all([
-      loadPortfolio(),
-      loadSignals(),
+      loadPortfolioRef.current(),
+      loadSignalsRef.current(),
       fetchPortfolioHistory().then((hist) => {
+        if (cancelled) return
         setEquityHistory(
           hist
             .filter((h) => /^\d{4}-\d{2}-\d{2}/.test(h.timestamp))
             .map((h) => ({ time: h.timestamp.split(/[T ]/)[0], value: h.total_value }))
         )
-      }).catch((err) => { console.warn('Dashboard: portfolio history failed', err); addToast('Failed to load portfolio history', 'error') }),
+      }).catch((err) => { if (cancelled) return; console.warn('Dashboard: portfolio history failed', err); addToastRef.current('Failed to load portfolio history', 'error') }),
       fetchTrades().then((trades: Trade[]) => {
+        if (cancelled) return
         setTradeMarkers(
           trades.map((t) => ({
             time: t.timestamp.split(/[T ]/)[0],
@@ -119,34 +143,38 @@ export default function Dashboard() {
             price: t.price,
           }))
         )
-      }).catch((err) => { console.warn('Dashboard: trades fetch failed', err); addToast('Failed to load trades', 'error') }),
-    ]).finally(() => setLoading(false))
+      }).catch((err) => { if (cancelled) return; console.warn('Dashboard: trades fetch failed', err); addToastRef.current('Failed to load trades', 'error') }),
+    ]).finally(() => { if (!cancelled) setLoading(false) })
 
     const es = connectDashboardSSE(
       (snap) => {
         setSnapshot(snap)
         setLoading(false)
-        setSSE('connected')
-        emit(EVENTS.REFRESH_REQUESTED, snap)
+        setSSERef.current('connected')
+        emitRef.current(EVENTS.REFRESH_REQUESTED, snap)
       },
       (stale) => {
         setIsStale(stale)
-        setSSE(stale ? 'error' : 'connected')
+        setSSERef.current(stale ? 'error' : 'connected')
       },
     )
 
     return () => {
+      cancelled = true
       es.close()
       unsubRefresh()
       unsubBacktest()
       unsubOrder()
+      unsubSignal()
     }
-  }, [loadPortfolio, loadSignals, on, emit, addToast, setSSE])
+  }, [])
 
   useEffect(() => {
     if (!showBenchmark || benchmarkHistory.length > 0) return
+    const abort = new AbortController()
     fetchOHLCV('SPY', '1d', '6mo')
       .then((bars) => {
+        if (abort.signal.aborted) return
         const firstClose = bars[0]?.close || 1
         setBenchmarkHistory(
           bars
@@ -157,7 +185,8 @@ export default function Dashboard() {
             }))
         )
       })
-      .catch((err) => { console.warn('Dashboard: benchmark fetch failed', err); addToast('Failed to load benchmark', 'error') })
+      .catch((err) => { if (abort.signal.aborted) return; console.warn('Dashboard: benchmark fetch failed', err); addToast('Failed to load benchmark', 'error') })
+    return () => abort.abort()
   }, [showBenchmark, benchmarkHistory.length])
 
   const effective = snapshot?.portfolio ?? portfolio

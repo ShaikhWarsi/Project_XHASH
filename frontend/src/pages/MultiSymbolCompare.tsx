@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { fetchOHLCV } from '../api/client'
 import type { BarData } from '../api/types'
 import Card from '../components/ui/Card'
@@ -9,11 +9,12 @@ import { createChart, ColorType, LineSeries, CandlestickSeries, HistogramSeries 
 function ComparisonChart({ series, showCandles }: { series: { symbol: string; data: { time: string; value: number }[]; candles?: { time: string; open: number; high: number; low: number; close: number; volume: number }[]; color: string }[]; showCandles: boolean }) {
   const chartRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    if (!chartRef.current || series.length === 0) return
+    if (!chartRef.current || !series || series.length === 0) return
     const styles = getComputedStyle(document.documentElement)
     const chartBg = styles.getPropertyValue('--chart-bg').trim() || '#1e2235'
     const chartGrid = styles.getPropertyValue('--chart-grid').trim() || '#2a2d3e'
     const chartBorder = styles.getPropertyValue('--chart-border').trim() || '#2a2d3e'
+    const chartText = styles.getPropertyValue('--chart-text').trim() || '#d1d4dc'
     const chart = createChart(chartRef.current, {
       height: 300,
       layout: { background: { type: ColorType.Solid, color: chartBg }, textColor: chartText },
@@ -39,8 +40,6 @@ function ComparisonChart({ series, showCandles }: { series: { symbol: string; da
   return <div ref={chartRef} />
 }
 
-import { useRef } from 'react'
-
 const COLORS = ['#22c55e', '#3b82f6', '#ef4444', '#eab308', '#a855f7', '#06b6d4', '#f97316', '#ec4899']
 
 export default function MultiSymbolCompare() {
@@ -49,7 +48,7 @@ export default function MultiSymbolCompare() {
   const [dataMap, setDataMap] = useState<Record<string, BarData[]>>({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [interval, setInterval] = useState('1d')
+  const [interval, setIntervalState] = useState('1d')
   const [range, setRange] = useState('6mo')
   const [normalize, setNormalize] = useState(true)
   const [showCandles, setShowCandles] = useState(false)
@@ -136,7 +135,7 @@ export default function MultiSymbolCompare() {
             Add
           </button>
         </div>
-        <select value={interval} onChange={(e) => setInterval(e.target.value)}
+        <select value={interval} onChange={(e) => setIntervalState(e.target.value)}
           className="bg-input border border-input text-primary font-mono-data text-[10px] px-1.5 py-1 outline-none rounded-sm">
           <option value="1d">Daily</option>
           <option value="1wk">Weekly</option>

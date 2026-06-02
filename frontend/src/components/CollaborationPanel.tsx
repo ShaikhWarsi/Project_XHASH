@@ -30,7 +30,7 @@ function StatusDot({ online }: { online: boolean }) {
 
 export default function CollaborationPanel({ users: initialUsers }: CollaborationPanelProps) {
   const [localUsers, setLocalUsers] = useState<User[]>(initialUsers || [])
-  const { lastData } = useWebSocket<{ type: string; users: User[] }>('/api/ws/collaboration', { maxRetries: 3 })
+  const { lastData } = useWebSocket<{ type: string; users: User[] }>('/ws/collaboration', { maxRetries: 3 })
 
   useEffect(() => {
     if (lastData?.type === 'presence' && Array.isArray(lastData.users)) {

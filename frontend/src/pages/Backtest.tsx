@@ -94,7 +94,7 @@ const ENGINE_LEVERAGE_DEFAULTS: Record<string, number> = {
 
 export default function Backtest() {
   const addToast = useToastStore((s) => s.addToast)
-  const { result, running, error, engines, config, setConfig, run, clear, loadEngines } = useBacktestStore()
+  const { result, running, enginesLoading, error, engines, config, setConfig, run, clear, loadEngines } = useBacktestStore()
   const [showCache, setShowCache] = useState(false)
   const [tab, setTab] = useState<'run' | 'compare'>('run')
   const [benchmarkData, setBenchmarkData] = useState<{ time: string; value: number }[]>([])
@@ -107,8 +107,10 @@ export default function Backtest() {
     const end = result.timestamps[result.timestamps.length - 1].split(/[T ]/)[0]
     if (!start || !end) return
     const firstEquity = result.equity_curve[0] || 100000
+    const abort = new AbortController()
     fetchOHLCV('SPY', '1d', '1y')
       .then((bars) => {
+        if (abort.signal.aborted) return
         const filtered = bars.filter((b) => {
           const t = typeof b.time === 'string' ? b.time.split('T')[0] : String(b.time)
           return t >= start && t <= end
@@ -124,9 +126,11 @@ export default function Backtest() {
         }
       })
       .catch((err) => {
+        if (abort.signal.aborted) return
         console.warn('Backtest: fetchOHLCV SPY failed', err)
         addToast('Failed to load SPY benchmark data', 'error')
       })
+    return () => abort.abort()
   }, [result])
 
   const handleEngineChange = (engine: string) => {
@@ -212,15 +216,15 @@ export default function Backtest() {
           ADV
         </button>
 
-        <button onClick={run} disabled={running}
+        <button onClick={run} disabled={running || enginesLoading}
           className="flex items-center gap-1 font-mono-data text-[10px] font-bold cursor-pointer px-5 py-1.5 rounded-sm transition-all"
           style={{
             backgroundColor: 'var(--accent-cyan)', color: '#000', border: 'none',
-            opacity: running ? 0.6 : 1,
-            boxShadow: running ? 'none' : '0 0 10px rgba(0,229,255,0.4)',
+            opacity: running || enginesLoading ? 0.6 : 1,
+            boxShadow: running || enginesLoading ? 'none' : '0 0 10px rgba(0,229,255,0.4)',
           }}>
           {running ? <Loader size={11} className="animate-spin" /> : <Play size={11} />}
-          {running ? 'RUNNING...' : 'RUN'}
+          {running ? 'RUNNING...' : enginesLoading ? 'LOADING...' : 'RUN'}
         </button>
       </div>
 

@@ -48,7 +48,7 @@ export default function SocialTrading() {
 
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const wsUrl = `${protocol}//${window.location.host}/api/ws/signals`
+    const wsUrl = `${protocol}//${window.location.host}/ws/signals`
     try {
       const ws = new WebSocket(wsUrl)
       ws.onopen = () => { setConnected(true); setWsStatus('Connected') }

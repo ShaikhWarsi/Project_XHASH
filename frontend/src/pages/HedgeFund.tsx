@@ -85,8 +85,9 @@ export default function HedgeFund() {
       })
       const decoder = new TextDecoder()
       while (true) {
+        if (abort.signal.aborted) { reader.cancel(); break }
         const { done, value } = await reader.read()
-        if (done) break
+        if (done || abort.signal.aborted) { if (abort.signal.aborted) reader.cancel(); break }
         const chunk = decoder.decode(value)
         for (const line of chunk.split('\n')) {
           if (line.startsWith('data: ')) {
@@ -111,6 +112,7 @@ export default function HedgeFund() {
               } else if (event.type === 'error') {
                 setError(event.message || 'Unknown error')
                 setLoading(false)
+                reader.cancel()
                 return
               }
             } catch {
@@ -154,8 +156,9 @@ export default function HedgeFund() {
       })
       const decoder = new TextDecoder()
       while (true) {
+        if (abort.signal.aborted) { reader.cancel(); break }
         const { done, value } = await reader.read()
-        if (done) break
+        if (done || abort.signal.aborted) { if (abort.signal.aborted) reader.cancel(); break }
         const chunk = decoder.decode(value)
         for (const line of chunk.split('\n')) {
           if (line.startsWith('data: ')) {

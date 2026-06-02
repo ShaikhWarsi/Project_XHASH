@@ -47,10 +47,13 @@ export default function EquityCurveChart({ equity, trades, benchmark }: EquityCu
     const w = rect.width
     const h = rect.height
 
+    const styles = getComputedStyle(document.documentElement)
+    const cssVar = (name: string, fallback: string) => styles.getPropertyValue(name).trim() || fallback
+
     ctx.clearRect(0, 0, w, h)
 
     if (equity.length === 0) {
-      ctx.fillStyle = 'var(--text-muted)'
+      ctx.fillStyle = cssVar('--text-muted', '#8892a6')
       ctx.font = '11px JetBrains Mono, monospace'
       ctx.textAlign = 'center'
       ctx.fillText('No equity data', w / 2, h / 2)
@@ -86,7 +89,7 @@ export default function EquityCurveChart({ equity, trades, benchmark }: EquityCu
     const toX = (i: number) => xPad + (i / (tMax || 1)) * chartW
     const toY = (v: number) => yPad + chartH - ((v - yMin) / yRange) * chartH
 
-    const gridColor = 'var(--chart-grid)'
+    const gridColor = cssVar('--chart-grid', '#2a2d3e')
     ctx.strokeStyle = gridColor
     ctx.lineWidth = 0.5
     for (let i = 0; i <= 4; i++) {
@@ -104,7 +107,7 @@ export default function EquityCurveChart({ equity, trades, benchmark }: EquityCu
       ctx.stroke()
     }
 
-    ctx.fillStyle = 'var(--chart-text)'
+    ctx.fillStyle = cssVar('--chart-text', '#d1d4dc')
     ctx.font = '9px JetBrains Mono, monospace'
     ctx.textAlign = 'right'
     for (let i = 0; i <= 4; i++) {
@@ -115,12 +118,12 @@ export default function EquityCurveChart({ equity, trades, benchmark }: EquityCu
     ctx.textAlign = 'center'
     const labelStep = Math.max(1, Math.floor(times.length / 6))
     for (let i = 0; i < times.length; i += labelStep) {
-      ctx.fillStyle = 'var(--chart-text)'
+      ctx.fillStyle = cssVar('--chart-text', '#d1d4dc')
       ctx.fillText(formatTime(times[i]), toX(i), h - 4)
     }
 
     let peak = sorted[0].value
-    ctx.fillStyle = 'color-mix(in srgb, var(--accent-red) 12%, transparent)'
+    ctx.fillStyle = cssVar('--accent-red', '#ef5350') + '1f'
     ctx.beginPath()
     for (let i = 0; i < sorted.length; i++) {
       const v = sorted[i].value
@@ -146,7 +149,7 @@ export default function EquityCurveChart({ equity, trades, benchmark }: EquityCu
 
     if (benchmark && benchmark.length > 0) {
       const bmSorted = [...benchmark].sort((a, b) => a.time.localeCompare(b.time))
-      ctx.strokeStyle = 'var(--accent-blue)'
+      ctx.strokeStyle = cssVar('--accent-blue', '#3b82f6')
       ctx.lineWidth = 1
       ctx.setLineDash([4, 3])
       ctx.beginPath()
@@ -162,7 +165,7 @@ export default function EquityCurveChart({ equity, trades, benchmark }: EquityCu
       ctx.setLineDash([])
     }
 
-    ctx.strokeStyle = 'var(--accent-green)'
+    ctx.strokeStyle = cssVar('--accent-green', '#22c55e')
     ctx.lineWidth = 2
     ctx.beginPath()
     for (let i = 0; i < sorted.length; i++) {
@@ -182,12 +185,12 @@ export default function EquityCurveChart({ equity, trades, benchmark }: EquityCu
 
       ctx.beginPath()
       if (trade.type === 'buy') {
-        ctx.fillStyle = 'var(--accent-green)'
+        ctx.fillStyle = cssVar('--accent-green', '#22c55e')
         ctx.moveTo(x, y - tradeSize)
         ctx.lineTo(x - tradeSize, y + tradeSize)
         ctx.lineTo(x + tradeSize, y + tradeSize)
       } else {
-        ctx.fillStyle = 'var(--accent-red)'
+        ctx.fillStyle = cssVar('--accent-red', '#ef5350')
         ctx.moveTo(x, y + tradeSize)
         ctx.lineTo(x - tradeSize, y - tradeSize)
         ctx.lineTo(x + tradeSize, y - tradeSize)
