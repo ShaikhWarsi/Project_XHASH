@@ -29,9 +29,10 @@ function computeSignalBars(signals: SignalMarker[], data: BarData[]): SignalBar[
     signalMap.set(time, entry)
   }
   return data.map((bar) => {
-    const s = signalMap.get(bar.time) || { buy: 0, sell: 0 }
+    const t = Number(bar.time)
+    const s = signalMap.get(t) || { buy: 0, sell: 0 }
     return {
-      time: bar.time,
+      time: t,
       buyStrength: s.buy,
       sellStrength: s.sell,
       netStrength: s.buy - s.sell,

@@ -1,10 +1,13 @@
-import { useEffect, useCallback, useMemo } from 'react'
+import { useEffect, useCallback, useMemo, useState } from 'react'
 import { usePortfolioStore } from '../store/portfolio'
 import Card from '../components/ui/Card'
+import Badge from '../components/ui/Badge'
 import EmptyState from '../components/ui/EmptyState'
 import ExportButton from '../components/ui/ExportButton'
 import VirtualList from '../components/VirtualList'
+import ExecutionAnalytics from '../components/ExecutionAnalytics'
 import { useUrlState } from '../hooks/useUrlState'
+import { fmtDateTime } from '../utils/format'
 
 const FONT_DATA = { fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }
 const FONT_SM = { fontFamily: "'JetBrains Mono', monospace", fontSize: 10 }
@@ -14,7 +17,7 @@ const ROW_HEIGHT = 22
 function TradeRow({ trade }: { trade: { id: number; symbol: string; side: string; quantity: number; price: number | null; commission: number | null; timestamp: string; pnl: number | null } }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr 0.6fr 0.6fr 0.7fr 0.7fr 0.7fr', gap: 0, height: ROW_HEIGHT, lineHeight: `${ROW_HEIGHT}px`, borderBottom: '1px solid var(--border-color)', ...FONT_DATA, color: 'var(--text-primary)', padding: '0 8px' }}>
-      <span style={{ color: 'var(--text-muted)', ...FONT_SM }}>{new Date(trade.timestamp).toLocaleString()}</span>
+      <span style={{ color: 'var(--text-muted)', ...FONT_SM }}>{fmtDateTime(trade.timestamp)}</span>
       <span style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>{trade.symbol}</span>
       <span style={{ textAlign: 'center', color: ['BUY', 'COVER'].includes(trade.side) ? 'var(--accent-green)' : 'var(--accent-red)' }}>{trade.side}</span>
       <span style={{ textAlign: 'right' }}>{trade.quantity}</span>
@@ -32,6 +35,7 @@ const FONT_INPUT = { ...FONT_SM, background: 'none', border: 'none', color: 'var
 export default function Trades() {
   const { trades, load } = usePortfolioStore()
   const [search, setSearch] = useUrlState('search', '')
+  const [tradeTab, setTradeTab] = useState<'list' | 'execution'>('list')
 
   useEffect(() => { load() }, [])
 
@@ -47,6 +51,23 @@ export default function Trades() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--bg-card)', borderBottom: '1px solid var(--border-color)', padding: '2px 6px' }}>
+        <Badge label="TRADES" variant="info" />
+        {(['list', 'execution'] as const).map((t) => (
+          <button key={t} onClick={() => setTradeTab(t)}
+            className="font-mono-data text-[10px] px-2.5 py-0.5 cursor-pointer"
+            style={{
+              background: tradeTab === t ? 'rgba(59,130,246,0.15)' : 'none',
+              border: 'none',
+              color: tradeTab === t ? 'var(--accent-blue)' : 'var(--text-muted)',
+            }}>
+            {t === 'list' ? 'TRADE LIST' : 'EXECUTION ANALYTICS'}
+          </button>
+        ))}
+      </div>
+      {tradeTab === 'execution' ? (
+        <ExecutionAnalytics />
+      ) : (
       <Card title={`TRADES (${filteredTrades.length})`} actions={<ExportButton data={filteredTrades as unknown as Record<string, unknown>[]} filename="trades" />}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
           <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border-color)', background: 'var(--bg-card)', padding: '2px 6px' }}>
@@ -66,9 +87,11 @@ export default function Trades() {
             keyExtractor={(t) => t.id}
           />
         ) : (
-          <EmptyState title="No trades recorded" description="Trades appear here once executed" compact />
+          <EmptyState title="No trades recorded" description="No trades executed yet — place a paper trading order" compact
+            sampleAction={{ label: 'Open Paper Trading', onClick: () => window.open('/trading/paper-trading', '_self') }} />
         )}
       </Card>
+      )}
     </div>
   )
 }

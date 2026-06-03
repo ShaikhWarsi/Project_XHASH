@@ -1,9 +1,16 @@
-import { createChart, CandlestickSeries, HistogramSeries, LineSeries, type IChartApi, type ISeriesApi, type Time, type CandlestickData, type HistogramData, type LineData, type SeriesType, type MouseEventParams } from 'lightweight-charts'
+import { createChart, CandlestickSeries, HistogramSeries, LineSeries, AreaSeries, type IChartApi, type ISeriesApi, type Time, type CandlestickData, type HistogramData, type LineData, type AreaData, type SeriesType, type MouseEventParams } from 'lightweight-charts'
 import { CoordMapper } from './CoordMapper'
 import { DrawingManager } from './drawings/DrawingManager'
 import type { ToolType, IndicatorConfig } from './DrawingTypes'
 import type { ChartThemeColors } from './ChartTheme'
 import { DARK_THEME, getLightweightChartTheme } from './ChartTheme'
+import { renderFVG, renderOrderBlock, renderLiquidityLevel } from './overlays/ProfessionalStructureRenderer'
+import { renderVolumeProfile } from './overlays/VolumeProfileRenderer'
+import { renderIchimokuCloud } from './overlays/IchimokuCloudRenderer'
+import { renderPivotLevels } from './overlays/PivotLevelsRenderer'
+import { renderSessionOverlay } from './overlays/SessionOverlayRenderer'
+import type { SessionTemplate } from '../../data/sessionTemplates'
+import { findOHLCProximity } from './drawings/DrawingSnap'
 
 export interface ChartOptions {
   symbol: string
@@ -51,9 +58,11 @@ export class ChartEngine {
   protected overlayCanvas: HTMLCanvasElement
   protected overlayCtx: CanvasRenderingContext2D
   protected overlayDiv: HTMLDivElement | null = null
+  openOrderEntry?: (side: 'BUY' | 'SELL') => void
   protected boundHandlers: { type: string; handler: EventListener }[] = []
   protected clickHandler: ((param: MouseEventParams<Time>) => void) | null = null
   protected crosshairHandlers: ((param: MouseEventParams<Time>) => void)[] = []
+  protected _passThrough = false
   protected resizeObserver: ResizeObserver | null = null
   protected resizeRAF = 0
   protected animationFrameId = 0
@@ -67,6 +76,12 @@ export class ChartEngine {
   protected _signals: SignalMarker[] = []
   protected _regimeZones: RegimeZone[] = []
   protected _structureData: StructureOverlay | null = null
+  protected _chartData: CandlestickData[] = []
+  protected _ichimokuCloudEnabled = false
+  protected _pivotLevelsEnabled = false
+  protected _sessionTemplate: SessionTemplate | null = null
+  protected _showKillZones = false
+  snapToOHLC = false
 
   constructor(options: ChartOptions, callbacks?: ChartCallbacks) {
     this._symbol = options.symbol
@@ -96,11 +111,15 @@ export class ChartEngine {
     this.overlayCanvas.style.left = '0'
     this.overlayCanvas.style.pointerEvents = 'none'
     this.overlayCanvas.style.zIndex = '10'
-    this.overlayCanvas.width = options.width
-    this.overlayCanvas.height = options.height
+    const dpr = window.devicePixelRatio || 1
+    this.overlayCanvas.width = options.width * dpr
+    this.overlayCanvas.height = options.height * dpr
+    this.overlayCanvas.style.width = `${options.width}px`
+    this.overlayCanvas.style.height = `${options.height}px`
     this.container.style.position = 'relative'
     this.container.appendChild(this.overlayCanvas)
     this.overlayCtx = this.overlayCanvas.getContext('2d')!
+    this.overlayCtx.scale(dpr, dpr)
 
     this.resizeObserver = new ResizeObserver((entries) => {
       if (this.resizeRAF) cancelAnimationFrame(this.resizeRAF)
@@ -109,8 +128,12 @@ export class ChartEngine {
           const { width, height } = entry.contentRect
           if (width === 0 || height === 0) continue
           this.chart.resize(width, height)
-          this.overlayCanvas.width = width
-          this.overlayCanvas.height = height
+          const _dpr = window.devicePixelRatio || 1
+          this.overlayCanvas.width = width * _dpr
+          this.overlayCanvas.height = height * _dpr
+          this.overlayCanvas.style.width = `${width}px`
+          this.overlayCanvas.style.height = `${height}px`
+          this.overlayCtx.setTransform(_dpr, 0, 0, _dpr, 0, 0)
           this.requestRender()
         }
       })
@@ -165,7 +188,7 @@ export class ChartEngine {
     overlay.style.height = '100%'
     overlay.style.zIndex = '5'
     overlay.style.cursor = 'crosshair'
-    overlay.style.pointerEvents = 'none'
+    overlay.style.pointerEvents = 'auto'
     this.container.appendChild(overlay)
     this.overlayDiv = overlay
 
@@ -175,10 +198,18 @@ export class ChartEngine {
     }
 
     addBoundListener('mousedown', (e: Event) => {
+      if (this._passThrough) { this._passThrough = false; return }
       const me = e as MouseEvent
       const rect = this.container.getBoundingClientRect()
       const event = this.makeDrawingEvent(me.clientX - rect.left, me.clientY - rect.top, me)
       this.drawingManager.handleMouseDown(event)
+      if (!this.drawingManager.getSelectedDrawing() && !this.drawingManager.getActiveTool()) {
+        this._passThrough = true
+        this.overlayDiv!.style.pointerEvents = 'none'
+        const ne = new MouseEvent('mousedown', { clientX: me.clientX, clientY: me.clientY, bubbles: true })
+        e.target!.dispatchEvent(ne)
+        requestAnimationFrame(() => { if (this.overlayDiv) this.overlayDiv.style.pointerEvents = 'auto' })
+      }
       this.requestRender()
     })
 
@@ -249,8 +280,17 @@ export class ChartEngine {
   }
 
   private makeDrawingEvent(x: number, y: number, e: MouseEvent) {
-    const time = this.mapper.xToTime(x)
-    const price = this.mapper.yToPrice(y, 0)
+    let time = this.mapper.xToTime(x)
+    let price = this.mapper.yToPrice(y, 0)
+
+    if (this.snapToOHLC && time != null && price != null) {
+      const prox = findOHLCProximity(x, y, this._chartData, this.mapper as any)
+      if (prox) {
+        price = prox.price
+        time = prox.time
+      }
+    }
+
     return {
       x, y, time, price,
       paneIndex: 0,
@@ -277,6 +317,8 @@ export class ChartEngine {
   }
 
   setMainSeries(data: CandlestickData[]) {
+    this.drawingManager.chartData = data
+    this._chartData = data
     if (this.mainSeries) {
       this.mainSeries.setData(data)
       this.updateVolumeData(data)
@@ -321,6 +363,7 @@ export class ChartEngine {
   }
 
   updateData(data: CandlestickData[]) {
+    this._chartData = data
     this.mainSeries?.setData(data)
     this.updateVolumeData(data)
   }
@@ -339,8 +382,7 @@ export class ChartEngine {
   selectTool(type: ToolType) {
     this.drawingManager.selectTool(type)
     if (this.overlayDiv) {
-      const isDrawingTool = type && type !== 'cursor' && type !== 'crosshair'
-      this.overlayDiv.style.pointerEvents = isDrawingTool ? 'auto' : 'none'
+      this.overlayDiv.style.pointerEvents = 'auto'
     }
   }
 
@@ -376,22 +418,53 @@ export class ChartEngine {
       const series = this.chart.addSeries(LineSeries, {
         color, lineWidth: 1, priceScaleId: config.paneId || undefined,
       })
-      if (config.data) series.setData(config.data as LineData[])
+      if ((config as any).data) series.setData((config as any).data as any[])
+      this.indicatorSeries.set(config.id, series)
+    } else if (config.type === 'area') {
+      const series = this.chart.addSeries(AreaSeries, {
+        lineColor: color,
+        topColor: color + '40',
+        bottomColor: color + '05',
+        priceScaleId: config.paneId || undefined,
+      })
+      if ((config as any).data) series.setData((config as any).data as any[])
       this.indicatorSeries.set(config.id, series)
     } else if (config.type === 'histogram') {
       const series = this.chart.addSeries(HistogramSeries, {
         color, priceScaleId: config.paneId || undefined,
       })
-      if (config.data) series.setData(config.data as any)
+      if ((config as any).data) series.setData((config as any).data as any)
       this.indicatorSeries.set(config.id, series)
+    } else if (config.type === 'multi_line') {
+      const lines = ['value1', 'value2', 'value3', 'value4', 'value5']
+      const colors = ['#06b6d4', '#ec4899', '#22c55e', '#eab308', '#a855f7']
+      const labels = ['Tenkan', 'Kijun', 'SenkouA', 'SenkouB', 'Chikou']
+      const dataArr = (config as any).data as any[]
+      if (dataArr && dataArr.length > 0) {
+        for (let i = 0; i < lines.length; i++) {
+          const key = lines[i]
+          const vals = dataArr.filter((d: any) => d[key] != null).map((d: any) => ({ time: d.time, value: d[key] }))
+          if (vals.length === 0) continue
+          const ls = this.chart.addSeries(LineSeries, {
+            color: colors[i], lineWidth: 1, lastValueVisible: true,
+            priceLineVisible: false,
+          })
+          ls.setData(vals)
+          this.indicatorSeries.set(`${config.id}_${i}`, ls)
+        }
+      }
     }
   }
 
   removeIndicator(id: string) {
-    const series = this.indicatorSeries.get(id)
-    if (series) {
-      this.chart.removeSeries(series)
-      this.indicatorSeries.delete(id)
+    const keys = [id]
+    for (let i = 0; i < 5; i++) keys.push(`${id}_${i}`)
+    for (const k of keys) {
+      const series = this.indicatorSeries.get(k)
+      if (series) {
+        this.chart.removeSeries(series)
+        this.indicatorSeries.delete(k)
+      }
     }
   }
 
@@ -412,6 +485,26 @@ export class ChartEngine {
 
   setStructureData(data: StructureOverlay | null) {
     this._structureData = data
+    this.requestRender()
+  }
+
+  setIchimokuCloudEnabled(enabled: boolean) {
+    this._ichimokuCloudEnabled = enabled
+    this.requestRender()
+  }
+
+  setPivotLevelsEnabled(enabled: boolean) {
+    this._pivotLevelsEnabled = enabled
+    this.requestRender()
+  }
+
+  setSessionTemplate(template: SessionTemplate | null) {
+    this._sessionTemplate = template
+    this.requestRender()
+  }
+
+  setShowKillZones(show: boolean) {
+    this._showKillZones = show
     this.requestRender()
   }
 
@@ -456,8 +549,10 @@ export class ChartEngine {
       const x1 = this.mapper.timeToX(zone.timeStart)
       const x2 = this.mapper.timeToX(zone.timeEnd)
       if (x1 == null || x2 == null) continue
+      const left = Math.min(x1, x2)
+      const width = Math.abs(x2 - x1)
       ctx.fillStyle = zone.color
-      ctx.fillRect(x1, 0, x2 - x1, this.overlayCanvas.height)
+      ctx.fillRect(left, 0, width, this.overlayCanvas.height)
     }
   }
 
@@ -465,7 +560,7 @@ export class ChartEngine {
     const data = this._structureData
     if (!data) return
     const w = this.overlayCanvas.width
-    const bullish = (dir: string) => dir === 'bullish' || dir === 'up' || dir === 'buy'
+    const canvasWidth = w
 
     // Key levels (subtle background lines)
     for (const level of data.keyLevels) {
@@ -481,63 +576,61 @@ export class ChartEngine {
     }
     ctx.globalAlpha = 1
 
-    // FVGs – translucent vertical rectangles
     for (const fvg of data.fvgs) {
-      const yT = this.mapper.priceToY(fvg.top, 0)
-      const yB = this.mapper.priceToY(fvg.bottom, 0)
-      if (yT == null || yB == null) continue
-      const y1 = Math.min(yT, yB)
-      const y2 = Math.max(yT, yB)
-      const isBull = bullish(fvg.direction)
-      const color = isBull ? this._theme.up : this._theme.down
-      ctx.fillStyle = color + '26'
-      ctx.fillRect(0, y1, w, y2 - y1)
-      ctx.strokeStyle = color + '66'
-      ctx.lineWidth = 1
-      ctx.strokeRect(0, y1, w, y2 - y1)
+      renderFVG(ctx, fvg, this.mapper, canvasWidth, this._theme)
     }
 
-    // Order blocks – horizontal bands with label
-    ctx.font = '8px JetBrains Mono, monospace'
-    ctx.textBaseline = 'middle'
     for (const ob of data.orderBlocks) {
-      const y = this.mapper.priceToY(ob.level, 0)
-      if (y == null) continue
-      const h = Math.max(4, ob.confidence * 16)
-      const isBull = bullish(ob.direction)
-      const color = isBull ? this._theme.up : this._theme.down
-      ctx.fillStyle = color + '40'
-      ctx.fillRect(0, y - h / 2, w, h)
-      ctx.fillStyle = 'rgba(255,255,255,0.7)'
-      ctx.textAlign = 'right'
-      ctx.fillText(`$${ob.level.toFixed(2)} ${(ob.confidence * 100).toFixed(0)}%`, w - 4, y)
+      renderOrderBlock(ctx, ob, this.mapper, canvasWidth, this._theme)
     }
 
-    // Liquidity zones – dashed horizontal lines
-    ctx.setLineDash([6, 3])
-    ctx.lineWidth = 2
-    ctx.strokeStyle = this._theme.accentYellow
     for (const liq of data.liquidityLevels) {
-      const y = this.mapper.priceToY(liq.level, 0)
-      if (y == null) continue
-      ctx.beginPath()
-      ctx.moveTo(0, y)
-      ctx.lineTo(w, y)
-      ctx.stroke()
-      ctx.fillStyle = 'rgba(255,255,255,0.7)'
-      ctx.textAlign = 'right'
-      ctx.fillText(`$${liq.level.toFixed(2)} ${(liq.confidence * 100).toFixed(0)}%`, w - 4, y)
+      renderLiquidityLevel(ctx, liq, this.mapper, canvasWidth, this._theme, Date.now())
     }
-    ctx.setLineDash([])
   }
 
   protected renderOverlay() {
     const ctx = this.overlayCtx
+    if (!ctx) return
     ctx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height)
+    if (this._sessionTemplate) {
+      renderSessionOverlay(ctx, this._chartData, this.mapper, this.overlayCanvas.height, this._sessionTemplate)
+    }
     this.drawRegimeZones(ctx)
     this.drawStructureOverlay(ctx)
     this.drawingManager.render(ctx, 0)
     this.drawSignalMarkers(ctx)
+    if (this._ichimokuCloudEnabled && this._chartData.length >= 26) {
+      const indicatorInput = this._chartData.map((d) => ({
+        time: d.time,
+        open: d.open,
+        high: d.high,
+        low: d.low,
+        close: d.close,
+      }))
+      renderIchimokuCloud(ctx, indicatorInput, this.mapper, {
+        width: this.overlayCanvas.width,
+        height: this.overlayCanvas.height,
+        padding: { top: 0, bottom: 0, left: 0, right: 0 },
+      })
+    }
+    if (this._pivotLevelsEnabled && this._chartData.length >= 2) {
+      const indicatorInput = this._chartData.map((d) => ({
+        time: d.time,
+        open: d.open,
+        high: d.high,
+        low: d.low,
+        close: d.close,
+      }))
+      renderPivotLevels(ctx, indicatorInput, this.mapper, this.overlayCanvas.width)
+    }
+    if (this._chartData.length > 0) {
+      renderVolumeProfile(ctx, this._chartData, this.mapper, {
+        width: this.overlayCanvas.width,
+        height: this.overlayCanvas.height,
+        rightMargin: 60,
+      })
+    }
   }
 
   destroy() {

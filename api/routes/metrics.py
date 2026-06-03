@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from api.state import app_state
 
@@ -45,4 +45,4 @@ async def get_attribution():
             "long_contribution": a.long_contribution,
             "short_contribution": a.short_contribution,
         }
-    return {"by_symbol": {}, "by_signal_type": {}}
+    raise HTTPException(status_code=404, detail="Attribution data not available")

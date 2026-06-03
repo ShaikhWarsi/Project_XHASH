@@ -4,6 +4,7 @@ import {
   Minus, ArrowUpDown, Sigma, RectangleHorizontal, Circle, Triangle,
   AlignHorizontalDistributeCenter, Type, ArrowUp, Paintbrush, Fan,
   ArrowUpCircle, ArrowDownCircle, Undo2, Redo2, BarChart3, Layout, Settings2,
+  Anchor, Ruler, Zap,
 } from 'lucide-react'
 import type { ToolType } from './DrawingTypes'
 import type { ReactNode } from 'react'
@@ -47,6 +48,9 @@ const TOOLS: ToolDef[] = [
   { type: 'gann_fan', label: 'Gann Fan', icon: <Fan size={12} /> },
   { type: 'long_marker', label: 'Long Entry', icon: <ArrowUpCircle size={12} /> },
   { type: 'short_marker', label: 'Short Entry', icon: <ArrowDownCircle size={12} /> },
+  { type: 'anchored_vwap', label: 'Anchored VWAP', icon: <Anchor size={12} /> },
+  { type: 'ruler', label: 'Ruler', icon: <Ruler size={12} /> },
+  { type: 'speed_resistance_lines', label: 'Speed Lines', icon: <Zap size={12} /> },
 ]
 
 const SEPARATOR = <div className="shrink-0" style={{ width: 1, height: 14, background: 'var(--border-color)' }} />

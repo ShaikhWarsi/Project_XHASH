@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from datetime import datetime, timedelta
@@ -16,6 +17,7 @@ router = APIRouter(prefix="/screener", tags=["screener"])
 
 _SCREENER_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
 _SCREENER_CACHE_TTL = 300.0
+_SCREENER_CACHE_MAX = 500
 
 
 def _get_cached_metrics(symbol: str) -> dict[str, Any] | None:
@@ -24,6 +26,13 @@ def _get_cached_metrics(symbol: str) -> dict[str, Any] | None:
     if cached and now - cached[0] < _SCREENER_CACHE_TTL:
         return cached[1]
     return None
+
+
+def _trim_screener_cache():
+    if len(_SCREENER_CACHE) > _SCREENER_CACHE_MAX:
+        sorted_items = sorted(_SCREENER_CACHE.items(), key=lambda x: x[1][0])
+        for sym, _ in sorted_items[:len(sorted_items) - _SCREENER_CACHE_MAX]:
+            _SCREENER_CACHE.pop(sym, None)
 
 
 SCREENER_PRESETS: dict[str, dict[str, Any]] = {
@@ -222,12 +231,13 @@ async def scan_symbols(
             if cached:
                 metrics = cached
             else:
-                df = _fetch_screener_data(symbol)
+                df = await asyncio.to_thread(_fetch_screener_data, symbol)
                 if df is None or df.empty:
                     errors.append(f"No data for {symbol}")
                     continue
                 metrics = _compute_indicators(df)
                 _SCREENER_CACHE[symbol] = (time.time(), metrics)
+                _trim_screener_cache()
             if not filters:
                 results.append({"symbol": symbol, **metrics})
             else:
@@ -236,7 +246,7 @@ async def scan_symbols(
         except Exception as e:
             errors.append(f"Error processing {symbol}: {str(e)}")
 
-    results.sort(key=lambda r: (r.get("match", True) is True, abs(r.get("change_pct", 0) or 0)), reverse=True)
+    results.sort(key=lambda r: (r.get("match", True) is not True, -abs(r.get("change_pct", 0) or 0)))
 
     total = len(results)
     page = results[offset:offset + limit]
@@ -256,3 +266,9 @@ async def scan_with_preset(preset_name: str, symbols: str = Query("AAPL,MSFT,GOO
     if preset_name not in SCREENER_PRESETS:
         raise HTTPException(status_code=404, detail=f"Preset '{preset_name}' not found")
     return await scan_symbols(symbols=symbols, preset=preset_name)
+
+
+@router.post("/refresh-cache")
+async def refresh_screener_cache():
+    _SCREENER_CACHE.clear()
+    return {"status": "cleared", "message": "Screener cache invalidated"}

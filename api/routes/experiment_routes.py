@@ -4,7 +4,7 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from api.services.experiment.runner import ExperimentRunnerService
 
@@ -23,11 +23,11 @@ class ParameterSpaceItem(BaseModel):
 class PipelineRequest(BaseModel):
     symbol: str
     method: str = "grid"
-    max_variants: int = 50
+    max_variants: int = Field(default=50, ge=1, le=5000)
     parameter_space: dict[str, Any]
     scoring_weights: dict[str, float] | None = None
-    max_rounds: int = 3
-    candidates_per_round: int = 5
+    max_rounds: int = Field(default=3, ge=1, le=20)
+    candidates_per_round: int = Field(default=5, ge=1, le=100)
 
 
 @router.post("/structured-tune")

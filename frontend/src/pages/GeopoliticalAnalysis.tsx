@@ -1,11 +1,130 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { api } from '../api/client'
+import { useToastStore } from '../store/toast'
+
+const CENTRAL_BANK_DATES: Record<string, string[]> = {
+  FOMC: ['2025-03-19', '2025-05-07', '2025-06-18', '2025-07-30', '2025-09-17', '2025-11-05', '2025-12-17'],
+  ECB: ['2025-03-06', '2025-04-17', '2025-06-05', '2025-07-24', '2025-09-11', '2025-10-30', '2025-12-18'],
+  BOJ: ['2025-03-19', '2025-04-30', '2025-06-17', '2025-07-30', '2025-09-18', '2025-10-30', '2025-12-18'],
+  BOE: ['2025-03-20', '2025-05-08', '2025-06-19', '2025-08-07', '2025-09-11', '2025-11-06', '2025-12-18'],
+}
+
+const COUNTRIES = ['US', 'EU', 'CN', 'JP', 'UK', 'RU', 'IN', 'BR', 'AU', 'SA', 'KR', 'SG']
+
+function CentralBankCountdown({ bank }: { bank: string }) {
+  const now = Date.now()
+  const dates = CENTRAL_BANK_DATES[bank] || []
+  const nextDate = dates.find(d => new Date(d).getTime() > now)
+  if (!nextDate) return <span className="text-muted text-[9px]">{bank}: N/A</span>
+  const diff = new Date(nextDate).getTime() - now
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const isUrgent = days < 14
+  return (
+    <span className="flex items-center gap-1">
+      <span className="font-semibold">{bank}</span>
+      <span className={`px-1 py-0.5 rounded-sm text-[8px] font-bold ${isUrgent ? 'bg-[var(--accent-red)] text-white' : 'bg-card border border-default'}`}>
+        {days}d {hours}h
+      </span>
+    </span>
+  )
+}
+
+function WorldMap({ countryRisk, selectedCountry, onSelect, geoDetections }: {
+  countryRisk?: Record<string, number>
+  selectedCountry: string | null
+  onSelect: (c: string | null) => void
+  geoDetections?: any[]
+}) {
+  const rows = [
+    ['US', 'EU', 'CN', 'JP'],
+    ['UK', 'RU', 'IN', 'BR'],
+    ['AU', 'SA', 'KR', 'SG'],
+  ]
+  return (
+    <div className="mb-4">
+      <div className="text-[10px] font-semibold text-muted mb-1">COUNTRY RISK MAP</div>
+      <svg viewBox="0 0 400 160" className="w-full max-w-[500px]">
+        {rows.map((row, ri) => row.map((code, ci) => {
+          const risk = countryRisk?.[code] ?? 0
+          const r = risk > 0 ? Math.min(255, Math.round(risk * 2.55)) : 100
+          const g = risk < 0 ? Math.min(255, Math.round(Math.abs(risk) * 2.55)) : 100
+          const b = 100
+          const isSelected = selectedCountry === code
+          const x = 10 + ci * 100, y = 10 + ri * 50, w = 85, h = 38
+          const events = geoDetections?.filter(d => d.matched?.toUpperCase().includes(code)) ?? []
+          return (
+            <g key={code} onClick={() => onSelect(isSelected ? null : code)} style={{ cursor: 'pointer' }}>
+              <rect x={x} y={y} width={w} height={h} rx={4}
+                fill={isSelected ? 'var(--accent-blue)' : `rgb(${r},${g},${b})`}
+                stroke={isSelected ? 'white' : 'var(--border-color)'}
+                strokeWidth={isSelected ? 2 : 1} />
+              <text x={x + w / 2} y={y + h / 2 + 1} textAnchor="middle" dominantBaseline="central"
+                fill="white" fontSize="10" fontWeight="bold">{code}</text>
+              {events.length > 0 && (
+                <circle cx={x + w - 8} cy={y + 8} r={4} fill="var(--accent-red)" />
+              )}
+            </g>
+          )
+        }))}
+      </svg>
+      {selectedCountry && (
+        <div className="mt-1 text-[10px] text-accent-blue">Showing events for: {selectedCountry}</div>
+      )}
+    </div>
+  )
+}
+
+function TariffSanctionsTimeline({ events }: { events?: any[] }) {
+  if (!events || events.length === 0) {
+    return (
+      <div className="mb-4">
+        <div className="text-[10px] font-semibold text-muted mb-1">TARIFFS & SANCTIONS</div>
+        <div className="text-[9px] text-muted">No tariff or sanction events detected</div>
+      </div>
+    )
+  }
+  return (
+    <div className="mb-4">
+      <div className="text-[10px] font-semibold text-muted mb-1">TARIFFS & SANCTIONS</div>
+      <div className="space-y-2">
+        {events.map((ev, i) => {
+          const severityColor = ev.severity === 'Severe' ? 'var(--accent-red)' : ev.severity === 'High' ? '#f59e0b' : ev.severity === 'Medium' ? '#3b82f6' : '#6b7280'
+          return (
+            <div key={i} className="flex gap-2 items-start">
+              <div className="flex flex-col items-center">
+                <div className="w-2 h-2 rounded-full" style={{ background: severityColor }} />
+                {i < events.length - 1 && <div className="w-px h-full min-h-[20px] bg-border-default" />}
+              </div>
+              <div className="bg-card border border-default rounded-sm px-2 py-1.5 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] text-muted">{ev.date}</span>
+                  <span className="text-[8px] font-bold px-1 py-0.5 rounded-sm" style={{ background: severityColor + '20', color: severityColor }}>{ev.severity || 'Low'}</span>
+                </div>
+                <div className="text-[10px] text-primary font-semibold">{ev.title}</div>
+                {ev.countries && <div className="text-[8px] text-muted">{ev.countries.join(', ')}</div>}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
 export default function GeopoliticalAnalysis() {
   const [symbol, setSymbol] = useState('SPY')
   const [result, setResult] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [selectedCountry, setSelectedCountry] = useState<string | null>(null)
+  const addToast = useToastStore((s) => s.addToast)
+
+  const filteredDetections = useMemo(() => {
+    if (!result?.geo_detections) return []
+    if (!selectedCountry) return result.geo_detections
+    return result.geo_detections.filter((d: any) => d.matched?.toUpperCase().includes(selectedCountry))
+  }, [result?.geo_detections, selectedCountry])
 
   const analyze = async () => {
     setLoading(true)
@@ -38,10 +157,17 @@ export default function GeopoliticalAnalysis() {
         </button>
       </div>
 
+      <div className="flex items-center gap-2 px-3 py-1 border-b border-default">
+        {(['FOMC', 'ECB', 'BOJ', 'BOE'] as const).map(bank => (
+          <CentralBankCountdown key={bank} bank={bank} />
+        ))}
+      </div>
+
       {error && <div className="p-3 text-down text-[10px]">{error}</div>}
 
       {result && (
         <div className="flex-1 overflow-auto p-3">
+          <WorldMap countryRisk={(result as any).country_risk ?? (result as any).region_risk} selectedCountry={selectedCountry} onSelect={setSelectedCountry} geoDetections={result.geo_detections} />
           <div className="flex gap-3 mb-4">
             <div className="bg-card border border-default px-3.5 py-2.5 rounded min-w-[120px]">
               <div className="text-[9px] text-muted mb-0.5">SENTIMENT SCORE</div>
@@ -95,9 +221,9 @@ export default function GeopoliticalAnalysis() {
             </div>
           )}
 
-          {result.geo_detections?.length > 0 && (
+          {filteredDetections.length > 0 && (
             <div>
-              <div className="text-[10px] font-semibold text-muted mb-1">DETECTED EVENTS ({result.geo_detections.length})</div>
+              <div className="text-[10px] font-semibold text-muted mb-1">DETECTED EVENTS ({filteredDetections.length})</div>
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="text-muted text-[9px] text-left border-b border-default">
@@ -108,7 +234,7 @@ export default function GeopoliticalAnalysis() {
                   </tr>
                 </thead>
                 <tbody>
-                  {result.geo_detections.map((d: any, i: number) => (
+                  {filteredDetections.map((d: any, i: number) => (
                     <tr key={i} className="border-b border-[rgba(26,35,50,0.3)]">
                       <td className="px-2 py-[3px]">
                         <span className="font-semibold" style={{ color: d.level === 'severe' ? 'var(--accent-red)' : 'var(--accent-yellow)' }}>{d.level.toUpperCase()}</span>
@@ -122,6 +248,8 @@ export default function GeopoliticalAnalysis() {
               </table>
             </div>
           )}
+
+          <TariffSanctionsTimeline events={(result as any).events} />
         </div>
       )}
 

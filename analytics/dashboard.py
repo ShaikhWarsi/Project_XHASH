@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from core.types import PortfolioState, SignalMatrix
@@ -24,13 +24,13 @@ class Dashboard:
         open_orders: Optional[list] = None,
     ) -> dict:
         self._portfolio_history.append({
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
             "total_value": portfolio.total_value,
             "cash": portfolio.cash,
         })
 
         return {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "portfolio": {
                 "total_value": portfolio.total_value,
                 "cash": portfolio.cash,

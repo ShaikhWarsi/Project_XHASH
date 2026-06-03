@@ -163,6 +163,7 @@ export default function MultiTimeframeOverlay({
   const labelRef = useRef<HTMLDivElement | null>(null)
 
   const [enabled, setEnabled] = useState(false)
+  const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     if (preFetchedHtfData && preFetchedHtfData.length > 0) {
@@ -171,9 +172,13 @@ export default function MultiTimeframeOverlay({
   }, [preFetchedHtfData])
 
   const fetchHtf = useCallback(async (tf: HigherTimeframe) => {
+    abortRef.current?.abort()
+    const ac = new AbortController()
+    abortRef.current = ac
     setLoading(true)
     try {
-      const response = await fetchOHLCV(symbol, tf, '6mo')
+      const response = await fetchOHLCV(symbol, tf, '6mo', ac.signal)
+      if (ac.signal.aborted) return
       const mapped = Array.isArray(response)
         ? response.map((r: any) => ({
             time: (r.time ?? r.t ?? Math.floor(new Date(r.date ?? r.timestamp).getTime() / 1000)) as Time,
@@ -186,10 +191,11 @@ export default function MultiTimeframeOverlay({
         : []
       setHtfData(mapped as CandlestickData[])
     } catch (err) {
+      if (ac.signal.aborted) return
       console.warn('[MultiTimeframeOverlay] Failed to fetch HTF data:', err)
       setHtfData([])
     } finally {
-      setLoading(false)
+      if (!ac.signal.aborted) setLoading(false)
     }
   }, [symbol])
 
@@ -217,8 +223,14 @@ export default function MultiTimeframeOverlay({
 
     if (seriesRef.current) {
       try {
-        chartEngine?.chart.removeSeries(seriesRef.current)
+        seriesRef.current.setData(mapped)
+        seriesRef.current.applyOptions({
+          color: config.color,
+          lineWidth: 2,
+          lineStyle: config.dash.length > 0 ? 2 : 0,
+        })
       } catch {}
+      return
     }
 
     if (!chartEngine) return

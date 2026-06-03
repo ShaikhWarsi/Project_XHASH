@@ -25,21 +25,7 @@ const FONT_DATA = { fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }
 const FONT_SM = { fontFamily: "'JetBrains Mono', monospace", fontSize: 10 }
 const FONT_LABEL = { fontSize: 9, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.05em' }
 
-function generateDepth(price: number, count: number): { bids: OrderBookLevel[]; asks: OrderBookLevel[] } {
-  const bids: OrderBookLevel[] = []
-  const asks: OrderBookLevel[] = []
-  let bidTotal = 0
-  let askTotal = 0
-  for (let i = 0; i < count; i++) {
-    const bSize = Math.random() * 3000 + 200
-    const aSize = Math.random() * 3000 + 200
-    bidTotal += bSize
-    askTotal += aSize
-    bids.push({ price: parseFloat((price - (i + 1) * 0.01 * (1 + Math.random() * 0.5)).toFixed(2)), size: parseFloat(bSize.toFixed(1)), total: parseFloat(bidTotal.toFixed(1)) })
-    asks.push({ price: parseFloat((price + (i + 1) * 0.01 * (1 + Math.random() * 0.5)).toFixed(2)), size: parseFloat(aSize.toFixed(1)), total: parseFloat(askTotal.toFixed(1)) })
-  }
-  return { bids, asks }
-}
+const EMPTY_DEPTH: OrderBookLevel[] = []
 
 export default function OrderBook({ symbol = '', levels = 12 }: OrderBookProps) {
   const { getPrice, connected: lpConnected } = useLivePrices()
@@ -72,10 +58,8 @@ export default function OrderBook({ symbol = '', levels = 12 }: OrderBookProps) 
       const s = wsAsks[0]?.price - wsBids[0]?.price || 0
       return { bids: wsBids.slice(0, levels), asks: wsAsks.slice(0, levels), spread: s }
     }
-    const { bids: b, asks: a } = generateDepth(centerPrice, levels)
-    const s = a[0]?.price - b[0]?.price || 0
-    return { bids: b, asks: a, spread: s }
-  }, [usingWsData, wsBids, wsAsks, centerPrice, levels])
+    return { bids: EMPTY_DEPTH, asks: EMPTY_DEPTH, spread: 0 }
+  }, [usingWsData, wsBids, wsAsks, levels])
 
   const maxTotal = useMemo(() => {
     const all = [...bids, ...asks]
@@ -113,6 +97,16 @@ export default function OrderBook({ symbol = '', levels = 12 }: OrderBookProps) 
 
   return (
     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
+      {!usingWsData && bids.length === 0 && (
+        <div style={{ padding: '8px 8px', fontSize: 9, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-muted)', textAlign: 'center', borderBottom: '1px solid var(--border-color)' }}>
+          No L2 depth available — waiting for real-time feed
+        </div>
+      )}
+      {!usingWsData && bids.length === 0 && (
+        <div style={{ padding: '20px 8px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 10 }}>
+          Connect to a live data source to view order book depth
+        </div>
+      )}
       <div style={{ padding: '6px 10px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ ...FONT_DATA, fontWeight: 600, color: 'var(--text-primary)' }}>
           ORDER BOOK {symbol && `— ${symbol}`}

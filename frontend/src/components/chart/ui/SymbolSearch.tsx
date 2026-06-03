@@ -79,9 +79,15 @@ export function SymbolSearch({ onSelect, onClose }: SymbolSearchProps) {
           <div
             key={symbol}
             onClick={() => handleSelect(symbol)}
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData('text/plain', symbol)
+              e.dataTransfer.setData('application/x-symbol', JSON.stringify({ symbol }))
+              e.dataTransfer.effectAllowed = 'copy'
+            }}
             style={{
               padding: '6px 12px',
-              cursor: 'pointer',
+              cursor: 'grab',
               color: '#e2e8f0',
               fontSize: '10px',
               fontFamily: "'JetBrains Mono', monospace",

@@ -1,4 +1,5 @@
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, useMemo, memo } from 'react'
+import { useTheme } from '../contexts/ThemeContext'
 
 interface EquityPoint {
   time: string
@@ -23,7 +24,7 @@ function formatTime(t: string): string {
   return t
 }
 
-export default function EquityCurveChart({ equity, trades, benchmark }: EquityCurveChartProps) {
+const EquityCurveChart = memo(function EquityCurveChart({ equity, trades, benchmark }: EquityCurveChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [tooltip, setTooltip] = useState<{
     x: number
@@ -32,6 +33,25 @@ export default function EquityCurveChart({ equity, trades, benchmark }: EquityCu
     value: number
     pl: number
   } | null>(null)
+  const { resolvedTheme } = useTheme()
+
+  const range = useMemo(() => {
+    if (equity.length === 0) return { globalMin: 0, globalMax: 1 }
+    const sorted = [...equity].sort((a, b) => a.time.localeCompare(b.time))
+    let globalMin = sorted[0]?.value ?? 0
+    let globalMax = globalMin
+    for (const e of sorted) {
+      if (e.value < globalMin) globalMin = e.value
+      if (e.value > globalMax) globalMax = e.value
+    }
+    if (benchmark && benchmark.length > 0) {
+      for (const b of benchmark) {
+        if (b.value < globalMin) globalMin = b.value
+        if (b.value > globalMax) globalMax = b.value
+      }
+    }
+    return { globalMin, globalMax }
+  }, [equity, benchmark])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -60,25 +80,15 @@ export default function EquityCurveChart({ equity, trades, benchmark }: EquityCu
       return
     }
 
-    const sorted = [...equity].sort((a, b) => a.time.localeCompare(b.time))
-    const eqValues = sorted.map((e) => e.value)
-    const minVal = Math.min(...eqValues)
-    const maxVal = Math.max(...eqValues)
-    let globalMin = minVal
-    let globalMax = maxVal
+    const { globalMin, globalMax } = range
 
-    if (benchmark && benchmark.length > 0) {
-      const bmValues = benchmark.map((b) => b.value)
-      globalMin = Math.min(globalMin, ...bmValues)
-      globalMax = Math.max(globalMax, ...bmValues)
-    }
-
-    const range = globalMax - globalMin || 1
-    const padding = range * 0.1
+    const r = globalMax - globalMin || 1
+    const padding = r * 0.1
     const yMin = globalMin - padding
     const yMax = globalMax + padding
     const yRange = yMax - yMin || 1
 
+    const sorted = [...equity].sort((a, b) => a.time.localeCompare(b.time))
     const times = sorted.map((e) => e.time)
     const tMax = times.length - 1
     const xPad = 50
@@ -198,7 +208,7 @@ export default function EquityCurveChart({ equity, trades, benchmark }: EquityCu
       ctx.closePath()
       ctx.fill()
     }
-  }, [equity, trades, benchmark])
+  }, [equity, trades, benchmark, resolvedTheme])
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current
@@ -276,4 +286,6 @@ export default function EquityCurveChart({ equity, trades, benchmark }: EquityCu
       )}
     </div>
   )
-}
+})
+
+export default EquityCurveChart

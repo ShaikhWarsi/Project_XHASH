@@ -2,8 +2,9 @@ import { useState } from 'react'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import { useToastStore } from '../store/toast'
+import { fmtCurrency } from '../utils/format'
 
-type Step = 'welcome' | 'broker' | 'credentials' | 'review' | 'done'
+type Step = 'welcome' | 'broker' | 'credentials' | 'review' | 'checklist' | 'done'
 
 interface BrokerConfig {
   id: string
@@ -12,6 +13,15 @@ interface BrokerConfig {
   docs: string
   fields: { key: string; label: string; type: string; placeholder: string }[]
 }
+
+type ChecklistKey = 'api_keys_saved' | 'risk_limits_configured' | 'kill_switch_enabled' | 'dry_run_verified'
+
+const CHECKLIST_ITEMS: { key: ChecklistKey; label: string }[] = [
+  { key: 'api_keys_saved', label: 'API keys saved' },
+  { key: 'risk_limits_configured', label: 'Risk limits configured (max position %, max drawdown)' },
+  { key: 'kill_switch_enabled', label: 'Kill switch enabled' },
+  { key: 'dry_run_verified', label: 'Dry-run mode verified' },
+]
 
 const BROKERS: BrokerConfig[] = [
   {
@@ -54,7 +64,17 @@ export default function LiveTradingWizard() {
   const [creds, setCreds] = useState<Record<string, string>>({})
   const [riskLimit, setRiskLimit] = useState('5000')
   const [testing, setTesting] = useState(false)
+  const [testnet, setTestnet] = useState(false)
+  const [connected, setConnected] = useState(false)
+  const [checklist, setChecklist] = useState<Record<ChecklistKey, boolean>>({
+    api_keys_saved: false,
+    risk_limits_configured: false,
+    kill_switch_enabled: false,
+    dry_run_verified: false,
+  })
   const addToast = useToastStore((s) => s.addToast)
+
+  const checkedCount = Object.values(checklist).filter(Boolean).length
 
   const handleConnect = async () => {
     setTesting(true)
@@ -62,12 +82,13 @@ export default function LiveTradingWizard() {
       const res = await fetch('/api/providers/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider: selectedBroker?.id, config: creds }),
+        body: JSON.stringify({ provider: selectedBroker?.id, config: creds, testnet: testnet || undefined }),
       })
       const data = await res.json()
       if (data.status === 'ok') {
         addToast(`Connected to ${selectedBroker?.name} successfully`, 'success')
-        setStep('done')
+        setConnected(true)
+        setStep('review')
       } else {
         addToast(data.message || 'Connection failed', 'error')
       }
@@ -75,6 +96,16 @@ export default function LiveTradingWizard() {
       addToast('Connection test failed — check credentials', 'error')
     }
     setTesting(false)
+  }
+
+  const resetWizard = () => {
+    setStep('welcome')
+    setSelectedBroker(null)
+    setCreds({})
+    setRiskLimit('5000')
+    setTestnet(false)
+    setConnected(false)
+    setChecklist({ api_keys_saved: false, risk_limits_configured: false, kill_switch_enabled: false, dry_run_verified: false })
   }
 
   return (
@@ -131,9 +162,14 @@ export default function LiveTradingWizard() {
       {step === 'credentials' && selectedBroker && (
         <Card title={`CONNECT ${selectedBroker.name.toUpperCase()}`}>
           <div className="space-y-3">
-            <p className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>
-              {selectedBroker.description}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>
+                {selectedBroker.description}
+              </p>
+              {testnet && (
+                <Badge label="TESTNET ACTIVE" variant="warning" size="sm" />
+              )}
+            </div>
             <a href={selectedBroker.docs} target="_blank" rel="noopener noreferrer"
               className="text-[10px] font-mono underline" style={{ color: 'var(--accent-blue)' }}>
               View API Documentation →
@@ -185,6 +221,23 @@ export default function LiveTradingWizard() {
                 }}
               />
             </div>
+            <div className="flex items-center gap-3 pt-1 pb-1 border-t border-default" style={{ borderColor: 'var(--border-color)' }}>
+              <label className="flex items-center gap-2 text-[10px] font-mono cursor-pointer" style={{ color: 'var(--text-primary)' }}>
+                <input
+                  type="checkbox"
+                  checked={testnet}
+                  onChange={(e) => setTestnet(e.target.checked)}
+                  disabled={connected}
+                  style={{ accentColor: 'var(--accent-orange)' }}
+                />
+                TESTNET MODE
+              </label>
+              {testnet && (
+                <span className="text-[9px] font-mono" style={{ color: 'var(--accent-orange)' }}>
+                  Using testnet/sandbox endpoints
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-2 pt-2">
               <button
                 onClick={handleConnect}
@@ -210,6 +263,108 @@ export default function LiveTradingWizard() {
         </Card>
       )}
 
+      {step === 'review' && selectedBroker && (
+        <Card title="REVIEW CONFIGURATION">
+          <div className="space-y-3">
+            <div className="text-[10px] font-mono space-y-1" style={{ color: 'var(--text-muted)' }}>
+              <div><span style={{ color: 'var(--text-secondary)' }}>Broker:</span> {selectedBroker.name}</div>
+              <div><span style={{ color: 'var(--text-secondary)' }}>Risk Limit:</span> {fmtCurrency(Number(riskLimit))}</div>
+              <div><span style={{ color: 'var(--text-secondary)' }}>Testnet:</span> {testnet ? 'Yes' : 'No'}</div>
+            </div>
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                onClick={() => setStep('checklist')}
+                className="px-4 py-1.5 text-[10px] font-mono font-bold rounded-sm cursor-pointer"
+                style={{ background: 'var(--accent-blue)', color: '#fff', border: 'none' }}
+              >
+                Continue to Checklist
+              </button>
+              <button
+                onClick={() => setStep('credentials')}
+                className="px-4 py-1.5 text-[10px] font-mono rounded-sm cursor-pointer"
+                style={{ background: 'none', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }}
+              >
+                Back
+              </button>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {step === 'checklist' && (
+        <Card title="GO-LIVE CHECKLIST">
+          <div className="space-y-3">
+            <p className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>
+              Complete all items before going live.
+            </p>
+            <div className="flex items-center gap-1 text-[10px] font-mono" style={{ color: 'var(--text-secondary)' }}>
+              Progress: {checkedCount}/{CHECKLIST_ITEMS.length} complete
+              <div
+                style={{
+                  flex: 1,
+                  height: 4,
+                  background: 'var(--bg-hover)',
+                  borderRadius: 2,
+                  marginLeft: 8,
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  style={{
+                    width: `${(checkedCount / CHECKLIST_ITEMS.length) * 100}%`,
+                    height: '100%',
+                    background: 'var(--accent-green)',
+                    borderRadius: 2,
+                    transition: 'width 0.3s ease',
+                  }}
+                />
+              </div>
+            </div>
+            {CHECKLIST_ITEMS.map((item) => (
+              <label
+                key={item.key}
+                className="flex items-center gap-2 text-[10px] font-mono cursor-pointer"
+                style={{
+                  color: checklist[item.key] ? 'var(--accent-green)' : 'var(--text-primary)',
+                  padding: '4px 6px',
+                  borderRadius: 4,
+                  background: checklist[item.key] ? 'color-mix(in srgb, var(--accent-green) 8%, transparent)' : 'transparent',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={checklist[item.key]}
+                  onChange={(e) => setChecklist((c) => ({ ...c, [item.key]: e.target.checked }))}
+                  style={{ accentColor: 'var(--accent-green)' }}
+                />
+                {item.label}
+              </label>
+            ))}
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                onClick={() => setStep('done')}
+                disabled={checkedCount < CHECKLIST_ITEMS.length}
+                className="px-4 py-1.5 text-[10px] font-mono font-bold rounded-sm cursor-pointer"
+                style={{
+                  background: checkedCount < CHECKLIST_ITEMS.length ? 'var(--bg-hover)' : 'linear-gradient(135deg, #22c55e, #16a34a)',
+                  color: checkedCount < CHECKLIST_ITEMS.length ? 'var(--text-muted)' : '#fff',
+                  border: 'none',
+                }}
+              >
+                Go Live
+              </button>
+              <button
+                onClick={() => setStep('review')}
+                className="px-4 py-1.5 text-[10px] font-mono rounded-sm cursor-pointer"
+                style={{ background: 'none', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }}
+              >
+                Back
+              </button>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {step === 'done' && (
         <Card title="CONNECTED">
           <div className="text-center py-6 space-y-3">
@@ -222,10 +377,11 @@ export default function LiveTradingWizard() {
             </p>
             <div className="flex items-center justify-center gap-2">
               <Badge label="Connected" variant="success" />
-              <Badge label={`Risk Limit: $${Number(riskLimit).toLocaleString()}`} variant="info" />
+              <Badge label={`Risk Limit: ${fmtCurrency(Number(riskLimit))}`} variant="info" />
+              {testnet && <Badge label="Testnet" variant="warning" />}
             </div>
             <button
-              onClick={() => { setStep('welcome'); setSelectedBroker(null); setCreds({}) }}
+              onClick={resetWizard}
               className="px-4 py-1.5 text-[10px] font-mono font-bold rounded-sm cursor-pointer"
               style={{ background: 'var(--accent-blue)', color: '#fff', border: 'none' }}
             >

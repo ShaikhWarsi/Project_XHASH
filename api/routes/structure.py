@@ -4,8 +4,6 @@ from fastapi import APIRouter, Query, HTTPException
 
 from api.state import app_state
 from signals.structure_state import StructureFusionEngine, StructureState
-from signals.engine_registry import create_engine
-from core.enums import SignalDir, RegimeType
 
 router = APIRouter(prefix="/structure", tags=["structure"])
 _fusion = StructureFusionEngine()
@@ -18,7 +16,7 @@ async def get_structure(
 ):
     sm = await app_state.async_get_signals()
     if sm is None:
-        return _empty_state(symbol, timeframe)
+        raise HTTPException(status_code=501, detail="Signal data not available")
 
     signals = sm.get_signals(symbol.upper())
     regime = sm.regime

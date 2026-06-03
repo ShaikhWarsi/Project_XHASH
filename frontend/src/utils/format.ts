@@ -1,4 +1,7 @@
-/** Currency formatting with locale support for multi-currency display. */
+import dayjs from 'dayjs'
+import advancedFormat from 'dayjs/plugin/advancedFormat'
+
+dayjs.extend(advancedFormat)
 
 const LOCALE_MAP: Record<string, string> = {
   'USD': 'en-US', 'EUR': 'de-DE', 'GBP': 'en-GB', 'JPY': 'ja-JP',
@@ -28,12 +31,27 @@ export function fmtNumber(value: number, decimals = 2): string {
   return value.toFixed(decimals)
 }
 
-export function fmtDate(date: string | Date): string {
-  const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+export function fmtDate(date: string | Date | number): string {
+  return dayjs(date).format('MMM D, YYYY')
 }
 
-export function fmtTime(date: string | Date): string {
-  const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
+export function fmtTime(date: string | Date | number): string {
+  return dayjs(date).format('HH:mm:ss')
+}
+
+export function fmtDateTime(date: string | Date | number): string {
+  return dayjs(date).format('MMM D, YYYY HH:mm:ss')
+}
+
+export function fmtRelative(date: string | Date | number): string {
+  const d = dayjs(date)
+  const now = dayjs()
+  const diff = now.diff(d, 'minute')
+  if (diff < 1) return 'just now'
+  if (diff < 60) return `${diff}m ago`
+  const hours = Math.floor(diff / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days}d ago`
+  return d.format('MMM D')
 }

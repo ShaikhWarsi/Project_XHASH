@@ -1,14 +1,9 @@
 import { useState, useRef } from 'react'
 import Card from '../components/ui/Card'
 import { Brain, TrendingUp, Shield, Eye, Percent } from 'lucide-react'
-
-const AGENTS = [
-  { id: 'buffett', name: 'Warren Buffett', style: 'Value Investing', color: 'green', icon: Brain, key: 'warren_buffett' },
-  { id: 'burry', name: 'Michael Burry', style: 'Deep Value / Contrarian', color: 'red', icon: Eye, key: 'michael_burry' },
-  { id: 'druckenmiller', name: 'Stanley Druckenmiller', style: 'Macro / Momentum', color: 'blue', icon: TrendingUp, key: 'stanley_druckenmiller' },
-  { id: 'taleb', name: 'Nassim Taleb', style: 'Tail Risk / Antifragility', color: 'yellow', icon: Shield, key: 'nassim_taleb' },
-  { id: 'lynch', name: 'Peter Lynch', style: 'Growth at Reasonable Price', color: 'green', icon: Percent, key: 'peter_lynch' },
-]
+import { useToastStore } from '../store/toast'
+import { usePersonas } from '../hooks/usePersonas'
+import { api, placeOrder, fetchRiskMetrics, fetchPositions } from '../api/client'
 
 const colorMap: Record<string, string> = {
   green: 'bg-green-500/10 text-green-400 border-green-500/20',
@@ -24,12 +19,35 @@ interface AgentMsg {
   reasoning: string
 }
 
+function agentIcon(style: string) {
+  const s = style.toLowerCase()
+  if (s.includes('value') || s.includes('moat')) return Shield
+  if (s.includes('momentum') || s.includes('growth') || s.includes('macro')) return TrendingUp
+  if (s.includes('contrarian') || s.includes('deep') || s.includes('risk')) return Eye
+  if (s.includes('quant') || s.includes('arb')) return Percent
+  return Brain
+}
+
+const DEFAULT_AGENTS = [
+  { id: 'buffett', name: 'Warren Buffett', style: 'Value Investing', color: 'green', icon: Brain, key: 'warren_buffett' },
+  { id: 'burry', name: 'Michael Burry', style: 'Deep Value / Contrarian', color: 'red', icon: Eye, key: 'michael_burry' },
+  { id: 'druckenmiller', name: 'Stanley Druckenmiller', style: 'Macro / Momentum', color: 'blue', icon: TrendingUp, key: 'stanley_druckenmiller' },
+  { id: 'taleb', name: 'Nassim Taleb', style: 'Tail Risk / Antifragility', color: 'yellow', icon: Shield, key: 'nassim_taleb' },
+  { id: 'lynch', name: 'Peter Lynch', style: 'Growth at Reasonable Price', color: 'green', icon: Percent, key: 'peter_lynch' },
+]
+
 export default function Agents() {
   const [selectedTicker, setSelectedTicker] = useState('AAPL')
   const [messages, setMessages] = useState<AgentMsg[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const addToast = useToastStore((s) => s.addToast)
   const abortRef = useRef<AbortController | null>(null)
+
+  const { personas: apiPersonas } = usePersonas()
+  const agents = apiPersonas.length > 0
+    ? apiPersonas.map((p) => ({ ...p, icon: agentIcon(p.style) }))
+    : DEFAULT_AGENTS
 
   const runAnalysis = async () => {
     setLoading(true)
@@ -49,7 +67,7 @@ export default function Agents() {
           start_date: new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 10),
           end_date: new Date().toISOString().slice(0, 10),
           initial_cash: 100000,
-          graph_nodes: AGENTS.map((a) => ({
+          graph_nodes: agents.map((a) => ({
             id: a.id,
             type: 'agent',
             position: { x: 0, y: 0 },
@@ -62,38 +80,59 @@ export default function Agents() {
 
       const reader = res.body!.getReader()
       const decoder = new TextDecoder()
+      let buffer = ''
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        const chunk = decoder.decode(value)
-        for (const line of chunk.split('\n')) {
-          if (line.startsWith('data: ')) {
-            try {
-              const event = JSON.parse(line.slice(6))
-              if (event.type === 'progress') {
-                // status updates, skip for this page
-              } else if (event.type === 'complete') {
-                const data = event.data
-                if (data?.decisions) {
-                  const msgs: AgentMsg[] = []
-                  for (const ticker of Object.keys(data.decisions)) {
-                    for (const signal of data.decisions[ticker] || []) {
-                      msgs.push({
-                        agent: signal.agent_name || signal.agent || 'Unknown',
-                        signal: signal.direction === 1 ? 'bullish' : signal.direction === -1 ? 'bearish' : 'neutral',
-                        confidence: Math.abs(signal.score || signal.confidence || 0.5),
-                        reasoning: signal.reasoning || signal.reason || '',
-                      })
-                    }
+        buffer += decoder.decode(value, { stream: true })
+        const parts = buffer.split('\n\n')
+        buffer = parts.pop() || ''
+        for (const block of parts) {
+          const dataLines = block.split('\n').filter(l => l.startsWith('data: ')).map(l => l.slice(6))
+          if (dataLines.length === 0) continue
+          try {
+            const event = JSON.parse(dataLines.join(''))
+            if (event.type === 'progress') {
+            } else if (event.type === 'complete') {
+              const data = event.data
+              if (data?.decisions) {
+                const msgs: AgentMsg[] = []
+                for (const ticker of Object.keys(data.decisions)) {
+                  for (const signal of data.decisions[ticker] || []) {
+                    msgs.push({
+                      agent: signal.agent_name || signal.agent || 'Unknown',
+                      signal: signal.direction === 1 ? 'bullish' : signal.direction === -1 ? 'bearish' : 'neutral',
+                      confidence: Math.abs(signal.score || signal.confidence || 0.5),
+                      reasoning: signal.reasoning || signal.reason || '',
+                    })
                   }
-                  if (msgs.length > 0) setMessages(msgs)
                 }
-              } else if (event.type === 'error') {
-                setError(event.message || 'Unknown error')
+                if (msgs.length > 0) setMessages(msgs)
               }
-            } catch (err) { console.warn('[Agents] Skipped malformed event:', err) }
-          }
+            } else if (event.type === 'error') {
+              setError(event.message || 'Unknown error')
+            }
+          } catch (err) { console.warn('[Agents] Skipped malformed event:', err) }
         }
+      }
+      if (buffer.startsWith('data: ')) {
+        try {
+          const event = JSON.parse(buffer.replace(/^data: /, ''))
+          if (event.type === 'complete' && event.data?.decisions) {
+            const msgs: AgentMsg[] = []
+            for (const ticker of Object.keys(event.data.decisions)) {
+              for (const signal of event.data.decisions[ticker] || []) {
+                msgs.push({
+                  agent: signal.agent_name || signal.agent || 'Unknown',
+                  signal: signal.direction === 1 ? 'bullish' : signal.direction === -1 ? 'bearish' : 'neutral',
+                  confidence: Math.abs(signal.score || signal.confidence || 0.5),
+                  reasoning: signal.reasoning || signal.reason || '',
+                })
+              }
+            }
+            if (msgs.length > 0) setMessages(msgs)
+          }
+        } catch {}
       }
     } catch (e: any) {
       if (e.name !== 'AbortError') {
@@ -194,7 +233,7 @@ export default function Agents() {
       )}
 
       <div className="space-y-3">
-        {AGENTS.map((agent) => {
+        {agents.map((agent) => {
           const msg = messages.find((m) => m.agent === agent.name)
           const Icon = agent.icon
           return (
@@ -294,6 +333,25 @@ export default function Agents() {
               ({(avgConfidence * 100).toFixed(0)}% confidence)
             </div>
             <button
+              onClick={async () => {
+                try {
+                  const risk = await fetchRiskMetrics()
+                  const positions = await fetchPositions()
+                  const existing = positions.find((p) => p.symbol === selectedTicker)
+                  const maxPosition = Math.max(10, Math.floor((risk.buyingPower || 50000) * 0.1 / 100))
+                  const maxQty = Math.min(10, maxPosition)
+                  await placeOrder({
+                    symbol: selectedTicker,
+                    side: bullishCount > bearishCount ? 'BUY' : 'SELL',
+                    quantity: maxQty,
+                    orderType: 'MARKET',
+                    reduceOnly: existing ? existing.side !== (bullishCount > bearishCount ? 'LONG' : 'SHORT') : false,
+                  })
+                  addToast(`${bullishCount > bearishCount ? 'BUY' : 'SELL'} ${maxQty} ${selectedTicker} placed`, 'success')
+                } catch (e: any) {
+                  addToast(`Trade failed: ${e.message}`, 'error')
+                }
+              }}
               className="text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors mr-2"
               style={{ background: 'var(--accent-green)', border: 'none', cursor: 'pointer' }}
             >

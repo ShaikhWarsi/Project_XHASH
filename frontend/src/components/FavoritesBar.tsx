@@ -1,8 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getRouteLabel, GROUP_LABELS } from '../utils/routes'
+import { BarChart3, X, Plus } from 'lucide-react'
 
 const LS_KEY = 'favorite_pages'
+const TICKER_LS_KEY = 'favorite_tickers'
+
+interface TickerFav {
+  symbol: string
+  timeframe: string
+  indicator: string
+}
 
 export default function FavoritesBar() {
   const navigate = useNavigate()
@@ -118,7 +126,48 @@ export default function FavoritesBar() {
     persist(favorites.filter((f) => f !== id))
   }, [favorites, persist])
 
-  if (favorites.length === 0) return null
+  const [tickerFavs, setTickerFavs] = useState<TickerFav[]>(() => {
+    try { return JSON.parse(localStorage.getItem(TICKER_LS_KEY) || '[]') }
+    catch { return [] }
+  })
+  const [showTickerPopover, setShowTickerPopover] = useState(false)
+  const [tickerInput, setTickerInput] = useState({ symbol: '', timeframe: '1d', indicator: '' })
+
+  const addTickerFav = () => {
+    if (!tickerInput.symbol.trim()) return
+    const next = [...tickerFavs, { ...tickerInput, symbol: tickerInput.symbol.toUpperCase(), timeframe: tickerInput.timeframe || '1d', indicator: tickerInput.indicator }]
+    setTickerFavs(next)
+    localStorage.setItem(TICKER_LS_KEY, JSON.stringify(next))
+    setShowTickerPopover(false)
+    setTickerInput({ symbol: '', timeframe: '1d', indicator: '' })
+  }
+
+  const removeTickerFav = (idx: number) => {
+    const next = tickerFavs.filter((_, i) => i !== idx)
+    setTickerFavs(next)
+    localStorage.setItem(TICKER_LS_KEY, JSON.stringify(next))
+  }
+
+  if (favorites.length === 0 && tickerFavs.length === 0) {
+    return (
+      <div
+        id="favorites-bar"
+        style={{
+          background: 'var(--bg-secondary)',
+          borderBottom: '1px solid var(--border-color)',
+          minHeight: 26,
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0 12px',
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: 9,
+          color: 'var(--text-muted)',
+        }}
+      >
+        ★ No favorites — click ★ in any page to add
+      </div>
+    )
+  }
 
   return (
     <div
@@ -131,6 +180,7 @@ export default function FavoritesBar() {
         fontSize: 10,
         paddingTop: 3,
         paddingBottom: 3,
+        minHeight: 26,
       }}
     >
       <span className="text-[9px] uppercase tracking-widest shrink-0" style={{ color: 'var(--text-muted)', marginRight: 4 }}>
@@ -183,6 +233,134 @@ export default function FavoritesBar() {
           })}
         </div>
       ))}
+      {tickerFavs.map((tf, idx) => (
+        <div
+          key={`ticker-${idx}`}
+          className="flex items-center gap-1 shrink-0"
+          style={{
+            background: 'var(--bg-hover)',
+            border: '1px solid var(--border-color)',
+            borderRadius: 'var(--radius-sm)',
+            cursor: 'pointer',
+            padding: '1px 6px',
+            fontSize: 10,
+            fontFamily: "'JetBrains Mono', monospace",
+          }}
+          onClick={() => navigate(`/markets/chart?symbol=${tf.symbol}&timeframe=${tf.timeframe}`)}
+        >
+          <BarChart3 size={8} style={{ color: 'var(--accent-cyan)' }} />
+          <span style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>{tf.symbol}</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: 8 }}>{tf.timeframe}</span>
+          {tf.indicator && <span style={{ color: 'var(--text-secondary)', fontSize: 8 }}>{tf.indicator}</span>}
+          <button
+            onClick={(e) => { e.stopPropagation(); removeTickerFav(idx) }}
+            style={{
+              background: 'none', border: 'none', color: 'var(--text-muted)',
+              cursor: 'pointer', padding: 0, fontSize: 8, opacity: 0.5,
+              lineHeight: 1,
+            }}
+          >
+            <X size={8} />
+          </button>
+        </div>
+      ))}
+      <div style={{ position: 'relative' }}>
+        <button
+          onClick={() => setShowTickerPopover(!showTickerPopover)}
+          className="flex items-center gap-1 shrink-0"
+          style={{
+            background: 'none',
+            border: '1px dashed var(--border-color)',
+            color: 'var(--text-muted)',
+            cursor: 'pointer',
+            padding: '1px 6px',
+            fontSize: 9,
+            fontFamily: "'JetBrains Mono', monospace",
+            borderRadius: 'var(--radius-sm)',
+          }}
+        >
+          <Plus size={8} /> Add Ticker
+        </button>
+        {showTickerPopover && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              zIndex: 50,
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-sm)',
+              padding: 8,
+              minWidth: 200,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 4,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <input
+              placeholder="Symbol"
+              value={tickerInput.symbol}
+              onChange={(e) => setTickerInput((p) => ({ ...p, symbol: e.target.value }))}
+              style={{
+                background: 'var(--bg-primary)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-primary)',
+                padding: '3px 6px',
+                fontSize: 10,
+                fontFamily: "'JetBrains Mono', monospace",
+                outline: 'none',
+              }}
+            />
+            <input
+              placeholder="Timeframe (1d)"
+              value={tickerInput.timeframe}
+              onChange={(e) => setTickerInput((p) => ({ ...p, timeframe: e.target.value }))}
+              style={{
+                background: 'var(--bg-primary)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-primary)',
+                padding: '3px 6px',
+                fontSize: 10,
+                fontFamily: "'JetBrains Mono', monospace",
+                outline: 'none',
+              }}
+            />
+            <input
+              placeholder="Indicator (SMA)"
+              value={tickerInput.indicator}
+              onChange={(e) => setTickerInput((p) => ({ ...p, indicator: e.target.value }))}
+              style={{
+                background: 'var(--bg-primary)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-primary)',
+                padding: '3px 6px',
+                fontSize: 10,
+                fontFamily: "'JetBrains Mono', monospace",
+                outline: 'none',
+              }}
+            />
+            <button
+              onClick={addTickerFav}
+              style={{
+                background: 'var(--accent-cyan)',
+                border: 'none',
+                color: '#000',
+                cursor: 'pointer',
+                padding: '3px 8px',
+                fontSize: 9,
+                fontFamily: "'JetBrains Mono', monospace",
+                fontWeight: 600,
+                borderRadius: 2,
+              }}
+            >
+              Add
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

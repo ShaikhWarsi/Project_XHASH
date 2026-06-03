@@ -74,7 +74,7 @@ export default class ErrorBoundary extends Component<Props, State> {
                 {this.state.error?.message || 'An unexpected error occurred'}
               </span>
             </div>
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex items-center justify-center gap-2 flex-wrap">
               <button
                 onClick={this.handleRetry}
                 className="flex items-center gap-1.5 px-3 py-1 text-[10px] font-mono font-medium rounded-sm cursor-pointer border-none"
@@ -93,8 +93,32 @@ export default class ErrorBoundary extends Component<Props, State> {
                   Reload Page
                 </button>
               )}
+              <button
+                onClick={() => {
+                  if (this.state.error?.stack) {
+                    navigator.clipboard.writeText(this.state.error.stack)
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3 py-1 text-[10px] font-mono rounded-sm cursor-pointer"
+                style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)' }}
+              >
+                Copy Stack
+              </button>
+              <button
+                onClick={() => {
+                  const subject = encodeURIComponent(`Error Report: ${this.state.error?.message || 'Unknown error'}`)
+                  const body = encodeURIComponent(
+                    `Error: ${this.state.error?.message}\n\nStack:\n${this.state.error?.stack}\n\nComponent Stack:\n${this.state.errorInfo?.componentStack}`
+                  )
+                  window.open(`mailto:support@example.com?subject=${subject}&body=${body}`, '_blank')
+                }}
+                className="flex items-center gap-1.5 px-3 py-1 text-[10px] font-mono rounded-sm cursor-pointer"
+                style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)' }}
+              >
+                Report Issue
+              </button>
             </div>
-            {process.env.NODE_ENV === 'development' && this.state.errorInfo && (
+            {(import.meta as any).env.DEV && this.state.errorInfo && (
               <details className="mt-2 text-left">
                 <summary className="text-[9px] font-mono cursor-pointer text-muted">
                   Stack trace

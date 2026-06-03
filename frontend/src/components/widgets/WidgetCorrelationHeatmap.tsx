@@ -7,6 +7,7 @@ interface CorrelationHeatmapProps {
   }
   timeframe?: string
   onCellClick?: (symbol1: string, symbol2: string, correlation: number) => void
+  _simulated?: boolean
 }
 
 export default function WidgetCorrelationHeatmap({
@@ -102,7 +103,7 @@ export default function WidgetCorrelationHeatmap({
       }
 
       try {
-        ;(mod as Record<string, unknown>).newPlot(container, [trace], layout, {
+        ;(mod as any).newPlot(container, [trace], layout, {
           responsive: true,
           displayModeBar: false,
         })
@@ -111,7 +112,7 @@ export default function WidgetCorrelationHeatmap({
       }
 
       if (onCellClick) {
-        container.on('plotly_click', (eventData: unknown) => {
+        (container as any).on('plotly_click', (eventData: unknown) => {
           const pts = (eventData as Record<string, unknown>).points as Array<Record<string, unknown>> | undefined
           if (pts && pts.length > 0) {
             const x = pts[0].x as number
@@ -125,7 +126,7 @@ export default function WidgetCorrelationHeatmap({
     if (Plotly && typeof Plotly.newPlot === 'function') {
       renderChart(Plotly as Record<string, unknown>)
     } else {
-      import('plotly.js-dist-min').then((mod) => {
+      import('plotly.js-dist-min' as string).then((mod: any) => {
         renderChart(mod.default || mod)
       })
     }
@@ -134,9 +135,9 @@ export default function WidgetCorrelationHeatmap({
     return () => {
       if (!el) return
       try {
-        const Plotly = (window as unknown as Record<string, unknown>).Plotly as Record<string, unknown> | undefined
+        const Plotly = (window as any).Plotly
         if (Plotly && typeof Plotly.purge === 'function') {
-          ;(Plotly as Record<string, unknown>).purge(el)
+          Plotly.purge(el)
         }
       } catch {
         /* ignore cleanup errors */

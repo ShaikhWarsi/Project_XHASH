@@ -1,0 +1,6 @@
+{
+  "id": "motd-001",
+  "message": "Welcome to the Trading Engine. Markets are closed today for the holiday.",
+  "type": "info",
+  "active": true
+}

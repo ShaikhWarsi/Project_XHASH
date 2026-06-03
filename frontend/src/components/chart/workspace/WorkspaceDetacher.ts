@@ -8,7 +8,7 @@ export class WorkspaceDetacher {
       return existing
     }
 
-    const w = window.open('', id, 'width=800,height=600,menubar=no,toolbar=no,location=no,status=no')
+    const w = window.open('about:blank', id, 'width=800,height=600,menubar=no,toolbar=no,location=no,status=no')
     if (!w) return null
 
     const chartType = config?.chartType ?? 'candle'
@@ -17,16 +17,12 @@ export class WorkspaceDetacher {
     w.document.write(this.buildHtml(id, symbol, interval, chartType, theme))
     w.document.close()
 
-    w.addEventListener('beforeunload', () => {
+    const cleanup = () => {
       this.windows.delete(id)
-    })
+    }
 
-    const checkClosed = setInterval(() => {
-      if (w.closed) {
-        this.windows.delete(id)
-        clearInterval(checkClosed)
-      }
-    }, 1000)
+    w.addEventListener('beforeunload', cleanup)
+    w.addEventListener('unload', cleanup)
 
     this.windows.set(id, w)
     return w

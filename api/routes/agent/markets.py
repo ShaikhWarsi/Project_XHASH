@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import Depends, HTTPException, Query
@@ -89,8 +89,8 @@ async def get_klines(
                 bars = provider.fetch_bars(
                     symbol=symbol,
                     timeframe=tf,
-                    start=datetime(2020, 1, 1),
-                    end=datetime.utcnow(),
+                    start=datetime.fromtimestamp(before_time, tz=timezone.utc) if before_time else datetime(2020, 1, 1, tzinfo=timezone.utc),
+                    end=datetime.now(timezone.utc),
                 )
                 if bars is not None and not bars.empty:
                     data = bars.tail(limit).to_dict(orient="records")

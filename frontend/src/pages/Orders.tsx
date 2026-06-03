@@ -30,7 +30,7 @@ export default function Orders() {
   const [filterStatus, setFilterStatus] = useUrlState('filter', 'all')
   const [batchMode, setBatchMode] = useState(false)
   const [batchSelection, setBatchSelection] = useState<string[]>([])
-  const { push: pushUndo, undo, redo, canUndo, canRedo, reset: resetUndo } = useUndoRedo<OrderResponse[]>(orders)
+  const { push: pushUndo, undo, redo, canUndo, canRedo, reset: _resetUndo } = useUndoRedo<OrderResponse[]>(orders)
 
   const wsOrders = useWebSocket<{ type: string; data: OrderResponse[] }>('/ws/orders', { maxRetries: 999 })
 

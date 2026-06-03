@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 import pandas as pd
@@ -213,7 +213,13 @@ class Order:
     reason: str = ""
     signal_ids: list[str] = field(default_factory=list)
     order_id: Optional[str] = None
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    bracket_take_profit: Optional[float] = None
+    bracket_stop_loss: Optional[float] = None
+    oco_price: Optional[float] = None
+    oco_stop_price: Optional[float] = None
+    oco_symbol: Optional[str] = None
+    parent_order_id: Optional[str] = None
 
     def to_dict(self) -> dict:
         return {
@@ -225,6 +231,12 @@ class Order:
             "stop_price": self.stop_price,
             "reason": self.reason,
             "order_id": self.order_id,
+            "bracket_take_profit": self.bracket_take_profit,
+            "bracket_stop_loss": self.bracket_stop_loss,
+            "oco_price": self.oco_price,
+            "oco_stop_price": self.oco_stop_price,
+            "oco_symbol": self.oco_symbol,
+            "parent_order_id": self.parent_order_id,
         }
 
 
@@ -235,7 +247,7 @@ class Fill:
     side: OrderSide
     quantity: int
     price: float
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     commission: float = 0.0
 
 

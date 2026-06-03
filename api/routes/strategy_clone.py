@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import copy
 import logging
 import uuid
@@ -12,6 +13,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/strategies", tags=["strategies"])
 
 _cloned_strategies: dict[str, dict[str, Any]] = {}
+_clone_lock = asyncio.Lock()
 
 
 @router.post("/{strategy_id}/clone")
@@ -41,10 +43,11 @@ async def clone_strategy(strategy_id: str) -> dict[str, Any]:
             config["cloned_from"] = strategy_id
             config["clone_id"] = new_id
 
-        _cloned_strategies[new_id] = config
+        async with _clone_lock:
+            _cloned_strategies[new_id] = config
 
-        if hasattr(sm, "strategies") and isinstance(sm.strategies, dict):
-            sm.strategies[new_id] = copy.deepcopy(config)
+            if hasattr(sm, "strategies") and isinstance(sm.strategies, dict):
+                sm.strategies[new_id] = copy.deepcopy(config)
 
         return {
             "original_id": strategy_id,

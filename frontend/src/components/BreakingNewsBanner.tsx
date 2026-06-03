@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { fetchCompanyNews } from '../api/client'
-import { useToastStore } from '../store/toast'
 
 interface NewsItem {
   title: string
@@ -9,24 +8,6 @@ interface NewsItem {
   priority: 'flash' | 'urgent' | 'normal'
   timestamp: string
 }
-
-const NEWS_ROTATION: NewsItem[][] = [
-  [
-    { title: 'Fed holds rates steady at 5.50% as inflation moderates', source: 'Bloomberg', url: '', priority: 'flash', timestamp: new Date().toISOString() },
-    { title: 'S&P 500 hits fresh all-time high above 5,500', source: 'Reuters', url: '', priority: 'urgent', timestamp: new Date().toISOString() },
-    { title: 'Oil prices surge 3% on Middle East supply concerns', source: 'CNBC', url: '', priority: 'normal', timestamp: new Date().toISOString() },
-  ],
-  [
-    { title: 'Treasury yields dip as bond market rallies on GDP data', source: 'Bloomberg', url: '', priority: 'flash', timestamp: new Date().toISOString() },
-    { title: 'NVDA earnings beat estimates, stock up 8% in after-hours', source: 'Reuters', url: '', priority: 'urgent', timestamp: new Date().toISOString() },
-    { title: 'JP Morgan raises S&P 500 year-end target to 6,000', source: 'CNBC', url: '', priority: 'normal', timestamp: new Date().toISOString() },
-  ],
-  [
-    { title: 'EUR/USD breaks above 1.12 for first time since 2023', source: 'Bloomberg', url: '', priority: 'flash', timestamp: new Date().toISOString() },
-    { title: 'VIX spikes 15% as geopolitical tensions escalate', source: 'Reuters', url: '', priority: 'urgent', timestamp: new Date().toISOString() },
-    { title: 'Gold hits new record above $2,500/oz on safe-haven demand', source: 'CNBC', url: '', priority: 'normal', timestamp: new Date().toISOString() },
-  ],
-]
 
 const PRIORITY_COLORS: Record<string, string> = {
   flash: 'var(--accent-red)',
@@ -41,15 +22,14 @@ const PRIORITY_LABELS: Record<string, string> = {
 }
 
 export default function BreakingNewsBanner() {
-  const [visible] = useState(true)
-  const [newsSet, setNewsSet] = useState(0)
-  const [items, setItems] = useState(NEWS_ROTATION[0])
+  const [items, setItems] = useState<NewsItem[]>([])
   const [dismissed, setDismissed] = useState<Set<number>>(new Set())
+  const [currentIdx, setCurrentIdx] = useState(0)
 
   useEffect(() => {
     fetchCompanyNews('AAPL').then((articles) => {
       if (articles?.length) {
-        setItems(articles.slice(0, 5).map((a) => ({
+        setItems(articles.slice(0, 10).map((a) => ({
           title: a.headline,
           source: a.source,
           url: a.url,
@@ -57,23 +37,21 @@ export default function BreakingNewsBanner() {
           timestamp: new Date(a.datetime * 1000).toISOString(),
         })))
       }
-    }).catch(() => {
-      /* news feed unavailable - using rotating mock data */
-    })
+    }).catch(() => {})
   }, [])
 
   useEffect(() => {
-    const rotation = setInterval(() => {
-      setNewsSet((prev) => (prev + 1) % NEWS_ROTATION.length)
-      setItems(NEWS_ROTATION[newsSet])
-    }, 30000)
-    return () => clearInterval(rotation)
-  }, [newsSet])
+    if (items.length <= 1) return
+    const interval = setInterval(() => {
+      setCurrentIdx((prev) => (prev + 1) % items.length)
+    }, 8000)
+    return () => clearInterval(interval)
+  }, [items.length])
 
   const activeItems = items.filter((_, i) => !dismissed.has(i))
-  if (!visible || activeItems.length === 0) return null
+  if (activeItems.length === 0) return null
 
-  const top = activeItems[0]
+  const top = activeItems[currentIdx % activeItems.length]
 
   return (
     <div

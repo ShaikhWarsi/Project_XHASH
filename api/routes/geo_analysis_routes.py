@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from datetime import datetime, timedelta
@@ -87,7 +88,7 @@ async def geo_analysis(req: GeoAnalysisRequest):
     start = today - timedelta(days=req.lookback_days)
 
     try:
-        news = yf.Search(req.symbol, news_count=20).news or []
+        news = await asyncio.to_thread(lambda: yf.Search(req.symbol, news_count=20).news or [])
     except Exception as e:
         logger.warning("Failed to fetch news for %s: %s", req.symbol, e)
         news = []
@@ -114,7 +115,7 @@ async def geo_analysis(req: GeoAnalysisRequest):
     total_penalty = max(total_penalty, -55)
 
     ticker = yf.Ticker(req.symbol)
-    df = ticker.history(period="1mo")
+    df = await asyncio.to_thread(lambda: ticker.history(period="1mo"))
     if not df.empty:
         close = df["Close"]
         change_1d = float(close.pct_change().iloc[-1] * 100 if len(close) > 1 else 0)

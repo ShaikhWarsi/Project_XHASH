@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useLivePrices } from '../contexts/LivePricesContext'
 import { useWebSocket } from '../hooks/useWebSocket'
 import VirtualList from './VirtualList'
@@ -33,16 +33,13 @@ function TradeRow({ trade }: { trade: TradePrint }) {
 
 export default function TimeAndSales({ symbol = '' }: TimeAndSalesProps) {
   const [trades, setTrades] = useState<TradePrint[]>([])
-  const { getPrice, connected: lpConnected } = useLivePrices()
-  const prevPriceRef = useRef<number | null>(null)
-  const hasLiveWsRef = useRef(false)
+  const { connected: lpConnected } = useLivePrices()
 
   const wsUrl = symbol ? `/ws/trades/${symbol.toUpperCase()}` : ''
   const { connected: wsConnected, lastData } = useWebSocket<{ type: string; data: { price: number; size: number; time: string; side: string }[] }>(wsUrl, { maxRetries: 3, retryDelay: 5000 })
 
   useEffect(() => {
     if (lastData?.type === 'trades' && lastData?.data && Array.isArray(lastData.data)) {
-      hasLiveWsRef.current = true
       const newTrades: TradePrint[] = lastData.data.map(t => ({
         price: t.price, size: t.size, time: t.time || new Date().toLocaleTimeString(),
         side: (t.side === 'buy' || t.side === 'sell') ? t.side : 'neutral',
@@ -50,22 +47,6 @@ export default function TimeAndSales({ symbol = '' }: TimeAndSalesProps) {
       setTrades(prev => [...newTrades, ...prev].slice(0, 200))
     }
   }, [lastData])
-
-  useEffect(() => {
-    if (!symbol || hasLiveWsRef.current) return
-    const interval = setInterval(() => {
-      const livePrice = getPrice(symbol.toUpperCase())
-      const price = livePrice?.price ?? (100 + Math.random() * 200)
-      const prev = prevPriceRef.current
-      const side = prev !== null ? (price >= prev ? 'buy' as const : 'sell' as const) : 'neutral' as const
-      prevPriceRef.current = price
-      setTrades(prevTrades => {
-        const next = [{ price, size: Math.random() * 2000 + 100, time: new Date().toLocaleTimeString(), side }, ...prevTrades]
-        return next.slice(0, 200)
-      })
-    }, 2000)
-    return () => clearInterval(interval)
-  }, [symbol, getPrice])
 
   const renderTrade = useCallback((trade: TradePrint) => <TradeRow trade={trade} />, [])
 

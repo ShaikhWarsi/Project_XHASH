@@ -69,7 +69,7 @@ export default function StockSearch({ onSelect, label = 'Search stocks...', rend
     if (onSelect) {
       onSelect(symbol)
     } else {
-      navigate(`/chart?symbol=${symbol}`)
+      navigate(`/markets/chart?symbol=${symbol}`)
     }
   }
 

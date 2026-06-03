@@ -1,7 +1,7 @@
-import type { IndicatorPreset } from '../drawings/indicators/IndicatorManager'
+import type { IndicatorParams } from '../drawings/indicators/IndicatorManager'
 
 interface IndicatorParamsProps {
-  preset: IndicatorPreset
+  preset: IndicatorParams
   params: Record<string, number>
   onChange: (params: Record<string, number>) => void
   onConfirm: () => void
@@ -26,7 +26,7 @@ export function IndicatorParams({ preset, params, onChange, onConfirm, onCancel 
           <label style={{ color: 'var(--text-secondary, #5d6b7e)', display: 'block', marginBottom: '2px', fontSize: '10px' }}>{key}</label>
           <input
             type="number"
-            value={params[key] ?? preset.defaultParams[key]}
+            value={(params as any)[key] ?? (preset as any).defaultParams[key]}
             onChange={(e) => onChange({ ...params, [key]: Number(e.target.value) })}
             style={{
               width: '100%', padding: '3px 6px', background: '#1a2332',

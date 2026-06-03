@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import Optional
 
@@ -49,8 +50,12 @@ async def stream_agent_job(
         raise HTTPException(status_code=404, detail="Job not found")
 
     async def event_generator():
-        async for event in stream_progress(job_id, since_seq=since_seq):
-            yield f"data: {json.dumps(event)}\n\n"
+        try:
+            async with asyncio.timeout(300):
+                async for event in stream_progress(job_id, since_seq=since_seq):
+                    yield f"data: {json.dumps(event)}\n\n"
+        except asyncio.TimeoutError:
+            yield f"data: {json.dumps({'type': 'timeout', 'message': 'Stream timed out'})}\n\n"
 
     return StreamingResponse(
         event_generator(),

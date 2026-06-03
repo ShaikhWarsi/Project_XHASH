@@ -300,8 +300,9 @@ export class PatternDetector {
 
     if (!bothUp && !bothDown) return null
 
-    const converging = Math.abs(highSlope) < Math.abs(lowSlope) ||
-                       Math.abs(highSlope) > Math.abs(lowSlope)
+    const converging = bothUp
+      ? highSlope < lowSlope   // highs rise slower than lows -> converging upward
+      : highSlope > lowSlope   // lows fall slower than highs -> converging downward
 
     if (!converging) return null
 

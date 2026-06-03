@@ -1,16 +1,30 @@
 from __future__ import annotations
 
+import hmac
+import hashlib
+import logging
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 class TradingViewIntegration:
-    """TradingView webhook receiver.
+    """TradingView webhook receiver with HMAC verification.
 
     Parses TradingView alert payloads and converts to Orders.
     """
 
     def __init__(self, secret: Optional[str] = None):
-        self.secret = secret
+        if secret:
+            self._secret = secret.encode("utf-8")
+        else:
+            self._secret = None
+
+    def verify_signature(self, payload: bytes, signature: str) -> bool:
+        if self._secret is None:
+            return True
+        expected = hmac.new(self._secret, payload, hashlib.sha256).hexdigest()
+        return hmac.compare_digest(expected, signature)
 
     def parse_alert(self, payload: dict) -> Optional[dict]:
         """Parse a TradingView webhook alert into a normalized order dict."""

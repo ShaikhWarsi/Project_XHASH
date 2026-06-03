@@ -44,6 +44,8 @@ def _fetch_data(symbol: str, interval: str, period_days: int, provider: str) -> 
             "30m": "30m",
             "1h": "60m",
             "1d": "1d",
+            "1wk": "1wk",
+            "1mo": "1mo",
         }
         yf_interval = interval_map.get(interval, "15m")
         df = ticker.history(period=period, interval=yf_interval)

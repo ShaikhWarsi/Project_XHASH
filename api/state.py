@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import concurrent.futures
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from analytics.attribution import AttributionResult
@@ -12,6 +13,17 @@ from core.enums import OrderSide, SignalType, SignalDir, RegimeType
 from core.types import PortfolioState, SignalMatrix, Position, QuantSignal, RegimeState
 
 logger = logging.getLogger(__name__)
+
+
+_sync_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+
+def _sync_run(coro):
+    """Safely run a coroutine from synchronous code without event loop conflicts."""
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+    return _sync_executor.submit(asyncio.run, coro).result()
 
 MAX_HISTORY_SIZE = 10000
 
@@ -43,7 +55,7 @@ class AppState:
         async with self._lock:
             self._portfolio = deepcopy(value)
             self._portfolio_history.append({
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "total_value": value.total_value,
                 "cash": value.cash,
             })
@@ -103,7 +115,7 @@ class AppState:
             sig = self._signals.to_dict() if self._signals else {}
 
         return {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "portfolio": {
                 "cash": p.cash,
                 "total_value": p.total_value,
@@ -153,112 +165,56 @@ class AppState:
 
     @property
     def portfolio(self) -> PortfolioState:
-        loop = asyncio.new_event_loop()
-        try:
-            return loop.run_until_complete(self.async_get_portfolio())
-        finally:
-            loop.close()
+        return _sync_run(self.async_get_portfolio())
 
     @portfolio.setter
     def portfolio(self, value: PortfolioState):
-        loop = asyncio.new_event_loop()
-        try:
-            loop.run_until_complete(self.async_set_portfolio(value))
-        finally:
-            loop.close()
+        _sync_run(self.async_set_portfolio(value))
 
     @property
     def signals(self) -> Optional[SignalMatrix]:
-        loop = asyncio.new_event_loop()
-        try:
-            return loop.run_until_complete(self.async_get_signals())
-        finally:
-            loop.close()
+        return _sync_run(self.async_get_signals())
 
     @signals.setter
     def signals(self, value: SignalMatrix):
-        loop = asyncio.new_event_loop()
-        try:
-            loop.run_until_complete(self.async_set_signals(value))
-        finally:
-            loop.close()
+        _sync_run(self.async_set_signals(value))
 
     @property
     def metrics(self) -> Optional[PerformanceMetrics]:
-        loop = asyncio.new_event_loop()
-        try:
-            return loop.run_until_complete(self.async_get_metrics())
-        finally:
-            loop.close()
+        return _sync_run(self.async_get_metrics())
 
     @metrics.setter
     def metrics(self, value: PerformanceMetrics):
-        loop = asyncio.new_event_loop()
-        try:
-            loop.run_until_complete(self.async_set_metrics(value))
-        finally:
-            loop.close()
+        _sync_run(self.async_set_metrics(value))
 
     @property
     def attribution(self) -> Optional[AttributionResult]:
-        loop = asyncio.new_event_loop()
-        try:
-            return loop.run_until_complete(self.async_get_attribution())
-        finally:
-            loop.close()
+        return _sync_run(self.async_get_attribution())
 
     @attribution.setter
     def attribution(self, value: AttributionResult):
-        loop = asyncio.new_event_loop()
-        try:
-            loop.run_until_complete(self.async_set_attribution(value))
-        finally:
-            loop.close()
+        _sync_run(self.async_set_attribution(value))
 
     @property
     def open_orders(self) -> list[dict]:
-        loop = asyncio.new_event_loop()
-        try:
-            return loop.run_until_complete(self.async_get_open_orders())
-        finally:
-            loop.close()
+        return _sync_run(self.async_get_open_orders())
 
     def set_open_orders(self, orders: list[dict]):
-        loop = asyncio.new_event_loop()
-        try:
-            loop.run_until_complete(self.async_set_open_orders(orders))
-        finally:
-            loop.close()
+        _sync_run(self.async_set_open_orders(orders))
 
     @property
     def portfolio_history(self) -> list[dict]:
-        loop = asyncio.new_event_loop()
-        try:
-            return loop.run_until_complete(self.async_get_portfolio_history())
-        finally:
-            loop.close()
+        return _sync_run(self.async_get_portfolio_history())
 
     @property
     def trades(self) -> list[dict]:
-        loop = asyncio.new_event_loop()
-        try:
-            return loop.run_until_complete(self.async_get_trades())
-        finally:
-            loop.close()
+        return _sync_run(self.async_get_trades())
 
     def add_trade(self, trade: dict):
-        loop = asyncio.new_event_loop()
-        try:
-            loop.run_until_complete(self.async_add_trade(trade))
-        finally:
-            loop.close()
+        _sync_run(self.async_add_trade(trade))
 
     def snapshot(self) -> dict:
-        loop = asyncio.new_event_loop()
-        try:
-            return loop.run_until_complete(self.async_snapshot())
-        finally:
-            loop.close()
+        return _sync_run(self.async_snapshot())
 
 
 app_state = AppState()
@@ -267,7 +223,7 @@ app_state = AppState()
 async def seed_demo_data():
     """Populate AppState with realistic demo data for development."""
     from datetime import timedelta
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     # --- Positions ---
     positions = {

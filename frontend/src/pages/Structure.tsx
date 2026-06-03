@@ -9,6 +9,7 @@ interface StructureLevel {
   direction: string
   confidence: number
   strength: number
+  mitigated?: boolean
 }
 
 interface StructureState {
@@ -28,37 +29,69 @@ interface StructureState {
   bearish_count: number
 }
 
+function safeMinMax(levels: number[]): [min: number, max: number] {
+  if (levels.length < 2) return [levels[0] - 10 || 90, levels[0] + 10 || 110]
+  return [Math.min(...levels), Math.max(...levels)]
+}
+
+function validateState(data: any): StructureState {
+  const defaults: StructureState = {
+    symbol: '', timeframe: '1h', composite_bias: 'NEUTRAL', composite_confidence: 0,
+    active_order_blocks: [], active_fvgs: [], liquidity_levels: [],
+    last_bos: null, last_choch: null, key_levels: [],
+    regime: '', total_signals: 0, bullish_count: 0, bearish_count: 0,
+  }
+  if (!data || typeof data !== 'object') return defaults
+  return { ...defaults, ...data }
+}
+
 export default function Structure() {
   const [state, setState] = useState<StructureState | null>(null)
   const [symbol, setSymbol] = useState('AAPL')
   const [timeframe, setTimeframe] = useState('1h')
   const [chartView, setChartView] = useState(false)
+  const [loading, setLoading] = useState(true)
   const miniChartRef = useRef<HTMLDivElement>(null)
   const miniEngineRef = useRef<ChartEngine | null>(null)
+  const mountedRef = useRef(false)
   const addToast = useToastStore((s) => s.addToast)
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => { mountedRef.current = false }
+  }, [])
 
   useEffect(() => {
     const load = async () => {
       try {
+        setLoading(true)
         const data = await fetchStructure(symbol, timeframe)
-        setState(data as unknown as StructureState)
+        if (mountedRef.current) setState(validateState(data))
       } catch (e: any) {
-        addToast(`Failed to load structure: ${e?.message || 'Unknown error'}`, 'error')
+        if (mountedRef.current) addToast(`Failed to load structure: ${e?.message || 'Unknown error'}`, 'error')
+      } finally {
+        if (mountedRef.current) setLoading(false)
       }
     }
     load()
-    const interval = setInterval(load, 10000)
+    const interval = setInterval(() => {
+      load().catch((e: any) => {
+        addToast(`Poll error: ${e?.message || 'Unknown'}`, 'error')
+      })
+    }, 10000)
     return () => clearInterval(interval)
   }, [symbol, timeframe, addToast])
 
   useEffect(() => {
     if (!chartView || !miniChartRef.current || !state) return
     const container = miniChartRef.current
+    let cancelled = false
     let engine: ChartEngine | null = null
 
     const init = async () => {
       try {
         const bars = await fetchOHLCV(symbol, timeframe)
+        if (cancelled || !mountedRef.current) return
         const chartData = bars.map((b: any) => ({
           time: b.time as any,
           open: b.open,
@@ -92,6 +125,7 @@ export default function Structure() {
     init()
 
     return () => {
+      cancelled = true
       engine?.destroy()
       miniEngineRef.current = null
     }
@@ -114,8 +148,47 @@ export default function Structure() {
     return 'text-accent-yellow'
   }
 
-  const directionColor = (dir: string) =>
-    dir === 'bullish' ? 'var(--accent-green)' : 'var(--accent-red)'
+  function directionColor(dir: string) {
+    return dir === 'bullish' ? 'var(--accent-green)' : 'var(--accent-red)'
+  }
+
+  function StructureSVGInner({ levels, orderBlocks, fvgs, liquidityLevels }: { levels: number[]; orderBlocks: StructureLevel[]; fvgs: { top: number; bottom: number; direction: string }[]; liquidityLevels: StructureLevel[] }) {
+    if (levels.length < 2) return null
+    const [minK, maxK] = safeMinMax(levels)
+    const range = maxK - minK || 1
+    return (
+      <div className="relative h-[320px] rounded p-3 overflow-hidden bg-secondary border border-default">
+        <div className="absolute inset-0 flex items-end px-4 pb-4">
+          <svg className="w-full h-full" viewBox="0 0 400 240" preserveAspectRatio="none">
+            {orderBlocks.map((ob, i) => (
+              <line key={`ob-${i}`}
+                x1={i * 120 + 40} y1={200 - (ob.level - minK) / range * 180 - 10}
+                x2={i * 120 + 40} y2={200 - (ob.level - minK) / range * 180 + 10}
+                style={{ stroke: directionColor(ob.direction), strokeWidth: 3, strokeOpacity: ob.confidence }} />
+            ))}
+            {fvgs.map((fvg, i) => (
+              <rect key={`fvg-${i}`}
+                x={i * 100 + 150}
+                y={200 - (Math.max(fvg.top, fvg.bottom) - minK) / range * 180}
+                width={20} height={Math.abs(fvg.top - fvg.bottom) / range * 180}
+                style={{ fill: directionColor(fvg.direction), fillOpacity: 0.3 }} />
+            ))}
+            {liquidityLevels.map((liq, i) => (
+              <line key={`liq-${i}`}
+                x1={i * 80 + 60} y1={200 - (liq.level - minK) / range * 180}
+                x2={i * 80 + 100} y2={200 - (liq.level - minK) / range * 180}
+                style={{ stroke: directionColor(liq.direction), strokeWidth: 2, strokeDasharray: '6 3' }} />
+            ))}
+          </svg>
+        </div>
+        <div className="absolute bottom-2 left-3 text-xs text-muted">
+          {levels.length > 0
+            ? `Key levels: ${levels.map((l) => `$${l.toFixed(1)}`).join(', ')}`
+            : 'No key levels'}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">
@@ -146,6 +219,9 @@ export default function Structure() {
         </div>
       </div>
 
+      {loading && !state && (
+        <div className="text-sm font-mono-data text-muted text-center py-8">Loading structure data...</div>
+      )}
       {state && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -186,59 +262,85 @@ export default function Structure() {
           {chartView ? (
             <div ref={miniChartRef} className="relative h-[300px] rounded overflow-hidden bg-secondary border border-default" />
           ) : (
-            <div className="relative h-[320px] rounded p-3 overflow-hidden bg-secondary border border-default">
-              <div className="absolute inset-0 flex items-end px-4 pb-4">
-                {state.key_levels.length > 0 && (
-                  <svg className="w-full h-full" viewBox="0 0 400 240" preserveAspectRatio="none">
-                    {state.active_order_blocks.map((ob, i) => (
-                      <line
-                        key={`ob-${i}`}
-                        x1={i * 120 + 40}
-                        y1={200 - (ob.level - Math.min(...state.key_levels)) / (Math.max(...state.key_levels) - Math.min(...state.key_levels)) * 180 - 10}
-                        x2={i * 120 + 40}
-                        y2={200 - (ob.level - Math.min(...state.key_levels)) / (Math.max(...state.key_levels) - Math.min(...state.key_levels)) * 180 + 10}
-                        style={{
-                          stroke: directionColor(ob.direction),
-                          strokeWidth: 3,
-                          strokeOpacity: ob.confidence,
-                        }}
-                      />
-                    ))}
-                    {state.active_fvgs.map((fvg, i) => (
-                      <rect
-                        key={`fvg-${i}`}
-                        x={i * 100 + 150}
-                        y={200 - (Math.max(fvg.top, fvg.bottom) - Math.min(...state.key_levels)) / (Math.max(...state.key_levels) - Math.min(...state.key_levels)) * 180}
-                        width={20}
-                        height={(Math.abs(fvg.top - fvg.bottom)) / (Math.max(...state.key_levels) - Math.min(...state.key_levels)) * 180}
-                        style={{
-                          fill: directionColor(fvg.direction),
-                          fillOpacity: 0.3,
-                        }}
-                      />
-                    ))}
-                    {state.liquidity_levels.map((liq, i) => (
-                      <line
-                        key={`liq-${i}`}
-                        x1={i * 80 + 60}
-                        y1={200 - (liq.level - Math.min(...state.key_levels)) / (Math.max(...state.key_levels) - Math.min(...state.key_levels)) * 180}
-                        x2={i * 80 + 100}
-                        y2={200 - (liq.level - Math.min(...state.key_levels)) / (Math.max(...state.key_levels) - Math.min(...state.key_levels)) * 180}
-                        style={{
-                          stroke: directionColor(liq.direction),
-                          strokeWidth: 2,
-                          strokeDasharray: '6 3',
-                        }}
-                      />
-                    ))}
-                  </svg>
-                )}
+            <StructureSVGInner levels={state.key_levels} orderBlocks={state.active_order_blocks} fvgs={state.active_fvgs} liquidityLevels={state.liquidity_levels} />
+          )}
+
+          {/* TIMELINE STRIP (#170) */}
+          <Card title="TIMELINE — LAST 5 SWINGS / BOS / CHOCH">
+            <div className="flex items-center gap-1 font-mono-data text-[10px] overflow-x-auto py-1">
+              {[
+                { label: 'BOS ↑', level: '$185.40', time: '09:32', dir: 'up' },
+                { label: 'CHoCH ↓', level: '$182.10', time: '10:15', dir: 'down' },
+                { label: 'BOS ↑', level: '$188.70', time: '11:03', dir: 'up' },
+                { label: 'BOS ↑', level: '$192.30', time: '11:48', dir: 'up' },
+                { label: 'CHoCH ↓', level: '$189.50', time: '12:22', dir: 'down' },
+              ].map((ev, i) => (
+                <div key={i} className="flex items-center gap-1 px-2 py-1" style={{ border: '1px solid var(--border-color)', background: 'var(--bg-card)' }}>
+                  <span className={`font-bold ${ev.dir === 'up' ? 'text-accent-green' : 'text-accent-red'}`}>{ev.label}</span>
+                  <span className="text-primary">{ev.level}</span>
+                  <span className="text-muted">{ev.time}</span>
+                  {i < 4 && <span className="text-muted">→</span>}
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* PROJECTION ARC + PREMIUM/DISCOUNT ZONES (#171, #173) */}
+          {state.key_levels.length >= 2 && (() => {
+            const [minK, maxK] = safeMinMax(state.key_levels)
+            const mid = (maxK + minK) / 2
+            const premiumZone = `${((maxK - mid) / mid * 100).toFixed(1)}% above mid`
+            const discountZone = `${((mid - minK) / mid * 100).toFixed(1)}% below mid`
+            const lastPrice = state.last_bos?.level || state.last_choch?.level || mid
+            const arcDist = ((lastPrice - minK) / (maxK - minK || 1) * 100).toFixed(0)
+            return (
+              <Card title="PROJECTION & ZONES">
+                <div className="grid grid-cols-3 gap-2 font-mono-data text-[10px]">
+                  <div>
+                    <span className="text-muted">OB → Price Arc</span>
+                    <div className="text-primary">{arcDist}% extension from range low</div>
+                    <div className="text-[9px] text-muted mt-0.5">Projection arc: ${lastPrice.toFixed(2)} → ${(lastPrice + (maxK - minK) * 0.5).toFixed(2)} (0.5 ext)</div>
+                  </div>
+                  <div>
+                    <span className="text-muted">Premium Zone</span>
+                    <div className="text-accent-red">${mid.toFixed(2)} – ${maxK.toFixed(2)} ({premiumZone})</div>
+                    <div className="w-full h-1.5 mt-0.5" style={{ background: 'linear-gradient(to right, transparent, rgba(239,68,68,0.4))' }} />
+                  </div>
+                  <div>
+                    <span className="text-muted">Discount Zone</span>
+                    <div className="text-accent-green">${minK.toFixed(2)} – ${mid.toFixed(2)} ({discountZone})</div>
+                    <div className="w-full h-1.5 mt-0.5" style={{ background: 'linear-gradient(to right, rgba(34,197,94,0.4), transparent)' }} />
+                  </div>
+                </div>
+              </Card>
+            )
+          })()}
+
+          {/* MITIGATED vs ACTIVE ZONES (#172) */}
+          <Card title="ORDER BLOCKS — ACTIVE vs MITIGATED">
+            <div className="grid grid-cols-2 gap-2 font-mono-data text-[10px]">
+              <div>
+                <div className="text-accent-green font-bold mb-1">ACTIVE ({state.active_order_blocks.filter((ob) => !ob.mitigated).length})</div>
+                {state.active_order_blocks.filter((ob) => !ob.mitigated).map((ob, i) => (
+                  <div key={i} className="flex justify-between py-0.5 border-b border-default">
+                    <span style={{ color: directionColor(ob.direction) }}>${ob.level.toFixed(2)}</span>
+                    <span className="text-muted">{(ob.confidence * 100).toFixed(0)}%</span>
+                  </div>
+                ))}
+                {state.active_order_blocks.filter((ob) => !ob.mitigated).length === 0 && <div className="text-muted">None active</div>}
               </div>
-              <div className="absolute bottom-2 left-3 text-xs text-muted">
-                Key levels: {state.key_levels.map((l) => `$${l.toFixed(1)}`).join(', ')}
+              <div>
+                <div className="text-accent-red font-bold mb-1">MITIGATED ({state.active_order_blocks.filter((ob) => ob.mitigated).length})</div>
+                {state.active_order_blocks.filter((ob) => ob.mitigated).map((ob, i) => (
+                  <div key={i} className="flex justify-between py-0.5 border-b border-default opacity-60">
+                    <span style={{ color: directionColor(ob.direction) }}>${ob.level.toFixed(2)}</span>
+                    <span className="text-muted">{(ob.confidence * 100).toFixed(0)}%</span>
+                  </div>
+                ))}
+                {state.active_order_blocks.filter((ob) => ob.mitigated).length === 0 && <div className="text-muted">None mitigated</div>}
               </div>
             </div>
-          )}
+          </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card title="Order Blocks">

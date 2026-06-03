@@ -1,5 +1,7 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { MessageSquare, X, CornerUpRight, Pin, PinOff } from 'lucide-react'
+
+const STORAGE_KEY = 'chart_annotations'
 
 export interface ChartAnnotation {
   id: string
@@ -19,9 +21,16 @@ interface ChartAnnotationsProps {
   currentTime?: string | number
 }
 
+function persistAnnotations(annotations: ChartAnnotation[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(annotations))
+  } catch { /* ignore */ }
+}
+
 const COLORS = ['var(--accent-cyan)', 'var(--accent-green)', 'var(--accent-yellow)', 'var(--accent-purple)', 'var(--accent-orange)']
 
 export default function ChartAnnotations({ annotations, onAdd, onRemove, onPin, currentTime }: ChartAnnotationsProps) {
+  useEffect(() => { persistAnnotations(annotations) }, [annotations])
   const [showForm, setShowForm] = useState(false)
   const [text, setText] = useState('')
   const [selectedColor, setSelectedColor] = useState(COLORS[0])

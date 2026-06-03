@@ -4,6 +4,7 @@ import Badge from '../components/ui/Badge'
 import { fetchExperiments, createExperiment, runExperiment, structuredTune, aiOptimize } from '../api/experiments'
 import type { Experiment } from '../api/experiments'
 import { useToastStore } from '../store/toast'
+import { fmtDateTime } from '../utils/format'
 
 const FONT_MONO = { fontFamily: "'JetBrains Mono', monospace" }
 const FONT_SM = { ...FONT_MONO, fontSize: 10 }
@@ -169,7 +170,7 @@ export default function ExperimentLab() {
                         />
                       </div>
                       <div style={{ ...FONT_SM, color: 'var(--text-muted)' }}>
-                        {new Date(exp.created_at).toLocaleString()} · {exp.id.slice(0, 8)}
+                        {fmtDateTime(exp.created_at)} · {exp.id.slice(0, 8)}
                       </div>
                     </div>
                     <button

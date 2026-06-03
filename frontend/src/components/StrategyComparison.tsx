@@ -24,8 +24,8 @@ const COMPARISON_METRICS: ComparisonEntry[] = [
   { label: 'Profit Factor', key: 'profit_factor', format: (v) => v.toFixed(2), higher: 'up' },
   { label: 'Trades', key: 'total_trades', format: (v) => String(v), higher: 'neutral' },
   { label: 'Ann Return', key: 'annualized_return', format: (v) => `${(v * 100).toFixed(2)}%`, higher: 'up' },
-  { label: 'Calmar', key: 'calmar_ratio', format: (v) => v?.toFixed(2) ?? '—', higher: 'up' },
-  { label: 'Ann Vol', key: 'annualized_vol', format: (v) => `${(v * 100).toFixed(1)}%`, higher: 'down' },
+  { label: 'Calmar', key: 'calmar_ratio' as keyof BacktestResult, format: (v) => v?.toFixed(2) ?? '—', higher: 'up' },
+  { label: 'Ann Vol', key: 'annualized_vol' as keyof BacktestResult, format: (v) => `${(v * 100).toFixed(1)}%`, higher: 'down' },
 ]
 
 function determineWinner(metric: ComparisonEntry, a: number, b: number): 0 | 1 | 2 {
@@ -60,7 +60,7 @@ export default function StrategyComparison() {
   const all = result ? [result, ...comparisonResults] : comparisonResults
 
   const paramDiffs: ParamDiff[] = all.length >= 2
-    ? Object.keys(all[0]?.config || {}).map((key) => ({
+    ? Object.keys((all[0] as any)?.config || {}).map((key) => ({
         param: key,
         baseline: String((all[0] as any)?.config?.[key] ?? ''),
         compare: String((all[1] as any)?.config?.[key] ?? ''),

@@ -8,14 +8,24 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from persistence import get_session
 from persistence.repositories import AlertRepository, WatchlistRepository
 
-from data.providers.finnhub import FinnhubDataSource
-from data.providers.yfinance import YFinanceDataSource
+class QuoteItem(BaseModel):
+    c: float
+    d: float
+    dp: float
+    h: float
+    l: float
+    o: float
+    pc: float
+
 
 router = APIRouter(prefix="/market", tags=["market-data"])
 
@@ -28,15 +38,17 @@ def _get_finnhub() -> FinnhubDataSource:
     global _finnhub
     with _market_lock:
         if _finnhub is None:
+            from data.providers.finnhub import FinnhubDataSource
             _finnhub = FinnhubDataSource()
         return _finnhub
 
 
-def _get_yfinance() -> YFinanceDataSource:
+def _get_yfinance():
     global _yfinance
     with _market_lock:
         if _yfinance is None:
-            _yfinance = YFinanceDataSource()
+            from data.yfinance_provider import YFinanceProvider
+            _yfinance = YFinanceProvider()
         return _yfinance
 
 
@@ -108,6 +120,8 @@ async def get_quotes(symbols: str = "SPY,QQQ"):
             except Exception as e2:
                 logger.warning("Fallback quote failed for %s: %s", sym, e2)
                 result[sym] = None
+    if not result or all(v is None for v in result.values()):
+        raise HTTPException(status_code=404, detail="No quote data available for requested symbols")
     return result
 
 
@@ -151,13 +165,10 @@ async def get_watchlist(user_id: str = "default", session: AsyncSession = Depend
 
 
 @router.post("/watchlist")
-async def add_to_watchlist(body: dict, session: AsyncSession = Depends(get_session)):
-    user_id = body.get("user_id", "default")
-    symbol = body.get("symbol", "").upper()
-    company = body.get("company", symbol)
-    if not symbol:
-        raise HTTPException(status_code=400, detail="Symbol required")
-    item = await WatchlistRepository.add_item(session, user_id, symbol, company)
+async def add_to_watchlist(body: WatchlistAddRequest, session: AsyncSession = Depends(get_session)):
+    symbol = body.symbol.upper()
+    company = body.company or symbol
+    item = await WatchlistRepository.add_item(session, body.user_id, symbol, company)
     items = await WatchlistRepository.list_items(session, user_id)
     return {
         "watchlist": [
@@ -206,18 +217,14 @@ async def get_alerts(user_id: str = "default", session: AsyncSession = Depends(g
 
 
 @router.post("/alerts")
-async def create_alert(body: dict, session: AsyncSession = Depends(get_session)):
-    user_id = body.get("user_id", "default")
-    symbol = body.get("symbol", "").upper()
-    target_price = body.get("target_price")
-    condition = body.get("condition", "ABOVE")
-
-    if not symbol or target_price is None:
-        raise HTTPException(status_code=400, detail="symbol and target_price required")
-    if condition not in ("ABOVE", "BELOW"):
+async def create_alert(body: AlertCreateRequest, session: AsyncSession = Depends(get_session)):
+    symbol = body.symbol.upper()
+    if not symbol:
+        raise HTTPException(status_code=400, detail="symbol required")
+    if body.condition not in ("ABOVE", "BELOW"):
         raise HTTPException(status_code=400, detail="condition must be ABOVE or BELOW")
 
-    alert = await AlertRepository.create_alert(session, user_id, symbol, float(target_price), condition)
+    alert = await AlertRepository.create_alert(session, body.user_id, symbol, body.target_price, body.condition)
     return {
         "alert": {
             "id": alert.id,

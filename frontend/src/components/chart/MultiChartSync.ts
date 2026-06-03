@@ -21,6 +21,7 @@ export class MultiChartSync {
   private _currentTime: Time | null = null
   private _currentIndex: number = 0
   private _totalLength: number = 0
+  private _updating = false
 
   register(chart: ChartInstance, onSeek?: (index: number) => void): void {
     this.charts.set(chart.id, chart)
@@ -56,15 +57,21 @@ export class MultiChartSync {
   }
 
   syncCrosshairTime(time: Time | null): void {
+    if (this._updating) return
+    this._updating = true
     this._currentTime = time
-    for (const { chart } of this.charts.values()) {
-      try {
-        if (time) {
-          ;(chart as any).crosshair().setPosition(time as any, 0)
-        } else {
-          ;(chart as any).crosshair().clearPosition()
-        }
-      } catch {}
+    try {
+      for (const { chart } of this.charts.values()) {
+        try {
+          if (time) {
+            ;(chart as any).crosshair().setPosition(time as any, 0)
+          } else {
+            ;(chart as any).crosshair().clearPosition()
+          }
+        } catch {}
+      }
+    } finally {
+      this._updating = false
     }
   }
 

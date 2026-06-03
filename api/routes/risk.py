@@ -27,7 +27,7 @@ async def get_risk_metrics():
         else:
             mv = getattr(pos, "market_value", 0)
             side = getattr(pos, "side", "LONG")
-        if side == "LONG" or side == "long":
+        if side.upper() == "LONG":
             long_exposure += mv
         else:
             short_exposure += mv
@@ -40,6 +40,7 @@ async def get_risk_metrics():
     heatmap = await get_sector_exposures(positions_data)
 
     return {
+        "_simulated": True,
         "totalExposure": gross_exposure,
         "totalExposurePercent": (gross_exposure / total_value * 100) if total_value else 0,
         "longExposure": long_exposure,

@@ -11,7 +11,7 @@ import traceback
 import uuid
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, AsyncIterator, Callable, Optional
 
 from sqlalchemy import select, update
@@ -68,7 +68,7 @@ def submit_job(
     idempotency_key: Optional[str] = None,
 ) -> dict:
     job_id = _new_job_id()
-    created_at = datetime.utcnow()
+    created_at = datetime.now(timezone.utc)
 
     import asyncio
 
@@ -97,7 +97,7 @@ def submit_job(
     accepts_progress = _runner_accepts_progress(runner)
 
     def _run():
-        _set_status(job_id, "running", started_at=datetime.utcnow())
+        _set_status(job_id, "running", started_at=datetime.now(timezone.utc))
         _publish_progress(job_id, {"phase": "running", "ts": time.time()})
         try:
             if accepts_progress:
@@ -258,7 +258,7 @@ def _set_result(job_id: str, result: Any) -> None:
                 .values(
                     status="succeeded",
                     result=json.dumps(result, default=str),
-                    finished_at=datetime.utcnow(),
+                    finished_at=datetime.now(timezone.utc),
                 )
             )
             await session.commit()
@@ -282,7 +282,7 @@ def _set_failure(job_id: str, error: str) -> None:
                 .values(
                     status="failed",
                     error=error[:6000],
-                    finished_at=datetime.utcnow(),
+                    finished_at=datetime.now(timezone.utc),
                 )
             )
             await session.commit()

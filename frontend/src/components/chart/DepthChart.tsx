@@ -51,6 +51,7 @@ export default function DepthChart({ symbol, data, onClose }: DepthChartProps) {
   useEffect(() => {
     if (!containerRef.current) return
 
+    const depth = generateDepthData(data)
     const container = containerRef.current
     const chart = createChart(container, {
       width: container.clientWidth,
@@ -69,6 +70,15 @@ export default function DepthChart({ symbol, data, onClose }: DepthChartProps) {
       timeScale: {
         borderColor: '#2a2d3e',
         visible: true,
+        ...(depth ? {
+          tickMarkFormatter: (time: number) => {
+            const idx = Math.round(time)
+            if (idx >= 0 && idx < [...depth.bids, ...depth.asks].length) {
+              return [...depth.bids, ...depth.asks][idx].price.toFixed(2)
+            }
+            return ''
+          }
+        } : {}),
       },
       crosshair: {
         vertLine: { labelBackgroundColor: '#3b82f6' },
@@ -109,23 +119,10 @@ export default function DepthChart({ symbol, data, onClose }: DepthChartProps) {
       crosshairMarkerVisible: false,
     })
 
-    const depth = generateDepthData(data)
     if (depth) {
       const { bids, asks } = depth
       const totalLevels = bids.length + asks.length
       const maxVol = Math.max(bids[bids.length - 1].cumVol, asks[asks.length - 1].cumVol)
-
-      const priceMap = [...bids, ...asks].map((l) => l.price)
-
-      chart.timeScale().applyOptions({
-        tickMarkFormatter: (time: number) => {
-          const idx = Math.round(time)
-          if (idx >= 0 && idx < priceMap.length) {
-            return priceMap[idx].toFixed(2)
-          }
-          return ''
-        },
-      })
 
       const bidData: { time: number; value: number }[] = []
       for (let i = 0; i < bids.length; i++) {
@@ -149,9 +146,9 @@ export default function DepthChart({ symbol, data, onClose }: DepthChartProps) {
         { time: midIdx, value: maxVol * 1.1 },
       ]
 
-      bidSeries.setData(bidData)
-      askSeries.setData(askData)
-      midLine.setData(midPriceData)
+      bidSeries.setData(bidData as any)
+      askSeries.setData(askData as any)
+      midLine.setData(midPriceData as any)
       chart.timeScale().fitContent()
     }
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 import numpy as np
@@ -103,7 +103,7 @@ class SignalEngine(ABC):
             confidence=min(max(confidence, 0.0), 1.0),
             symbol=symbol,
             timeframe=timeframe,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             price=price,
             level=level,
             metadata=metadata or {},

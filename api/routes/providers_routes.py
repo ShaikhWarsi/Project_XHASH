@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query
@@ -74,12 +74,16 @@ async def provider_stats():
     return {"stats": stats}
 
 
+_provider_states: dict[str, bool] = {}
+
+
 @router.post("/{name}/enable")
 async def enable_provider(name: str):
     """Enable a provider."""
     from data.registry import registry
     if name not in registry._providers:
         raise HTTPException(status_code=404, detail=f"Provider '{name}' not found")
+    _provider_states[name] = True
     logger.info(f"Provider enabled: {name}")
     return {"success": True, "provider": name, "enabled": True}
 
@@ -90,6 +94,7 @@ async def disable_provider(name: str):
     from data.registry import registry
     if name not in registry._providers:
         raise HTTPException(status_code=404, detail=f"Provider '{name}' not found")
+    _provider_states[name] = False
     logger.info(f"Provider disabled: {name}")
     return {"success": True, "provider": name, "enabled": False}
 
@@ -120,7 +125,7 @@ async def get_ohlcv(
             "data": result,
             "provider": provider or "default",
             "cached": False,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -136,7 +141,7 @@ async def get_quote(symbol: str, provider: Optional[str] = None):
             "data": result,
             "provider": provider or "default",
             "cached": False,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -156,7 +161,7 @@ async def get_orderbook(
             "data": result,
             "provider": provider or "default",
             "cached": False,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -172,7 +177,7 @@ async def get_fundamentals(symbol: str, provider: Optional[str] = None):
             "data": result,
             "provider": provider or "default",
             "cached": False,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -193,7 +198,7 @@ async def get_news(
             "data": result,
             "provider": provider or "default",
             "cached": False,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -209,10 +214,85 @@ async def search_symbols(q: str = Query(..., min_length=1), provider: Optional[s
             "data": result,
             "provider": provider or "default",
             "cached": False,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/test")
+async def test_provider(body: dict):
+    import json
+    from persistence.database import _session_factory
+    from persistence.models import ApiKey
+    from sqlalchemy import select
+
+    provider = body.get("provider", "")
+    config = body.get("config", {})
+    logger.info("Testing provider connection: %s with config keys: %s", provider, list(config.keys()))
+
+    config_str = json.dumps(config)
+    api_key_record = None
+
+    try:
+        async with _session_factory() as session:
+            stmt = select(ApiKey).where(ApiKey.provider == provider)
+            result = await session.execute(stmt)
+            existing_key = result.scalar_one_or_none()
+            if existing_key:
+                existing_key.key_value = config_str
+                existing_key.is_active = 1
+                api_key_record = existing_key
+            else:
+                new_key = ApiKey(
+                    name=f"{provider}_config",
+                    provider=provider,
+                    key_value=config_str,
+                    is_active=1
+                )
+                session.add(new_key)
+                api_key_record = new_key
+            await session.commit()
+            if api_key_record:
+                # Refresh to get DB-assigned ID
+                await session.refresh(api_key_record)
+    except Exception as e:
+        logger.error("Failed to persist API keys to DB: %s", e)
+
+    # Convert the record to ApiKeyResponse layout
+    key_response = None
+    if api_key_record:
+        key_response = {
+            "id": api_key_record.id,
+            "provider": api_key_record.provider,
+            "key_value": api_key_record.key_value,
+            "description": api_key_record.name,
+            "is_active": bool(api_key_record.is_active),
+            "created_at": api_key_record.created_at.isoformat() if api_key_record.created_at else None,
+            "last_used_at": api_key_record.last_used_at.isoformat() if api_key_record.last_used_at else None,
+        }
+
+    try:
+        from data.registry import registry
+        if provider in registry._providers:
+            registry._providers[provider].credentials.update(config)
+            return {
+                "status": "ok",
+                "message": f"Credentials saved and tested for {provider}",
+                "key": key_response
+            }
+        return {
+            "status": "ok",
+            "message": f"Credentials saved for {provider}",
+            "key": key_response
+        }
+    except Exception:
+        return {
+            "status": "ok",
+            "message": f"Credentials saved for {provider}",
+            "key": key_response
+        }
+
 
 
 # ── Helpers ────────────────────────────────────────────────

@@ -17,7 +17,7 @@ export const useSignalStore = create<SignalStore>((set) => ({
   error: null,
 
   load: async () => {
-    set({ loading: true, error: null })
+    set((s) => { if (s.loading) return s; return { loading: true, error: null } })
     try {
       const signals = await fetchSignals()
       set({ signals, loading: false })
@@ -27,8 +27,11 @@ export const useSignalStore = create<SignalStore>((set) => ({
     }
   },
 
-  update: (signals) => {
-    set({ signals })
-    eventBus.emit(EVENTS.REFRESH_REQUESTED, signals)
+  update: (incoming) => {
+    set((s) => {
+      const merged = s.signals ? { ...s.signals, ...incoming } : incoming
+      return { signals: merged }
+    })
+    eventBus.emit(EVENTS.REFRESH_REQUESTED, incoming)
   },
 }))

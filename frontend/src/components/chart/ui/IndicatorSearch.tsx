@@ -1,12 +1,12 @@
 import React from 'react'
 import { PRESET_INDICATORS } from '../drawings/indicators/IndicatorManager'
-import type { IndicatorPreset } from '../drawings/indicators/IndicatorManager'
+import type { IndicatorParams } from '../drawings/indicators/IndicatorManager'
 
 interface IndicatorSearchProps {
-  onSelect: (preset: IndicatorPreset) => void
+  onSelect: (preset: IndicatorParams) => void
   onClose: () => void
   inline?: boolean
-  onAddImmediate?: (preset: IndicatorPreset) => void
+  onAddImmediate?: (preset: IndicatorParams) => void
   searchQuery?: string
 }
 
@@ -15,7 +15,7 @@ export function IndicatorSearch({ onSelect, onClose, inline, onAddImmediate, sea
   const query = searchQuery !== undefined ? searchQuery : internalQuery
   const setQuery = searchQuery !== undefined ? () => {} : setInternalQuery
   const filtered = query
-    ? PRESET_INDICATORS.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()) || p.description.toLowerCase().includes(query.toLowerCase()))
+    ? PRESET_INDICATORS.filter((p) => String(p.name).toLowerCase().includes(query.toLowerCase()) || String(p.description || '').toLowerCase().includes(query.toLowerCase()))
     : PRESET_INDICATORS
 
   if (inline) {
@@ -27,7 +27,7 @@ export function IndicatorSearch({ onSelect, onClose, inline, onAddImmediate, sea
           autoFocus
           placeholder="Search indicators..."
           value={query}
-          onChange={(e) => { setQuery(e); (e as any).stopPropagation?.() }}
+          onChange={(e) => { setQuery(e.target.value); (e as any).stopPropagation?.() }}
           onKeyDown={(e) => { if (e.key === 'Escape') onClose() }}
           style={{
             width: '100%', background: 'transparent', border: 'none', padding: '6px 8px',
@@ -38,7 +38,7 @@ export function IndicatorSearch({ onSelect, onClose, inline, onAddImmediate, sea
         {query && (
           <div style={{ maxHeight: 200, overflowY: 'auto' }}>
             {filtered.slice(0, 12).map((p) => (
-              <div key={p.id}
+              <div key={String(p.id)}
                 onClick={() => onAddImmediate ? onAddImmediate(p) : onSelect(p)}
                 style={{
                   padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
@@ -47,7 +47,7 @@ export function IndicatorSearch({ onSelect, onClose, inline, onAddImmediate, sea
                 onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: p.color }} />
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: (p as any).color }} />
                 <span style={{ flex: 1, color: 'var(--text-primary)' }}>{p.name}</span>
                 <span style={{ color: 'var(--text-muted)', fontSize: 8 }}>{p.category || ''}</span>
               </div>
@@ -82,7 +82,7 @@ export function IndicatorSearch({ onSelect, onClose, inline, onAddImmediate, sea
       <div style={{ maxHeight: '240px', overflowY: 'auto' }}>
         {filtered.map((p) => (
           <div
-            key={p.id}
+            key={String(p.id)}
             onClick={() => onSelect(p)}
             style={{
               padding: '4px 8px', cursor: 'pointer',
@@ -93,7 +93,7 @@ export function IndicatorSearch({ onSelect, onClose, inline, onAddImmediate, sea
             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: p.color, display: 'inline-block' }} />
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: (p as any).color, display: 'inline-block' }} />
               <span>{p.name}</span>
             </div>
             <div style={{ color: 'var(--text-secondary, #5d6b7e)', fontSize: '9px', marginTop: '1px' }}>{p.description}</div>

@@ -13,6 +13,14 @@ from api.services.hypotheses.registry import HypothesisRegistry
 logger = logging.getLogger(__name__)
 
 _execution_results: dict[str, dict[str, Any]] = {}
+_EXECUTION_TTL = 3600
+
+
+def _evict_stale_results():
+    now = time.time()
+    stale = [k for k, v in _execution_results.items() if v.get("completed_at", now) and now - v.get("completed_at", 0) > _EXECUTION_TTL]
+    for k in stale:
+        _execution_results.pop(k, None)
 
 
 async def _execute_hypothesis(hypothesis_id: str):
@@ -44,7 +52,7 @@ async def _execute_hypothesis(hypothesis_id: str):
         for symbol in symbols[:5]:
             try:
                 ticker = yf.Ticker(symbol)
-                df = ticker.history(period="1y")
+                df = await asyncio.to_thread(lambda t=ticker: t.history(period="1y"))
                 if df.empty:
                     continue
 
@@ -197,6 +205,7 @@ async def run_hypothesis(hypothesis_id: str, background_tasks: BackgroundTasks):
 
 @router.get("/{hypothesis_id}/result")
 async def get_hypothesis_result(hypothesis_id: str):
+    _evict_stale_results()
     result = _execution_results.get(hypothesis_id)
     if not result:
         return {"status": "not_started", "hypothesis_id": hypothesis_id}

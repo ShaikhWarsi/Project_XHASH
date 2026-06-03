@@ -1,8 +1,8 @@
 # Trading Engine
 
-**Version 0.3.0** — AI-Augmented Quantitative Trading Platform
+**Version 0.4.0** — AI-Augmented Quantitative Trading Platform
 
-Hybrid system combining classical quant signals, LLM agent reasoning, and comprehensive risk management.
+Hybrid system combining classical quant signals, LLM agent reasoning, comprehensive risk management, and a feature-rich desktop-grade frontend.
 
 ## Quick Start
 
@@ -22,17 +22,18 @@ docker compose up
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                   Frontend (React + TypeScript)       │
-│  Dashboard │ Portfolio │ Signals │ Trades │ Chart    │
-│  Backtest │ Agents (Council) │ Hedge Flow │ Settings │
-└──────────────────────┬──────────────────────────────┘
-                       │ REST + SSE
-┌──────────────────────▼──────────────────────────────┐
-│              FastAPI REST API (15 route modules)     │
-│  40+ endpoints: portfolio, signals, backtest, auth  │
-│  SSE streaming, CFA analysis, market data, config   │
-└──┬──────────┬──────────┬──────────┬────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                   Frontend (React + TypeScript)                    │
+│  Dashboard │ Portfolio │ Signals │ Trades │ Chart │ Backtest     │
+│  Agents │ Hedge Flow │ Strategy Lab │ AI Features │ Right Sidebar│
+└──────────────────────┬───────────────────────────────────────────┘
+                       │ REST + SSE + WebSocket
+┌──────────────────────▼───────────────────────────────────────────┐
+│              FastAPI REST API (60+ route modules)                 │
+│  Portfolio │ Signals │ Backtest │ Agents │ LLM │ FinScript       │
+│  AI: Briefing │ Co-Movement │ Earnings │ Strategy │ Indicator    │
+│  Chart Inspector │ LLM Query │ Streaming SSE                     │
+└──┬──────────┬──────────┬──────────┬─────────────────────────────┘
    │          │          │          │
 ┌──▼──┐  ┌───▼───┐  ┌──▼───┐  ┌──▼──────────┐
 │Signals│  │Agents │  │ Risk │  │ Execution   │
@@ -48,15 +49,17 @@ docker compose up
 | Area | Capabilities |
 |------|-------------|
 | **Signals** | SMC (order blocks, FVGs, BOS/CHOCH), harmonics, H&S, flags/pennants, price action, regime detection (trend, vol, Wasserstein), ML pattern mining, vision-based detection |
-| **Agents** | 16 hedge fund personas (Buffett, Burry, Graham, Taleb, etc.), 8 quant agents, 8 LLM agents, Renaissance-style teams |
+| **Agents** | 16 hedge fund personas (Buffett, Burry, Graham, Taleb, etc.), 8 quant agents, 8 LLM agents, Renaissance-style teams, debate system |
 | **Risk** | Position limits, ATR stop-loss, Kelly sizing, circuit breakers, composite risk engine |
 | **Backtesting** | Event-driven engine, Monte Carlo (1000+), walk-forward, scenario stress tests, synthetic data |
-| **FinScript** | Custom trading DSL: lexer, parser, AST, interpreter, 40+ built-in functions |
+| **FinScript** | Custom trading DSL: lexer, parser, AST, interpreter, 40+ built-in functions, PineScript/MT5/TDX export |
 | **Analytics** | 22+ metrics (Sharpe, Sortino, Calmar, VaR, CVaR), attribution, CFA toolkit |
 | **Data** | yfinance, OpenBB, Alpaca, CCXT, Databento, FRED, Finnhub, SEC, news, Twitter, World Bank |
 | **Execution** | Backtest, paper trading, Alpaca, CCXT (100+ exchanges), Interactive Brokers |
-| **API** | FastAPI, 40+ REST endpoints, SSE streaming, JWT auth, API key auth |
-| **Frontend** | 12-page SPA, TradingView charts, React Flow, Zustand, 4 themes |
+| **API** | FastAPI, 60+ REST endpoints, SSE streaming, WebSocket, JWT auth, API key auth |
+| **Frontend** | 30-page SPA, TradingView charts, React Flow, Zustand, 7 themes, multi-window, distraction-free mode |
+| **AI Features** | AI Briefing, Ask the Terminal, Strategy Generator, Indicator Generator, Chart Inspector, News Co-Movement, Earnings Call Summary |
+| **UI/UX** | High-contrast/sunlight themes, distraction-free mode, drag-and-drop (symbol, price, date), multi-window sync, right sidebar (news/calendar/chat) |
 
 ## CLI Commands
 
@@ -83,12 +86,64 @@ execution/      — Backtest, paper, Alpaca, CCXT, IBKR
 backtesting/    — Engine, Monte Carlo, walk-forward, scenario, synthetic
 analytics/      — Metrics, attribution, reports, CFA, visualization
 api/            — FastAPI REST + SSE + auth
+  routes/       — 60+ route modules (including 7 new AI endpoints)
+    llm.py            — LLM completion + streaming SSE
+    briefing.py       — AI Briefing on demand
+    network_co_movement.py — News-driven correlation analysis
+    earnings_summary.py   — Earnings call bull/bear/risk summary
+    ai_strategy.py        — Natural language → FinScript strategy
+    ai_indicator.py       — Natural language → custom indicator
+    ai_inspector.py       — Chart pattern LLM analysis (streaming)
+    llm_query.py          — Portfolio-aware natural language query
 finscript/      — Custom trading DSL (lexer/parser/interpreter)
 integrations/   — Discord, Slack, Telegram, SMS, Email, TradingView
 persistence/    — SQLAlchemy async ORM, Alembic migrations
-frontend/       — React/TypeScript SPA (12 pages)
+frontend/       — React/TypeScript SPA (30 pages)
+  src/
+    components/
+      rightsidebar/  — News, Calendar, Chat, Co-Movement, Earnings tabs
+      AIBriefing.tsx       — Modal briefing overlay
+      NewsCoMovement.tsx   — News-driven co-movement panel
+      EarningsSummary.tsx  — Earnings call summary panel
+      StrategyGenerator.tsx — NL → FinScript code gen + backtest
+      IndicatorGenerator.tsx — NL → JS indicator plugin gen
+      AIInspector.tsx      — Streaming pattern analysis modal
+      StreamResponse.tsx   — Reusable SSE streaming text component
+    contexts/
+      DistractionFreeContext.tsx — Hide chrome for focus mode
+      MultiWindowContext.tsx     — BroadcastChannel cross-tab sync
+      SymbolDragContext.tsx      — Native HTML5 DnD for symbols
+    utils/
+      broadcastChannels.ts — Channel name constants + getTabId()
+      tickSound.ts         — Web Audio API tick chirp
+    api/
+      llm.ts               — All LLM + AI API functions
 config/         — Settings + strategy defaults
 ```
+
+## Changelog — 3 June 2026
+
+### New AI Features (7 endpoints + 7 components)
+- **AI Briefing** — Button-driven market + portfolio briefing with LLM-generated analysis (portfolio, regime, top movers, risk)
+- **Ask the Terminal** — LLMPanel now has a "Data Query" mode that injects portfolio/risk/trade context into prompts
+- **AI Strategy Generator** — Describe a strategy in plain English → get FinScript code → review → run backtest
+- **AI Indicator Generator** — Describe an indicator → get JavaScript code → add to chart at runtime
+- **AI Chart Inspector** — Click "What is this?" on a detected pattern → streaming LLM analysis (explanation, analogs, trading implications)
+- **News Co-Movement** — Right sidebar tab: enter headline + tickers → AI shows correlated movers
+- **Earnings Call Summary** — Paste transcript → AI extracts bull case, bear case, and single biggest risk
+
+### New UI/UX Features
+- **Multi-Window** — `Ctrl+N` / `Ctrl+Shift+N` opens new windows; theme and symbol changes sync via `BroadcastChannel`
+- **Drag Symbol Anywhere** — Drag from SymbolSearch → drop on chart, order entry, compare, or widget
+- **Drag Price to Alert** — Drag a price level from the chart → drops on Alert button to pre-fill
+- **Drag Date to Backtest** — Drag a date from the chart → drops on backtest start date input
+- **Distraction-Free Mode** — `Ctrl+Shift+D` hides all chrome; floating "Exit Focus" button
+- **High-Contrast / Sunlight Themes** — Two new themes: max-contrast black/white and warm sunlight-optimized
+- **Right Sidebar** — Collapsible News, Calendar, Chat tabs with keyboard shortcut `Ctrl+Shift+R`
+
+### Streaming Infrastructure
+- `/llm/complete-stream` — SSE endpoint for token-by-token LLM responses (used by Chart Inspector)
+- `llmCompleteStream()` — Frontend `ReadableStream` reader
 
 ## Environment Variables
 
@@ -100,6 +155,8 @@ See `.env.example` for all config vars. Key ones:
 | `JWT_SECRET_KEY` | No | (auto-generated) | JWT signing secret |
 | `CORS_ORIGINS` | No | `localhost:5173` | Allowed CORS origins |
 | `FINNHUB_API_KEY` | No | — | Market data (quotes, news, search) |
+| `OPENAI_API_KEY` | For AI features | — | OpenAI LLM provider |
+| `ANTHROPIC_API_KEY` | For AI features | — | Anthropic LLM provider |
 
 ## Testing
 

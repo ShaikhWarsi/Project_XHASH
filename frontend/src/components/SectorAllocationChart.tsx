@@ -5,7 +5,7 @@ interface SectorData {
   name: string
   exposure: number
   color?: string
-  children?: { name: string; exposure: number }[]
+  children?: { name: string; exposure: number; color?: string }[]
 }
 
 interface SectorAllocationChartProps {

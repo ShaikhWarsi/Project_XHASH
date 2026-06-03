@@ -18,6 +18,7 @@ export interface MultiLineOutput {
   value2: number
   value3?: number
   value4?: number
+  value5?: number
 }
 
 export function validateOutput(data: SingleLineOutput[]): SingleLineOutput[] {

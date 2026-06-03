@@ -21,6 +21,10 @@ export const ROUTES: RouteConfig[] = [
   { path: '/markets/structure', label: 'Structure', group: 'markets', workflow: 'quant' },
   { path: '/markets/advanced-charts', label: 'Advanced Charts', group: 'markets', workflow: 'trader' },
   { path: '/markets/screener', label: 'Screener', group: 'markets', workflow: 'researcher' },
+  { path: '/markets/compare', label: 'Compare', group: 'markets', workflow: 'quant' },
+  { path: '/markets/persona-council', label: 'Persona Council', group: 'markets', workflow: 'quant' },
+  { path: '/markets/options', label: 'Options Chain', group: 'markets', workflow: 'trader' },
+  { path: '/markets/calendar', label: 'Calendar', group: 'markets', workflow: 'trader' },
 
   // Trading
   { path: '/trading/orders', label: 'Orders', group: 'trading', workflow: 'trader' },
@@ -30,6 +34,7 @@ export const ROUTES: RouteConfig[] = [
   { path: '/trading/portfolio-optimization', label: 'Portfolio Opt', group: 'trading', workflow: 'quant' },
   { path: '/trading/social-trading', label: 'Social Trading', group: 'trading', workflow: 'trader' },
   { path: '/trading/live', label: 'Live Trading Wizard', group: 'trading', workflow: 'trader' },
+  { path: '/trading/what-if', label: 'What-If', group: 'trading', workflow: 'quant' },
 
   // Risk
   { path: '/risk', label: 'Risk Dashboard', group: 'risk', workflow: 'trader' },
@@ -70,6 +75,7 @@ export const ROUTES: RouteConfig[] = [
   { path: '/data/signal-engines', label: 'Signal Engines', group: 'data', workflow: 'quant' },
   { path: '/data/china-markets', label: 'China Markets', group: 'data', workflow: 'researcher' },
   { path: '/data/workflows', label: 'Workflows', group: 'data', workflow: 'quant' },
+  { path: '/data/signals-stream', label: 'Signals Stream', group: 'data', workflow: 'quant' },
 
   // Settings
   { path: '/settings', label: 'Settings', group: 'settings', workflow: 'admin' },

@@ -7,6 +7,7 @@ Upgraded from CLUSTERING-MARKET-REGIMES-main to include:
 """
 from __future__ import annotations
 
+import hashlib
 from typing import Optional
 
 import numpy as np
@@ -22,8 +23,22 @@ from signals.regime.validation import compute_cluster_validation_metrics
 # ──────────────────────────────────────────────
 
 
+_WASSERSTEIN_CACHE: dict[str, float] = {}
+_WASSERSTEIN_CACHE_MAX: int = 2048
+
+
+def _wasserstein_cache_key(mu: np.ndarray, nu: np.ndarray, p: float) -> str:
+    """Build a cache key from hashes of the actual data arrays (not just names)."""
+    mu_h = hashlib.md5(mu.tobytes()).hexdigest()
+    nu_h = hashlib.md5(nu.tobytes()).hexdigest()
+    return f"{mu_h}:{nu_h}:{p}"
+
+
 def wasserstein_dist(mu: np.ndarray, nu: np.ndarray, p: float = 1.0) -> float:
     """Wasserstein-p distance between two 1D empirical distributions.
+
+    Results are cached using hashes of the actual data arrays (not just
+    symbol names), ensuring that cache keys reflect the underlying data.
 
     Parameters
     ----------
@@ -36,17 +51,28 @@ def wasserstein_dist(mu: np.ndarray, nu: np.ndarray, p: float = 1.0) -> float:
     """
     mu = np.asarray(mu, dtype=float)
     nu = np.asarray(nu, dtype=float)
+
+    key = _wasserstein_cache_key(mu, nu, p)
+    cached = _WASSERSTEIN_CACHE.get(key)
+    if cached is not None:
+        return cached
+
     n = max(len(mu), len(nu))
     q = np.linspace(0, 1, n + 1)[1:]
     mq = np.quantile(mu, q)
     nq = np.quantile(nu, q)
     diff = np.abs(mq - nq)
     if p == 1:
-        return float(np.mean(diff))
+        result = float(np.mean(diff))
     elif p == np.inf:
-        return float(np.max(diff))
+        result = float(np.max(diff))
     else:
-        return float(np.mean(diff ** p) ** (1.0 / p))
+        result = float(np.mean(diff ** p) ** (1.0 / p))
+
+    if len(_WASSERSTEIN_CACHE) >= _WASSERSTEIN_CACHE_MAX:
+        _WASSERSTEIN_CACHE.clear()
+    _WASSERSTEIN_CACHE[key] = result
+    return result
 
 
 def wasserstein_barycenter(

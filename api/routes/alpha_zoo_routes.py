@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -81,7 +82,7 @@ async def bench_alphas(req: BenchRequest):
     panel: dict[str, pd.DataFrame] = {}
     for s in symbols:
         ticker = yf.Ticker(s)
-        df = ticker.history(start=req.start_date, end=req.end_date)
+        df = await asyncio.to_thread(lambda t=ticker: t.history(start=req.start_date, end=req.end_date))
         if df.empty:
             continue
         df.columns = [c.lower() for c in df.columns]
@@ -130,9 +131,14 @@ async def get_alpha_bench(alpha_id: str):
     try:
         factor = alpha.compute(panel["open"], panel["high"], panel["low"], panel["close"], panel["volume"])
         if isinstance(factor, pd.Series):
-            ic = factor.corr(panel["close"].pct_change().shift(-1).mean(axis=1))
-            rank_ic = factor.corr(panel["close"].pct_change().shift(-1).mean(axis=1), method="spearman")
-            ret = factor.corr(panel["close"].pct_change().shift(-1).mean(axis=1))
+            forward_ret = panel["close"].pct_change().shift(-1).mean(axis=1)
+            ic = factor.corr(forward_ret)
+            rank_ic = factor.corr(forward_ret, method="spearman")
+            n = len(factor)
+            factor_rank = factor.rank()
+            top = factor_rank > n * 0.8
+            bottom = factor_rank <= n * 0.2
+            ret = (forward_ret[top].mean() - forward_ret[bottom].mean()) if top.any() and bottom.any() else 0.0
         else:
             ic = rank_ic = ret = 0.0
     except Exception as e:

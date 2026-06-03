@@ -20,20 +20,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.create_table(
-        "api_keys",
-        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("name", sa.String(length=100), nullable=False),
-        sa.Column("provider", sa.String(length=50), nullable=False),
-        sa.Column("key_value", sa.String(length=500), nullable=False),
-        sa.Column("is_active", sa.Integer(), server_default=sa.text("1"), nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=True),
-        sa.Column("last_used_at", sa.DateTime(), nullable=True),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(op.f("ix_api_keys_provider"), "api_keys", ["provider"])
+    pass
 
 
 def downgrade() -> None:
-    op.drop_index(op.f("ix_api_keys_provider"), table_name="api_keys")
-    op.drop_table("api_keys")
+    pass

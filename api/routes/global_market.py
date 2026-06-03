@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +18,7 @@ async def market_overview():
     def _compute():
         heatmap = generate_heatmap_data()
         return {
+            "_simulated": True,
             "crypto_count": len(heatmap.get("crypto", {})),
             "sectors_count": len(heatmap.get("sectors", {})),
             "forex_count": len(heatmap.get("forex", {})),
@@ -33,7 +34,11 @@ async def market_overview():
 async def market_heatmap(
     category: Optional[str] = Query(None, description="crypto, sectors, forex, commodities, indices"),
 ):
+    VALID_CATEGORIES = {"crypto", "sectors", "forex", "commodities", "indices", None}
+    if category not in VALID_CATEGORIES:
+        raise HTTPException(status_code=400, detail=f"Invalid category '{category}'. Valid: {sorted(VALID_CATEGORIES - {None})}")
     data = generate_heatmap_data(category=category)
+    data["_simulated"] = True
     return data
 
 

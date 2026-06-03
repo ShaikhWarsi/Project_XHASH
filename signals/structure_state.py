@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from core.enums import RegimeType, SignalDir, SignalType
@@ -86,7 +86,7 @@ class StructureFusionEngine:
         state = StructureState(
             symbol=symbol,
             timeframe=timeframe,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
 
         if regime_state:

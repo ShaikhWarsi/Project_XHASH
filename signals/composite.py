@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 import numpy as np
@@ -32,7 +32,7 @@ class SignalAggregator:
         symbols: list[str],
         regime: Optional = None,
     ) -> SignalMatrix:
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(timezone.utc)
         matrix = SignalMatrix(timestamp=timestamp, signals={s: [] for s in symbols}, regime=regime)
 
         for engine_name, signals in results.items():

@@ -38,6 +38,8 @@ class SummaryRequest(BaseModel):
 
 def _build_panel(prices, timestamps, symbols):
     n = len(prices) // len(symbols)
+    if len(prices) % len(symbols) != 0:
+        return pd.DataFrame()
     data = {}
     dt_idx = pd.DatetimeIndex(timestamps[:n])
     for i, sym in enumerate(symbols):

@@ -17,8 +17,12 @@ function computeVolumeProfile(data: BarData[], bucketCount = 30): { buckets: Vol
   if (data.length === 0) return { buckets: [], poc: null, maxVol: 0 }
 
   const prices = data.flatMap((d) => [d.high, d.low])
-  const minPrice = Math.min(...prices)
-  const maxPrice = Math.max(...prices)
+  let minPrice = prices[0] ?? 0
+  let maxPrice = minPrice
+  for (const p of prices) {
+    if (p < minPrice) minPrice = p
+    if (p > maxPrice) maxPrice = p
+  }
   const range = maxPrice - minPrice
   if (range === 0) return { buckets: [], poc: null, maxVol: 0 }
 
@@ -35,29 +39,33 @@ function computeVolumeProfile(data: BarData[], bucketCount = 30): { buckets: Vol
   let sellVol = 0
 
   for (const bar of data) {
-    const avgPrice = (bar.high + bar.low) / 2
+    const avgPrice = (bar.open + bar.high + bar.low + bar.close) / 4
     const idx = Math.min(Math.floor((avgPrice - minPrice) / bucketSize), bucketCount - 1)
     if (idx < 0 || idx >= bucketCount) continue
     buckets[idx].volume += bar.volume || 0
     if (bar.close > bar.open) {
+      buckets[idx].direction = 'buy'
       buyVol += bar.volume || 0
     } else if (bar.close < bar.open) {
+      buckets[idx].direction = 'sell'
       sellVol += bar.volume || 0
     }
   }
 
+  // Recompute direction as aggregate for overall context (used only when no per-bar direction)
+  const overallDirection = buyVol > sellVol ? 'buy' : sellVol > buyVol ? 'sell' : 'neutral'
+
+  // Mark any bucket that still has neutral direction based on overall context
   for (const bucket of buckets) {
-    const ratio = buyVol / (buyVol + sellVol || 1)
-    if (ratio > 0.55) {
-      bucket.direction = 'buy'
-    } else if (ratio < 0.45) {
-      bucket.direction = 'sell'
-    } else {
-      bucket.direction = 'neutral'
+    if (bucket.direction === 'neutral') {
+      bucket.direction = overallDirection
     }
   }
 
-  const maxVol = Math.max(...buckets.map((b) => b.volume), 1)
+  let maxVol = 1
+  for (const b of buckets) {
+    if (b.volume > maxVol) maxVol = b.volume
+  }
   const poc = buckets.reduce((best, b) => (b.volume > best.volume ? b : best), buckets[0])
 
   return { buckets, poc, maxVol }

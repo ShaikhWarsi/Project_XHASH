@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from .attribution import AttributionResult
@@ -67,7 +67,7 @@ class ReportGenerator:
         attribution: Optional[AttributionResult] = None,
     ) -> str:
         data = {
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "metrics": {
                 "total_return": metrics.total_return,
                 "annualized_return": metrics.annualized_return,

@@ -44,7 +44,7 @@ export default function HypothesisLab() {
       const params: any = {}
       if (search) params.search = search
       if (statusFilter) params.status = statusFilter
-      const r = await api.get('/hypotheses/', { params })
+      const r = await api.get('/hypotheses', { params })
       setHypotheses(r.data.hypotheses || [])
     } catch { }
     setLoading(false)
@@ -55,7 +55,7 @@ export default function HypothesisLab() {
   const createHypothesis = async () => {
     if (!title.trim() || !thesis.trim()) return
     try {
-      await api.post('/hypotheses/', { title, thesis, universe, signal_definition: signalDef })
+      await api.post('/hypotheses', { title, thesis, universe, signal_definition: signalDef })
       setTitle('')
       setThesis('')
       setUniverse('')

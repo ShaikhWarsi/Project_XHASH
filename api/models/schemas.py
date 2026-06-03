@@ -119,6 +119,7 @@ class ErrorResponse(BaseModel):
 class FlowCreateRequest(BaseModel):
     name: str
     description: Optional[str] = None
+    flow_type: str = "hedge_fund"
     nodes: List[GraphNode] = Field(default_factory=list)
     edges: List[GraphEdge] = Field(default_factory=list)
     viewport: Optional[Dict[str, Any]] = None
@@ -130,6 +131,7 @@ class FlowCreateRequest(BaseModel):
 class FlowUpdateRequest(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
+    flow_type: Optional[str] = None
     nodes: Optional[List[GraphNode]] = None
     edges: Optional[List[GraphEdge]] = None
     viewport: Optional[Dict[str, Any]] = None
@@ -142,6 +144,7 @@ class FlowResponse(BaseModel):
     id: int
     name: str
     description: Optional[str] = None
+    flow_type: str = "hedge_fund"
     nodes: List[Dict[str, Any]] = Field(default_factory=list)
     edges: List[Dict[str, Any]] = Field(default_factory=list)
     viewport: Optional[Dict[str, Any]] = None
@@ -159,6 +162,7 @@ class FlowSummaryResponse(BaseModel):
     id: int
     name: str
     description: Optional[str] = None
+    flow_type: str = "hedge_fund"
     is_template: bool = False
     tags: Optional[List[str]] = None
     created_at: Optional[datetime] = None

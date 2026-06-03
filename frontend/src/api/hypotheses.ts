@@ -50,11 +50,11 @@ export async function listHypotheses(
 }
 
 export async function createHypothesis(
-  request: CreateHypothesisRequest
+  req: CreateHypothesisRequest
 ): Promise<{ hypothesis: Hypothesis }> {
   return request('/', {
     method: 'POST',
-    body: JSON.stringify(request),
+    body: JSON.stringify(req),
   })
 }
 
@@ -64,21 +64,21 @@ export async function getHypothesis(id: string): Promise<{ hypothesis: Hypothesi
 
 export async function updateHypothesisStatus(
   id: string,
-  request: UpdateStatusRequest
+  req: UpdateStatusRequest
 ): Promise<{ hypothesis: Hypothesis }> {
   return request(`/${id}/status`, {
     method: 'PUT',
-    body: JSON.stringify(request),
+    body: JSON.stringify(req),
   })
 }
 
 export async function linkBacktest(
   id: string,
-  request: LinkBacktestRequest
+  req: LinkBacktestRequest
 ): Promise<{ hypothesis: Hypothesis }> {
   return request(`/${id}/backtest`, {
     method: 'POST',
-    body: JSON.stringify(request),
+    body: JSON.stringify(req),
   })
 }
 

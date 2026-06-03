@@ -4,7 +4,7 @@ import { Star, Trash2, AlertCircle } from 'lucide-react'
 import Card from '../components/ui/Card'
 import StockSearch from '../components/StockSearch'
 import AlertsPanel from '../components/AlertsPanel'
-import { fetchWatchlist, removeFromWatchlist, fetchQuote, fetchCompanyProfile } from '../api/client'
+import { fetchWatchlist, removeFromWatchlist, fetchQuotes, fetchCompanyProfile } from '../api/client'
 import type { WatchlistItem } from '../api/types'
 import { useToastStore } from '../store/toast'
 
@@ -19,20 +19,18 @@ export default function WatchlistPage() {
     try {
       const data = await fetchWatchlist(userId)
       let anyQuoteFailed = false
+      const symbols = data.map((i) => i.symbol)
+      const quoteMap: Record<string, { c: number; d: number; dp: number } | null> = {}
+      try {
+        const quotes = await fetchQuotes(symbols)
+        Object.assign(quoteMap, quotes)
+      } catch { anyQuoteFailed = true }
       const enriched = await Promise.all(
         data.map(async (item) => {
-          let price: number | undefined
-          let change: number | undefined
-          let changePercent: number | undefined
+          const q = quoteMap[item.symbol]
           let profile: Record<string, unknown> | undefined
-          try {
-            const quote = await fetchQuote(item.symbol)
-            price = quote.c; change = quote.d; changePercent = quote.dp
-          } catch (err) { anyQuoteFailed = true }
-          try {
-            profile = await fetchCompanyProfile(item.symbol)
-          } catch (_) { /* non-critical */ }
-          return { ...item, price, change, changePercent, profile }
+          try { profile = await fetchCompanyProfile(item.symbol) } catch { /* non-critical */ }
+          return { ...item, price: q?.c, change: q?.d, changePercent: q?.dp, profile }
         })
       )
       setItems(enriched)
@@ -85,7 +83,7 @@ export default function WatchlistPage() {
                       e.dataTransfer.effectAllowed = 'copy'
                     }}
                     className="flex items-center justify-between p-3 rounded-lg hover:bg-[#2a2d3e]/50 transition-colors cursor-pointer group"
-                    onClick={() => navigate(`/chart?symbol=${item.symbol}`)}
+                    onClick={() => navigate(`/markets/chart?symbol=${item.symbol}`)}
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-[#2a2d3e] flex items-center justify-center text-xs font-bold text-[#9aa0a6]">

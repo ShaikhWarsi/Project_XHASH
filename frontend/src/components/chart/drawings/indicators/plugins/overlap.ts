@@ -47,9 +47,9 @@ indicator({
   outputType: 'multi_line',
   paneType: 'overlay',
   color: '#8b5cf6',
-  computeFn: (data: IndicatorInput[], params) => computeBollinger(data, params.period as number, params.stdDev as number) as MultiLineOutput[],
+  computeFn: (data: IndicatorInput[], params) => computeBollinger(data, params.period as number, params.stdDev as number) as unknown as MultiLineOutput[],
   signals: (_data, output, _params) => {
-    const results = output as MultiLineOutput[]
+    const results = output as unknown as MultiLineOutput[]
     if (results.length < 2) return []
     const last = results[results.length - 1]
     if (!last) return []

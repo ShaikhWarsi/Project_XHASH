@@ -22,17 +22,23 @@ export class CoordMapper {
 
   /** Convert a Time to pixel x-coordinate. */
   timeToX(time: Time): number | null {
+    const w = this.getWidth()
+    if (w <= 0) return null
     return this.chart.timeScale().timeToCoordinate(time) ?? null
   }
 
   /** Convert a pixel to Time. */
   xToTime(x: number): Time | null {
+    const w = this.getWidth()
+    if (w <= 0) return null
     const time = this.chart.timeScale().coordinateToTime(x)
     return time ?? null
   }
 
   /** Convert a price to pixel y in the given pane. */
   priceToY(price: number, paneIndex = 0): number | null {
+    const h = this.getPaneHeight(paneIndex)
+    if (h <= 0) return null
     const series = this.panes[paneIndex]?.series
     if (!series) return null
     return series.priceToCoordinate(price) ?? null
@@ -40,6 +46,8 @@ export class CoordMapper {
 
   /** Convert a pixel y to price in the given pane. */
   yToPrice(y: number, paneIndex = 0): number | null {
+    const h = this.getPaneHeight(paneIndex)
+    if (h <= 0) return null
     const series = this.panes[paneIndex]?.series
     if (!series) return null
     return series.coordinateToPrice(y) ?? null

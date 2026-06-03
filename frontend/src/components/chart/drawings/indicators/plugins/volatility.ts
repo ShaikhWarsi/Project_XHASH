@@ -2,7 +2,7 @@ import { INDICATOR_COMPUTE } from '../compute'
 import type { SingleLineOutput, MultiLineOutput, IndicatorInput } from '../compute/types'
 import { indicator } from '../IndicatorPlugin'
 
-const { atr: computeATR, ichimoku: computeIchimoku, obv: computeOBV } = INDICATOR_COMPUTE
+const { atr: computeATR, ichimoku: computeIchimoku, pivots: computePivots } = INDICATOR_COMPUTE
 
 indicator({
   id: 'atr',
@@ -46,18 +46,23 @@ indicator({
   outputType: 'multi_line',
   paneType: 'overlay',
   color: '#06b6d4',
-  computeFn: (data: IndicatorInput[], params) => computeIchimoku(data, params.tenkanPeriod as number, params.kijunPeriod as number, params.senkouBPeriod as number) as MultiLineOutput[],
+  computeFn: (data: IndicatorInput[], params) => computeIchimoku(data, params.tenkanPeriod as number, params.kijunPeriod as number, params.senkouBPeriod as number),
 })
 
 indicator({
-  id: 'obv',
-  name: 'OBV',
-  description: 'On-Balance Volume',
-  category: 'volume',
-  defaultParams: {},
-  paramsMeta: {},
-  outputType: 'line',
-  paneType: 'separate',
-  color: '#10b981',
-  computeFn: (data: IndicatorInput[], _params) => computeOBV(data) as SingleLineOutput[],
+  id: 'pivots',
+  name: 'Pivots',
+  description: 'Pivot Points (Standard/Camarilla/Woodie/DeMark)',
+  category: 'volatility',
+  defaultParams: { type: 'standard' },
+  paramsMeta: {
+    type: { label: 'Type', type: 'int', min: 0, max: 3, default: 0 },
+  },
+  outputType: 'multi_line',
+  paneType: 'overlay',
+  color: '#eab308',
+  computeFn: (data: IndicatorInput[], params) => {
+    const types = ['standard', 'camarilla', 'woodie', 'demark'] as const
+    return computePivots(data, types[params.type as number] ?? 'standard') as unknown as MultiLineOutput[]
+  },
 })

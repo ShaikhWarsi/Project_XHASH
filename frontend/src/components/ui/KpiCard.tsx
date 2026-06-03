@@ -10,9 +10,11 @@ interface KpiCardProps {
 }
 
 export default function KpiCard({ label, value, change, icon, subtitle, trend }: KpiCardProps) {
+  const tooltipText = `${label}: ${value}${change ? ` (${change.up ? '+' : ''}${change.value})` : ''}${subtitle ? ` — ${subtitle}` : ''}`
   return (
     <div
       className="group"
+      title={tooltipText}
       style={{
         background: 'var(--bg-card)',
         border: '1px solid var(--border-color)',

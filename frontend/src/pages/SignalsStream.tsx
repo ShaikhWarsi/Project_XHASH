@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { api } from '../api/client'
+// import { api } from '../api/client'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import Spinner from '../components/Spinner'
@@ -31,9 +31,10 @@ export default function SignalsStream() {
 
   useEffect(() => {
     const params = new URLSearchParams()
-    if (filterSymbol) params.set('symbol', filterSymbol)
-    if (filterEngine) params.set('engine', filterEngine)
-    const url = `/api/signals/stream?${params.toString()}`
+    if (filterSymbol) params.set('symbols', filterSymbol)
+    if (filterEngine) params.set('engines', filterEngine)
+    const base = import.meta.env.VITE_API_BASE ?? '/api'
+    const url = `${base}/signals/stream?${params.toString()}`
     const es = new EventSource(url)
     esRef.current = es
 

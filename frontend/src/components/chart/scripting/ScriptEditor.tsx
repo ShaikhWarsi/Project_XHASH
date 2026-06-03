@@ -1,6 +1,7 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, type JSX } from 'react'
 import { IndicatorScriptEngine, SCRIPT_PRESETS } from './IndicatorScript'
-import type { ScriptIndicator, CandlestickData } from './IndicatorScript'
+import type { ScriptIndicator } from './IndicatorScript'
+type CandlestickData = { time: number; open: number; high: number; low: number; close: number; volume?: number }
 
 interface ScriptEditorProps {
   onScriptRun: (result: { values: number[]; name: string; style: string; color: string }) => void
@@ -332,7 +333,7 @@ export default function ScriptEditor({ onScriptRun, onClose, data }: ScriptEdito
     }
 
     setErrors([])
-    const result = ENGINE.evaluate(code, data, inputValues)
+    const result = ENGINE.evaluate(code, data as any, inputValues)
 
     if (result.errors && result.errors.length > 0) {
       setErrors(result.errors)

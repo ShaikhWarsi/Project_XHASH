@@ -6,28 +6,28 @@ interface IndexData {
   change: number
 }
 
-const DEFAULT_INDICES: IndexData[] = [
-  { symbol: 'SPX', price: 5432.10, change: 0.45 },
-  { symbol: 'NDX', price: 18921.45, change: -0.23 },
-  { symbol: 'DJI', price: 38765.80, change: 0.12 },
-  { symbol: 'RUT', price: 2012.34, change: -0.67 },
-  { symbol: 'VIX', price: 14.32, change: -2.15 },
-  { symbol: 'FTSE', price: 8123.45, change: 0.08 },
-  { symbol: 'DAX', price: 18234.56, change: -0.34 },
-  { symbol: 'NKY', price: 38765.00, change: 0.89 },
-  { symbol: 'HSI', price: 17234.12, change: -1.23 },
-  { symbol: 'AS51', price: 7654.32, change: 0.56 },
-]
-
 interface MarketTickerProps {
   indices?: IndexData[]
 }
 
-export default function MarketTicker({ indices = DEFAULT_INDICES }: MarketTickerProps) {
+export default function MarketTicker({ indices = [] }: MarketTickerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [paused, setPaused] = useState(false)
 
   const items = [...indices, ...indices]
+
+  if (indices.length === 0) {
+    return (
+      <div style={{
+        width: '100%', height: 20, display: 'flex', alignItems: 'center',
+        background: 'var(--ticker-bg)', borderBottom: '1px solid var(--border-color)',
+        fontFamily: "'JetBrains Mono', monospace", fontSize: 9,
+        color: 'var(--text-muted)', padding: '0 12px',
+      }}>
+        No market indices available
+      </div>
+    )
+  }
 
   return (
     <div

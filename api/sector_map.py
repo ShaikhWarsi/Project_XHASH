@@ -61,10 +61,24 @@ async def get_sector(symbol: str) -> str:
 
 async def get_sector_exposures(positions: dict) -> list[dict]:
     sector_values: dict[str, float] = {}
+    sector_pnl: dict[str, float] = {}
+    sector_cost: dict[str, float] = {}
     for symbol, pos in positions.items():
-        mv = pos.get("market_value", 0) if isinstance(pos, dict) else getattr(pos, "market_value", 0)
+        if isinstance(pos, dict):
+            mv = pos.get("market_value", 0)
+            entry_price = pos.get("entry_price", 0)
+            qty = pos.get("quantity", 0)
+            pnl = pos.get("unrealized_pnl", 0)
+        else:
+            mv = getattr(pos, "market_value", 0)
+            entry_price = getattr(pos, "entry_price", 0)
+            qty = getattr(pos, "quantity", 0)
+            pnl = getattr(pos, "unrealized_pnl", 0)
         sector = await get_sector(symbol)
-        sector_values[sector] = sector_values.get(sector, 0) + mv
+        sector_values[sector] = sector_values.get(sector, 0.0) + mv
+        sector_pnl[sector] = sector_pnl.get(sector, 0.0) + pnl
+        cost_basis = entry_price * qty
+        sector_cost[sector] = sector_cost.get(sector, 0.0) + cost_basis
     if not sector_values:
         return []
     total = sum(sector_values.values())
@@ -73,7 +87,7 @@ async def get_sector_exposures(positions: dict) -> list[dict]:
             "sector": sector,
             "exposure": value,
             "exposurePercent": round(value / total * 100, 1) if total else 0,
-            "return": 0.0,
+            "return": round((sector_pnl[sector] / sector_cost[sector] * 100), 2) if sector_cost[sector] else 0.0,
             "color": _SECTOR_COLORS.get(sector, "#6b7280"),
         }
         for sector, value in sorted(sector_values.items(), key=lambda x: -x[1])

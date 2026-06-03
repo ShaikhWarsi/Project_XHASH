@@ -1,7 +1,7 @@
 interface ChartSettingsProps {
   onClose: () => void
-  chartStyle?: 'candle' | 'line' | 'area'
-  onChartStyleChange?: (style: 'candle' | 'line' | 'area') => void
+  chartStyle?: 'candle' | 'line' | 'area' | 'tpo'
+  onChartStyleChange?: (style: 'candle' | 'line' | 'area' | 'tpo') => void
 }
 
 export function ChartSettings({ onClose, chartStyle = 'candle', onChartStyleChange }: ChartSettingsProps) {
@@ -20,7 +20,7 @@ export function ChartSettings({ onClose, chartStyle = 'candle', onChartStyleChan
       </div>
 
       <label style={{ color: 'var(--text-secondary, #5d6b7e)', display: 'block', fontSize: '10px', marginBottom: '4px' }}>Chart Style</label>
-      {(['candle', 'line', 'area'] as const).map((s) => (
+      {(['candle', 'line', 'area', 'tpo'] as const).map((s) => (
         <button
           key={s}
           onClick={() => onChartStyleChange?.(s)}

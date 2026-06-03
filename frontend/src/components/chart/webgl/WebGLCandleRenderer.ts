@@ -132,200 +132,191 @@ export class WebGLCandleRenderer {
     const gl = this.gl
     if (!gl) return
 
-    const needsInit = !this.program
-    if (needsInit) {
-      const ok = this.init()
-      if (!ok) return
-    }
+    try {
+      const needsInit = !this.program
+      if (needsInit) {
+        const ok = this.init()
+        if (!ok) return
+      }
 
-    this.canvasWidth = layout.width
-    this.canvasHeight = layout.height
-    this.canvas.width = layout.width
-    this.canvas.height = layout.height
-    gl.viewport(0, 0, layout.width, layout.height)
+      this.canvasWidth = layout.width
+      this.canvasHeight = layout.height
+      this.canvas.width = layout.width
+      this.canvas.height = layout.height
+      gl.viewport(0, 0, layout.width, layout.height)
 
-    const count = candles.length
-    if (count === 0) {
+      const count = candles.length
+      if (count === 0) {
+        gl.clear(gl.COLOR_BUFFER_BIT)
+        return
+      }
+
+      const { padding, width, height } = layout
+      const chartLeft = padding.left
+      const chartBottom = height - padding.bottom
+      const chartTop = padding.top
+      const chartHeight = chartBottom - chartTop
+      const volumeAreaHeight = chartHeight * 0.15
+      const candleAreaBottom = chartBottom - volumeAreaHeight
+
+      const vertsPerCandle = 18
+      const totalVerts = count * vertsPerCandle
+      const positions = new Float32Array(totalVerts * 2)
+      const colors = new Float32Array(totalVerts * 2)
+
+      for (let i = 0; i < count; i++) {
+        const c = candles[i]
+        const base = i * vertsPerCandle
+
+        const bodyTopPx = chartTop + (1 - c.bodyTop) * chartHeight
+        const bodyBottomPx = chartTop + (1 - c.bodyBottom) * chartHeight
+        const wickHighPx = chartTop + (1 - c.wickHigh) * chartHeight
+        const wickLowPx = chartTop + (1 - c.wickLow) * chartHeight
+        const centerX = chartLeft + c.x * (width - padding.left - padding.right)
+
+        const bodyHalfW = c.bodyWidth * (width - padding.left - padding.right) * 0.5
+        const wickHalfW = Math.max(1, c.wickWidth * (width - padding.left - padding.right) * 0.5)
+
+        const bodyTop = Math.min(bodyTopPx, bodyBottomPx)
+        const bodyBottom = Math.max(bodyTopPx, bodyBottomPx)
+
+        const colR = c.r
+        const colG = c.g
+        const colB = c.b
+        const colA = c.a
+
+        const getCol = (alphaMult: number): [number, number, number, number] => [colR, colG, colB, colA * alphaMult]
+
+        const wickLeft = centerX - wickHalfW
+        const wickRight = centerX + wickHalfW
+        const bodyLeft = centerX - bodyHalfW
+        const bodyRight = centerX + bodyHalfW
+
+        const volBarHeight = c.volumeHeight * (candleAreaBottom || 0)
+        const volBarTop = candleAreaBottom - volBarHeight
+        const volBarLeft = centerX - bodyHalfW * 0.8
+        const volBarRight = centerX + bodyHalfW * 0.8
+
+        const wickColor = getCol(0.8)
+        positions[base * 2 + 0] = wickLeft;    positions[base * 2 + 1] = wickHighPx
+        positions[base * 2 + 2] = wickRight;   positions[base * 2 + 3] = wickHighPx
+        positions[base * 2 + 4] = wickRight;   positions[base * 2 + 5] = wickLowPx
+        positions[base * 2 + 6] = wickLeft;    positions[base * 2 + 7] = wickHighPx
+        positions[base * 2 + 8] = wickRight;   positions[base * 2 + 9] = wickLowPx
+        positions[base * 2 + 10] = wickLeft;   positions[base * 2 + 11] = wickLowPx
+
+        for (let j = 0; j < 6; j++) {
+          colors[(base + j) * 2 + 0] = wickColor[0]
+          colors[(base + j) * 2 + 1] = wickColor[1]
+          colors[(base + j) * 2 + 2] = wickColor[2]
+          colors[(base + j) * 2 + 3] = wickColor[3]
+        }
+
+        const bodyColor = getCol(1.0)
+        const bo = base + 6
+        positions[bo * 2 + 0] = bodyLeft;    positions[bo * 2 + 1] = bodyTop
+        positions[bo * 2 + 2] = bodyRight;   positions[bo * 2 + 3] = bodyTop
+        positions[bo * 2 + 4] = bodyRight;   positions[bo * 2 + 5] = bodyBottom
+        positions[bo * 2 + 6] = bodyLeft;    positions[bo * 2 + 7] = bodyTop
+        positions[bo * 2 + 8] = bodyRight;   positions[bo * 2 + 9] = bodyBottom
+        positions[bo * 2 + 10] = bodyLeft;   positions[bo * 2 + 11] = bodyBottom
+
+        for (let j = 0; j < 6; j++) {
+          colors[(bo + j) * 2 + 0] = bodyColor[0]
+          colors[(bo + j) * 2 + 1] = bodyColor[1]
+          colors[(bo + j) * 2 + 2] = bodyColor[2]
+          colors[(bo + j) * 2 + 3] = bodyColor[3]
+        }
+
+        const volColor = c.isUp
+          ? [UP_RGB[0], UP_RGB[1], UP_RGB[2], 0.4]
+          : [DOWN_RGB[0], DOWN_RGB[1], DOWN_RGB[2], 0.4]
+        const vo = base + 12
+        positions[vo * 2 + 0] = volBarLeft;   positions[vo * 2 + 1] = volBarTop
+        positions[vo * 2 + 2] = volBarRight;  positions[vo * 2 + 3] = volBarTop
+        positions[vo * 2 + 4] = volBarRight;  positions[vo * 2 + 5] = candleAreaBottom
+        positions[vo * 2 + 6] = volBarLeft;   positions[vo * 2 + 7] = volBarTop
+        positions[vo * 2 + 8] = volBarRight;  positions[vo * 2 + 9] = candleAreaBottom
+        positions[vo * 2 + 10] = volBarLeft;  positions[vo * 2 + 11] = candleAreaBottom
+
+        for (let j = 0; j < 6; j++) {
+          colors[(vo + j) * 2 + 0] = volColor[0]
+          colors[(vo + j) * 2 + 1] = volColor[1]
+          colors[(vo + j) * 2 + 2] = volColor[2]
+          colors[(vo + j) * 2 + 3] = volColor[3]
+        }
+      }
+
+      gl.useProgram(this.program)
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer)
+      gl.bufferData(gl.ARRAY_BUFFER, positions, gl.DYNAMIC_DRAW)
+      gl.enableVertexAttribArray(this.positionLoc)
+      gl.vertexAttribPointer(this.positionLoc, 2, gl.FLOAT, false, 0, 0)
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer)
+      gl.bufferData(gl.ARRAY_BUFFER, colors, gl.DYNAMIC_DRAW)
+      gl.uniform2f(this.resolutionUniform, width, height)
       gl.clear(gl.COLOR_BUFFER_BIT)
-      return
+      gl.drawArrays(gl.TRIANGLES, 0, totalVerts)
+      this.candleCount = count
+    } catch {
+      console.debug('[WebGLCandleRenderer] render failed, falling back')
     }
-
-    const { padding, width, height } = layout
-    const chartLeft = padding.left
-    const chartBottom = height - padding.bottom
-    const chartTop = padding.top
-    const chartHeight = chartBottom - chartTop
-    const volumeAreaHeight = chartHeight * 0.15
-    const candleAreaBottom = chartBottom - volumeAreaHeight
-
-    const vertsPerCandle = 18
-    const totalVerts = count * vertsPerCandle
-    const positions = new Float32Array(totalVerts * 2)
-    const colors = new Float32Array(totalVerts * 2)
-
-    for (let i = 0; i < count; i++) {
-      const c = candles[i]
-      const base = i * vertsPerCandle
-
-      const bodyTopPx = chartTop + (1 - c.bodyTop) * chartHeight
-      const bodyBottomPx = chartTop + (1 - c.bodyBottom) * chartHeight
-      const wickHighPx = chartTop + (1 - c.wickHigh) * chartHeight
-      const wickLowPx = chartTop + (1 - c.wickLow) * chartHeight
-      const centerX = chartLeft + c.x * (width - padding.left - padding.right)
-
-      const bodyHalfW = c.bodyWidth * (width - padding.left - padding.right) * 0.5
-      const wickHalfW = Math.max(1, c.wickWidth * (width - padding.left - padding.right) * 0.5)
-
-      const bodyTop = Math.min(bodyTopPx, bodyBottomPx)
-      const bodyBottom = Math.max(bodyTopPx, bodyBottomPx)
-
-      const colR = c.r
-      const colG = c.g
-      const colB = c.b
-      const colA = c.a
-
-      const getCol = (alphaMult: number): [number, number, number, number] => [colR, colG, colB, colA * alphaMult]
-
-      // Wick (rectangle, 6 verts)
-      const wickLeft = centerX - wickHalfW
-      const wickRight = centerX + wickHalfW
-
-      // Body (rectangle, 6 verts)
-      const bodyLeft = centerX - bodyHalfW
-      const bodyRight = centerX + bodyHalfW
-
-      // Volume bar (under body area, 6 verts)
-      const volBarHeight = c.volumeHeight * candleAreaHeight
-      const volBarTop = candleAreaBottom - volBarHeight
-      const volBarLeft = centerX - bodyHalfW * 0.8
-      const volBarRight = centerX + bodyHalfW * 0.8
-
-      // Vertices: wick (6) + body (6) + volume (6) = 18 per candle
-      // Wick rectangle (6 verts, 2 triangles)
-      const wickColor = getCol(0.8)
-
-      // Triangle 1: bottom-left, bottom-right, top-right
-      positions[base * 2 + 0] = wickLeft;    positions[base * 2 + 1] = wickHighPx
-      positions[base * 2 + 2] = wickRight;   positions[base * 2 + 3] = wickHighPx
-      positions[base * 2 + 4] = wickRight;   positions[base * 2 + 5] = wickLowPx
-      // Triangle 2: bottom-left, top-right, top-left
-      positions[base * 2 + 6] = wickLeft;    positions[base * 2 + 7] = wickHighPx
-      positions[base * 2 + 8] = wickRight;   positions[base * 2 + 9] = wickLowPx
-      positions[base * 2 + 10] = wickLeft;   positions[base * 2 + 11] = wickLowPx
-
-      for (let j = 0; j < 6; j++) {
-        colors[(base + j) * 2 + 0] = wickColor[0]
-        colors[(base + j) * 2 + 1] = wickColor[1]
-        colors[(base + j) * 2 + 2] = wickColor[2]
-        colors[(base + j) * 2 + 3] = wickColor[3]
-      }
-
-      // Body rectangle (6 verts)
-      const bodyColor = getCol(1.0)
-      const bo = base + 6
-      positions[bo * 2 + 0] = bodyLeft;    positions[bo * 2 + 1] = bodyTop
-      positions[bo * 2 + 2] = bodyRight;   positions[bo * 2 + 3] = bodyTop
-      positions[bo * 2 + 4] = bodyRight;   positions[bo * 2 + 5] = bodyBottom
-      positions[bo * 2 + 6] = bodyLeft;    positions[bo * 2 + 7] = bodyTop
-      positions[bo * 2 + 8] = bodyRight;   positions[bo * 2 + 9] = bodyBottom
-      positions[bo * 2 + 10] = bodyLeft;   positions[bo * 2 + 11] = bodyBottom
-
-      for (let j = 0; j < 6; j++) {
-        colors[(bo + j) * 2 + 0] = bodyColor[0]
-        colors[(bo + j) * 2 + 1] = bodyColor[1]
-        colors[(bo + j) * 2 + 2] = bodyColor[2]
-        colors[(bo + j) * 2 + 3] = bodyColor[3]
-      }
-
-      // Volume bar (6 verts)
-      const volColor = c.isUp
-        ? [UP_RGB[0], UP_RGB[1], UP_RGB[2], 0.4]
-        : [DOWN_RGB[0], DOWN_RGB[1], DOWN_RGB[2], 0.4]
-      const vo = base + 12
-      positions[vo * 2 + 0] = volBarLeft;   positions[vo * 2 + 1] = volBarTop
-      positions[vo * 2 + 2] = volBarRight;  positions[vo * 2 + 3] = volBarTop
-      positions[vo * 2 + 4] = volBarRight;  positions[vo * 2 + 5] = candleAreaBottom
-      positions[vo * 2 + 6] = volBarLeft;   positions[vo * 2 + 7] = volBarTop
-      positions[vo * 2 + 8] = volBarRight;  positions[vo * 2 + 9] = candleAreaBottom
-      positions[vo * 2 + 10] = volBarLeft;  positions[vo * 2 + 11] = candleAreaBottom
-
-      for (let j = 0; j < 6; j++) {
-        colors[(vo + j) * 2 + 0] = volColor[0]
-        colors[(vo + j) * 2 + 1] = volColor[1]
-        colors[(vo + j) * 2 + 2] = volColor[2]
-        colors[(vo + j) * 2 + 3] = volColor[3]
-      }
-    }
-
-    gl.useProgram(this.program)
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer)
-    gl.bufferData(gl.ARRAY_BUFFER, positions, gl.DYNAMIC_DRAW)
-    gl.enableVertexAttribArray(this.positionLoc)
-    gl.vertexAttribPointer(this.positionLoc, 2, gl.FLOAT, false, 0, 0)
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer)
-    gl.bufferData(gl.ARRAY_BUFFER, colors, gl.DYNAMIC_DRAW)
-
-    gl.uniform2f(this.resolutionUniform, width, height)
-
-    gl.clear(gl.COLOR_BUFFER_BIT)
-
-    gl.drawArrays(gl.TRIANGLES, 0, totalVerts)
-
-    this.candleCount = count
   }
 
   updateColors(candles: WebGLCandle[]): void {
     const gl = this.gl
     if (!gl || !this.program) return
 
-    const count = candles.length
-    const totalVerts = count * 18
-    const colors = new Float32Array(totalVerts * 2)
+    try {
+      const count = candles.length
+      const totalVerts = count * 18
+      const colors = new Float32Array(totalVerts * 2)
 
-    for (let i = 0; i < count; i++) {
-      const c = candles[i]
-      const base = i * 18
-      const colR = c.r
-      const colG = c.g
-      const colB = c.b
-      const colA = c.a
+      for (let i = 0; i < count; i++) {
+        const c = candles[i]
+        const base = i * 18
+        const colR = c.r
+        const colG = c.g
+        const colB = c.b
+        const colA = c.a
 
-      const wickColor = [colR, colG, colB, colA * 0.8]
-      for (let j = 0; j < 6; j++) {
-        colors[(base + j) * 2 + 0] = wickColor[0]
-        colors[(base + j) * 2 + 1] = wickColor[1]
-        colors[(base + j) * 2 + 2] = wickColor[2]
-        colors[(base + j) * 2 + 3] = wickColor[3]
+        const wickColor = [colR, colG, colB, colA * 0.8]
+        for (let j = 0; j < 6; j++) {
+          colors[(base + j) * 2 + 0] = wickColor[0]
+          colors[(base + j) * 2 + 1] = wickColor[1]
+          colors[(base + j) * 2 + 2] = wickColor[2]
+          colors[(base + j) * 2 + 3] = wickColor[3]
+        }
+
+        const bodyColor = [colR, colG, colB, colA]
+        const bo = base + 6
+        for (let j = 0; j < 6; j++) {
+          colors[(bo + j) * 2 + 0] = bodyColor[0]
+          colors[(bo + j) * 2 + 1] = bodyColor[1]
+          colors[(bo + j) * 2 + 2] = bodyColor[2]
+          colors[(bo + j) * 2 + 3] = bodyColor[3]
+        }
+
+        const volColor = c.isUp
+          ? [UP_RGB[0], UP_RGB[1], UP_RGB[2], 0.4]
+          : [DOWN_RGB[0], DOWN_RGB[1], DOWN_RGB[2], 0.4]
+        const vo = base + 12
+        for (let j = 0; j < 6; j++) {
+          colors[(vo + j) * 2 + 0] = volColor[0]
+          colors[(vo + j) * 2 + 1] = volColor[1]
+          colors[(vo + j) * 2 + 2] = volColor[2]
+          colors[(vo + j) * 2 + 3] = volColor[3]
+        }
       }
 
-      const bodyColor = [colR, colG, colB, colA]
-      const bo = base + 6
-      for (let j = 0; j < 6; j++) {
-        colors[(bo + j) * 2 + 0] = bodyColor[0]
-        colors[(bo + j) * 2 + 1] = bodyColor[1]
-        colors[(bo + j) * 2 + 2] = bodyColor[2]
-        colors[(bo + j) * 2 + 3] = bodyColor[3]
-      }
-
-      const volColor = c.isUp
-        ? [UP_RGB[0], UP_RGB[1], UP_RGB[2], 0.4]
-        : [DOWN_RGB[0], DOWN_RGB[1], DOWN_RGB[2], 0.4]
-      const vo = base + 12
-      for (let j = 0; j < 6; j++) {
-        colors[(vo + j) * 2 + 0] = volColor[0]
-        colors[(vo + j) * 2 + 1] = volColor[1]
-        colors[(vo + j) * 2 + 2] = volColor[2]
-        colors[(vo + j) * 2 + 3] = volColor[3]
-      }
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer)
+      gl.bufferData(gl.ARRAY_BUFFER, colors, gl.DYNAMIC_DRAW)
+      gl.uniform2f(this.resolutionUniform, this.canvasWidth, this.canvasHeight)
+      gl.clear(gl.COLOR_BUFFER_BIT)
+      gl.drawArrays(gl.TRIANGLES, 0, totalVerts)
+    } catch {
+      console.debug('[WebGLCandleRenderer] updateColors failed')
     }
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer)
-    gl.bufferData(gl.ARRAY_BUFFER, colors, gl.DYNAMIC_DRAW)
-    gl.uniform2f(this.resolutionUniform, this.canvasWidth, this.canvasHeight)
-    gl.clear(gl.COLOR_BUFFER_BIT)
-    gl.drawArrays(gl.TRIANGLES, 0, totalVerts)
   }
 
   destroy(): void {

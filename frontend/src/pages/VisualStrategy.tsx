@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, memo } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import {
   ReactFlow,
   addEdge,
@@ -12,10 +12,11 @@ import {
   type Connection,
   type Node,
   type Edge,
-  type NodeProps,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { Play } from 'lucide-react'
+import { Play, BarChart3 } from 'lucide-react'
+import { api } from '../api/client'
+import { useToastStore } from '../store/toast'
 
 type StrategyNodeData = {
   label: string
@@ -38,7 +39,7 @@ const NODE_PALETTE = [
   { type: 'order', label: 'Order', color: 'var(--accent-red)' },
 ]
 
-function StrategyNodeComponent({ data }: NodeProps<StrategyNodeData>) {
+function StrategyNodeComponent({ data }: { data: StrategyNodeData }) {
   const borderColor = NODE_BORDERS[data.type] || 'var(--accent-blue)'
   return (
     <div
@@ -126,7 +127,12 @@ export default function VisualStrategy() {
   const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(defaultEdges)
   const [generatedCode, setGeneratedCode] = useState('')
+  const [flowResult, setFlowResult] = useState<any>(null)
+  const [backtestResult, setBacktestResult] = useState<any>(null)
+  const [flowLoading, setFlowLoading] = useState(false)
+  const [backtestLoading, setBacktestLoading] = useState(false)
   const reactFlowWrapper = useRef<HTMLDivElement>(null)
+  const addToast = useToastStore((s) => s.addToast)
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -196,6 +202,56 @@ export default function VisualStrategy() {
     setGeneratedCode(codeLines.join('\n'))
   }
 
+  const runFlow = async () => {
+    setFlowLoading(true)
+    setFlowResult(null)
+    try {
+      const payload = {
+        nodes: nodes.map((n) => ({
+          id: n.id,
+          type: n.type,
+          label: (n.data as StrategyNodeData).label,
+          params: (n.data as StrategyNodeData).params,
+        })),
+        edges: edges.map((e) => ({ source: e.source, target: e.target })),
+      }
+      const { data } = await api.post('/api/strategy/execute-flow', payload)
+      setFlowResult(data)
+      addToast('Flow executed successfully', 'success')
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail || e?.message || 'Flow execution failed'
+      setFlowResult({ error: msg })
+      addToast(msg, 'error')
+    } finally {
+      setFlowLoading(false)
+    }
+  }
+
+  const backtestFlow = async () => {
+    setBacktestLoading(true)
+    setBacktestResult(null)
+    try {
+      const payload = {
+        nodes: nodes.map((n) => ({
+          id: n.id,
+          type: n.type,
+          label: (n.data as StrategyNodeData).label,
+          params: (n.data as StrategyNodeData).params,
+        })),
+        edges: edges.map((e) => ({ source: e.source, target: e.target })),
+      }
+      const { data } = await api.post('/api/strategy/backtest-flow', payload)
+      setBacktestResult(data)
+      addToast('Backtest completed', 'success')
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail || e?.message || 'Backtest failed'
+      setBacktestResult({ error: msg })
+      addToast(msg, 'error')
+    } finally {
+      setBacktestLoading(false)
+    }
+  }
+
   return (
     <div className="flex h-full gap-1.5">
       <div className="w-40 flex flex-col gap-1 pr-1.5 border-r border-default">
@@ -216,12 +272,20 @@ export default function VisualStrategy() {
           </div>
         ))}
         <div className="flex-1" />
-        <button onClick={generateCode}
+        <button onClick={runFlow} disabled={flowLoading}
           className="flex items-center gap-1 bg-accent-cyan text-black border-none font-mono-data text-[11px] font-semibold px-2 py-1 cursor-pointer w-full rounded-sm">
-          <Play size={12} /> GENERATE
+          <Play size={12} /> {flowLoading ? '...' : 'RUN FLOW'}
+        </button>
+        <button onClick={backtestFlow} disabled={backtestLoading}
+          className="flex items-center gap-1 bg-[var(--accent-purple)] text-white border-none font-mono-data text-[11px] font-semibold px-2 py-1 cursor-pointer w-full rounded-sm">
+          <BarChart3 size={12} /> {backtestLoading ? '...' : 'BACKTEST FLOW'}
+        </button>
+        <button onClick={generateCode}
+          className="flex items-center gap-1 bg-[var(--accent-blue)] text-white border-none font-mono-data text-[11px] font-semibold px-2 py-1 cursor-pointer w-full rounded-sm">
+          GENERATE
         </button>
       </div>
-      <div ref={reactFlowWrapper} className="flex-1 border border-default rounded">
+      <div ref={reactFlowWrapper} className="flex-1 border border-default rounded relative">
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -239,10 +303,46 @@ export default function VisualStrategy() {
           <MiniMap style={{ background: 'var(--bg-card)' }} />
         </ReactFlow>
       </div>
-      {generatedCode && (
-        <div className="w-[300px] border border-default rounded p-2 overflow-auto font-mono-data text-[11px] whitespace-pre-wrap text-secondary bg-card">
-          <div className="font-bold text-up mb-1">GENERATED CODE</div>
-          <pre className="m-0">{generatedCode}</pre>
+      {(flowResult || backtestResult || generatedCode) && (
+        <div className="w-[300px] border border-default rounded p-2 overflow-auto font-mono-data text-[11px] whitespace-pre-wrap bg-card">
+          {flowResult && (
+            <div className="mb-2">
+              <div className="font-bold text-up mb-1">FLOW RESULT</div>
+              {flowResult.error ? (
+                <div className="text-down">{flowResult.error}</div>
+              ) : (
+                <div className="space-y-1 text-secondary">
+                  <div>Status: <span className="text-primary">{flowResult.status || 'OK'}</span></div>
+                  {flowResult.signal && <div>Signal: <span className="text-primary">{flowResult.signal}</span></div>}
+                  {flowResult.metrics && typeof flowResult.metrics === 'object' && Object.entries(flowResult.metrics).map(([k, v]) => (
+                    <div key={k}>{k}: <span className="text-primary">{String(v)}</span></div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {backtestResult && (
+            <div className="mb-2">
+              <div className="font-bold text-purple mb-1">BACKTEST RESULT</div>
+              {backtestResult.error ? (
+                <div className="text-down">{backtestResult.error}</div>
+              ) : (
+                <div className="space-y-1 text-secondary">
+                  <div>Return: <span className={`font-mono ${(backtestResult.return || 0) >= 0 ? 'text-up' : 'text-down'}`}>
+                    {backtestResult.return != null ? (backtestResult.return * 100).toFixed(2) + '%' : '-'}
+                  </span></div>
+                  <div>Sharpe: <span className="text-primary">{backtestResult.sharpe != null ? backtestResult.sharpe.toFixed(3) : '-'}</span></div>
+                  <div>Trades: <span className="text-primary">{backtestResult.trades ?? '-'}</span></div>
+                </div>
+              )}
+            </div>
+          )}
+          {generatedCode && (
+            <div>
+              <div className="font-bold text-up mb-1">GENERATED CODE</div>
+              <pre className="m-0">{generatedCode}</pre>
+            </div>
+          )}
         </div>
       )}
     </div>

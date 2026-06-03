@@ -13,7 +13,6 @@ interface ChartStore {
   error: string
 
   chartStyle: ChartStyleType
-  theme: 'dark' | 'light'
   showDelta: boolean
   showVolumeProfile: boolean
 
@@ -29,6 +28,7 @@ interface ChartStore {
   showCorrelation: boolean
   showSignalTimeline: boolean
   showLayerPanel: boolean
+  snapToOHLC: boolean
 
   replayIndex: number | null
   replayPlaying: boolean
@@ -43,7 +43,6 @@ interface ChartStore {
   setLoading: (loading: boolean) => void
   setError: (error: string) => void
   setChartStyle: (style: ChartStyleType) => void
-  setTheme: (theme: 'dark' | 'light') => void
   toggleDelta: () => void
   toggleVolumeProfile: () => void
   setActiveTool: (tool: ToolType | null) => void
@@ -57,6 +56,7 @@ interface ChartStore {
   toggleCorrelation: () => void
   toggleSignalTimeline: () => void
   toggleLayerPanel: () => void
+  toggleSnapToOHLC: () => void
   setReplayIndex: (index: number | null) => void
   setReplayPlaying: (playing: boolean) => void
   setLayoutMode: (mode: LayoutMode) => void
@@ -74,7 +74,6 @@ const initialState = {
   loading: false,
   error: '',
   chartStyle: 'candle' as ChartStyleType,
-  theme: 'dark' as const,
   showDelta: false,
   showVolumeProfile: false,
   activeTool: null as ToolType | null,
@@ -88,6 +87,7 @@ const initialState = {
   showCorrelation: false,
   showSignalTimeline: false,
   showLayerPanel: true,
+  snapToOHLC: false,
   replayIndex: null as number | null,
   replayPlaying: false,
   layoutMode: 'single' as LayoutMode,
@@ -105,7 +105,6 @@ export const useChartStore = create<ChartStore>()((set) => ({
   setError: (error) => set({ error }),
 
   setChartStyle: (chartStyle) => set({ chartStyle }),
-  setTheme: (theme) => set({ theme }),
   toggleDelta: () => set((s) => ({ showDelta: !s.showDelta })),
   toggleVolumeProfile: () => set((s) => ({ showVolumeProfile: !s.showVolumeProfile })),
 
@@ -123,6 +122,7 @@ export const useChartStore = create<ChartStore>()((set) => ({
   toggleCorrelation: () => set((s) => ({ showCorrelation: !s.showCorrelation })),
   toggleSignalTimeline: () => set((s) => ({ showSignalTimeline: !s.showSignalTimeline })),
   toggleLayerPanel: () => set((s) => ({ showLayerPanel: !s.showLayerPanel })),
+  toggleSnapToOHLC: () => set((s) => ({ snapToOHLC: !s.snapToOHLC })),
 
   setReplayIndex: (replayIndex) => set({ replayIndex }),
   setReplayPlaying: (replayPlaying) => set({ replayPlaying }),

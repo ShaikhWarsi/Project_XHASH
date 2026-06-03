@@ -3,16 +3,20 @@
 ## High-Level Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                Frontend (React + TypeScript)                 │
-│     Dashboard │ Portfolio │ Signals │ Chart │ Backtest      │
-│     Agents (Council) │ Hedge Flow │ Risk │ Settings        │
-└───────────────────────────┬─────────────────────────────────┘
-                            │ REST + SSE + WebSocket
-┌───────────────────────────▼─────────────────────────────────┐
-│                  FastAPI REST API                             │
-│              40+ Endpoints | JWT Auth | SSE                  │
-└───────┬───────────┬───────────┬───────────┬─────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                   Frontend (React + TypeScript)                       │
+│   Dashboard │ Portfolio │ Signals │ Chart │ Backtest                 │
+│   Agents (Council) │ Hedge Flow │ Risk │ Settings                    │
+│   Right Sidebar (News/Calendar/Chat/Co-Move/Earnings)                │
+│   AI Features (Briefing/Strategy/Indicator/Inspector/Terminal)        │
+│   Multi-Window │ Distraction-Free │ DnD (Symbol/Price/Date)          │
+└───────────────────────────┬─────────────────────────────────────────┘
+                           │ REST + SSE + WebSocket + BroadcastChannel
+┌───────────────────────────▼─────────────────────────────────────────┐
+│                   FastAPI REST API                                    │
+│   60+ Endpoints | JWT Auth | SSE Streaming | WebSocket               │
+│   LLM (complete + streaming) | AI (7 feature endpoints)              │
+└───────┬───────────┬───────────┬───────────┬─────────────────────────┘
         │           │           │           │
 ┌───────▼───┐ ┌─────▼─────┐ ┌───▼───┐ ┌───▼──────────┐
 │  Signals   │ │  Agents   │ │ Risk  │ │  Execution   │
@@ -23,172 +27,160 @@
 └───────────┘ └───────────┘ └───────┘ └──────────────┘
 ```
 
-## Directory Structure
+## Directory Structure — New Additions
 
 ```
 trading-engine/
-├── core/                  # Core types and utilities
-│   ├── enums.py          # SignalType, Timeframe, OrderSide, etc.
-│   ├── types.py          # Bar, Order, PortfolioState, QuantSignal
-│   ├── events.py         # Event system
-│   ├── errors.py         # Custom exceptions
-│   └── position.py       # Position management
+├── api/                       # FastAPI application
+│   ├── app.py                # 60+ router registrations
+│   ├── routes/
+│   │   ├── llm.py            # GET /llm/models, POST /llm/complete, POST /llm/complete-stream
+│   │   ├── briefing.py       # GET /api/ai/briefing — market + portfolio LLM briefing
+│   │   ├── network_co_movement.py # POST /api/ai/co-movement — news-driven correlation
+│   │   ├── earnings_summary.py    # POST /api/ai/earnings-summary — bull/bear/risk extraction
+│   │   ├── ai_strategy.py    # POST /api/ai/generate-strategy + evaluate-strategy
+│   │   ├── ai_indicator.py   # POST /api/ai/generate-indicator — JS plugin code gen
+│   │   ├── ai_inspector.py   # POST /api/ai/inspect-pattern — streaming pattern analysis (SSE)
+│   │   └── llm_query.py      # POST /api/llm/query — portfolio-aware NL queries
+│   │
+│   └── services/
+│       ├── agent_service.py  # Agent registry, persona lookup
+│       ├── motd_service.py   # Config-driven message-of-the-day
+│       └── chat_service.py   # In-memory chat broadcast
 │
-├── signals/               # Signal generation pipeline
-│   ├── base.py           # SignalEngine abstract base class
-│   ├── engine_registry.py # Signal engine registration
-│   ├── composite.py      # Composite signal aggregation
-│   ├── indicators/       # Technical indicator implementations
-│   │   ├── smc.py        # Smart Money Concepts
-│   │   ├── harmonics.py  # Harmonic patterns
-│   │   ├── head_shoulders.py
-│   │   ├── patterns.py   # Candlestick patterns
-│   │   ├── price_action.py
-│   │   ├── support_resistance.py
-│   │   └── market_structure.py
-│   ├── ml/               # Machine learning signals
-│   │   ├── pattern_mining.py
-│   │   ├── meta_labeling.py
-│   │   └── validation.py
-│   ├── rl/               # Reinforcement learning
-│   │   ├── trainer.py
-│   │   └── environment.py
-│   ├── factors/          # GPU-accelerated factors
-│   └── alpha_zoo/        # 158 pre-built alpha factors
-│       └── zoo/          # Qlib158, GTJA191 factors
-│
-├── agents/                # AI agent system
-│   ├── base.py           # TradingAgent abstract base
-│   ├── orchestrator.py   # Agent coordination
-│   ├── hedge_fund/       # Investor persona agents
-│   │   ├── warren_buffett.py
-│   │   ├── ben_graham.py
-│   │   ├── michael_burry.py
-│   │   ├── nassim_taleb.py
-│   │   └── ... (12 more personas)
-│   ├── llm/              # LLM-powered agents
-│   │   ├── valuation_agent.py
-│   │   ├── sentiment_agent.py
-│   │   ├── fundamentals_agent.py
-│   │   └── ... (4 more agents)
-│   ├── debate/           # Bull/Bear debate system
-│   │   ├── bull_researcher.py
-│   │   ├── bear_researcher.py
-│   │   └── ... (debate orchestration)
-│   └── renaissance/      # Renaissance-style teams
-│       ├── research_team.py
-│       ├── risk_team.py
-│       └── trading_team.py
-│
-├── risk/                 # Risk management
-│   ├── engine.py         # Central RiskEngine
-│   ├── limits.py         # PositionLimits
-│   ├── stop_loss.py      # StopLossTracker
-│   ├── position_sizing.py # Kelly, fixed fractional
-│   └── circuit_breakers.py
-│
-├── execution/            # Order execution
-│   ├── backtest/         # Backtest execution
-│   ├── paper/            # Paper trading
-│   └── live/             # Live broker integration
-│
-├── backtesting/          # Backtesting infrastructure
-│   ├── engine.py         # Main BacktestEngine
-│   ├── engine_factory.py # Engine creation
-│   ├── metrics.py        # Performance metrics
-│   ├── monte_carlo.py    # Monte Carlo simulations
-│   ├── walkforward.py    # Walk-forward analysis
-│   ├── scenario.py       # Scenario testing
-│   ├── synthetic_data.py # Synthetic data generation
-│   └── market_engines/   # Multi-market support
-│       ├── base.py
-│       ├── global_equity.py
-│       ├── global_futures.py
-│       ├── china_a.py
-│       ├── china_futures.py
-│       ├── forex.py
-│       └── crypto.py
-│
-├── analytics/            # Analytics and reporting
-│   ├── metrics.py        # 22+ performance metrics
-│   ├── attribution.py    # Performance attribution
-│   ├── reports.py        # Report generation
-│   ├── dashboard.py      # Dashboard data
-│   ├── optimizers/       # Portfolio optimization
-│   │   ├── mean_variance.py
-│   │   ├── risk_parity.py
-│   │   ├── equal_volatility.py
-│   │   └── max_diversification.py
-│   ├── cfa/              # CFA analytics
-│   │   ├── portfolio.py
-│   │   ├── fixed_income.py
-│   │   ├── derivatives.py
-│   │   ├── valuation.py
-│   │   └── financial_statements.py
-│   ├── benchmarks/       # Benchmark implementations
-│   └── hypothesis/       # Hypothesis testing
-│
-├── finscript/            # Custom trading DSL
-│   ├── lexer.py          # Tokenizer
-│   ├── parser.py         # Parser
-│   ├── ast.py            # Abstract syntax tree
-│   ├── interpreter.py    # Execution engine
-│   ├── builtins.py       # Built-in functions (40+)
-│   ├── compiler/         # Strategy compiler
-│   └── export/           # Export targets
-│       ├── pine_script.py # TradingView
-│       ├── mt5.py         # MetaTrader 5
-│       └── tdx.py        # TD Ameritrade
-│
-├── integrations/          # Third-party integrations
-│   ├── discord_bot.py
-│   ├── slack_bot.py
-│   ├── telegram_bot.py
-│   ├── sms_notifier.py
-│   ├── email_notifier.py
-│   ├── twitter.py
-│   └── tradingview.py
-│
-├── persistence/          # Data persistence
-│   ├── database.py       # SQLAlchemy async setup
-│   ├── models.py         # ORM models
-│   ├── repositories.py   # Data access layer
-│   └── migrate.py        # Migration utilities
-│
-├── api/                  # FastAPI application
-│   ├── app.py            # Application factory
-│   ├── routes/           # API route modules (30+)
-│   ├── models/           # Pydantic schemas
-│   ├── services/         # Business logic services
-│   ├── auth/             # Authentication
-│   └── websocket_manager.py
-│
-├── llm/                  # LLM integration
-│   ├── client.py          # LLM client wrapper
-│   ├── capabilities.py    # Model capabilities
-│   └── models.py         # Model definitions
-│
-├── config/               # Configuration
-│   └── strategies/        # Strategy defaults
-│
-├── scripts/               # CLI entrypoints
-│   ├── run.py            # Backtest CLI
-│   ├── live.py           # Live trading CLI
-│   └── dashboard.py       # API server CLI
-│
-├── frontend/              # React SPA
+├── frontend/                  # React SPA
 │   ├── src/
-│   │   ├── pages/         # 30 page components
-│   │   ├── components/    # Reusable components
-│   │   ├── api/          # API client
-│   │   ├── store/        # Zustand stores
-│   │   └── contexts/     # React contexts
-│   └── package.json
-│
-└── tests/                 # Test suite
-    ├── unit/
-    ├── integration/
-    └── conftest.py
+│   │   ├── api/
+│   │   │   └── llm.ts        # All LLM + AI API functions (15 exported functions)
+│   │   │
+│   │   ├── components/
+│   │   │   ├── AIBriefing.tsx          # Modal overlay with portfolio+market briefing
+│   │   │   ├── StreamResponse.tsx      # Reusable SSE streaming text renderer
+│   │   │   ├── NewsCoMovement.tsx      # Headline → correlated tickers panel
+│   │   │   ├── EarningsSummary.tsx     # Earnings transcript summary panel
+│   │   │   ├── StrategyGenerator.tsx   # NL → FinScript → review → backtest
+│   │   │   ├── IndicatorGenerator.tsx  # NL → JS indicator → add to chart
+│   │   │   ├── AIInspector.tsx         # Streaming pattern analysis modal
+│   │   │   ├── LLMPanel.tsx            # Updated: General Chat + Ask Terminal modes
+│   │   │   ├── StatusBar.tsx           # Updated: BRIEF button in status bar
+│   │   │   └── rightsidebar/
+│   │   │       ├── RightSidebar.tsx    # 5 tabs: News, Calendar, Chat, Co-Move, Earnings
+│   │   │       ├── NewsPanel.tsx       # Yahoo Finance + Market Intel headlines
+│   │   │       ├── CalendarPanel.tsx   # Macro events + earnings + dividends
+│   │   │       └── ChatPanel.tsx       # WebSocket team/AI chat
+│   │   │
+│   │   ├── contexts/
+│   │   │   ├── DistractionFreeContext.tsx  # Ctrl+Shift+D chrome toggle
+│   │   │   ├── MultiWindowContext.tsx      # BroadcastChannel cross-tab sync
+│   │   │   └── SymbolDragContext.tsx       # Native DnD for symbol dragging
+│   │   │
+│   │   ├── hooks/
+│   │   │   ├── useMultiWindow.ts          # BroadcastChannel hook
+│   │   │   └── useHeldTickers.ts          # Portfolio dedup ticker hook
+│   │   │
+│   │   └── utils/
+│   │       ├── broadcastChannels.ts       # Channel name constants + getTabId()
+│   │       └── tickSound.ts              # Web Audio API tick chirp
+```
+
+## AI Feature Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        LLM Infrastructure                             │
+│                                                                      │
+│  ┌──────────────┐   ┌──────────────┐   ┌──────────────────────────┐ │
+│  │ /llm/complete│   │ /llm/complete│   │ /llm/models              │ │
+│  │ (POST)       │   │ -stream (POST)│   │ (GET)                    │ │
+│  │ Non-streaming│   │ SSE streaming│   │ Model listing             │ │
+│  └──────┬───────┘   └──────┬───────┘   └──────────────────────────┘ │
+│         │                  │                                         │
+└─────────┼──────────────────┼─────────────────────────────────────────┘
+          │                  │
+┌─────────▼──────────────────▼─────────────────────────────────────────┐
+│                        AI Feature Endpoints                           │
+│                                                                      │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────┐│
+│  │ Briefing │  │Co-Move   │  │Earnings  │  │Strategy  │  │Indicator││
+│  │ GET      │  │POST      │  │POST      │  │POST      │  │POST     ││
+│  └──────────┘  └──────────┘  └──────────┘  └─────┬────┘  └────┬───┘│
+│                                                    │            │    │
+│  ┌──────────┐  ┌──────────┐  ┌─────────────────────▼────────────▼──┐│
+│  │Inspector │  │LLM Query │  │  /ai/generate + /ai/evaluate        ││
+│  │POST(SSE) │  │POST      │  │  (Strategy + Indicator)             ││
+│  └──────────┘  └──────────┘  └────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Data Flow — All AI Features
+
+```
+User Action                    Backend                          LLM Provider
+     │                            │                                │
+     ├─ Briefing button ──────>  GET /api/ai/briefing ──────>  OpenAI GPT-4o-mini
+     │                            │  gather: portfolio,          │
+     │                            │  regime, movers, risk        │
+     │                            │<──── formatted briefing ─────┘
+     │                            │
+     ├─ Send query ───────────>  POST /api/llm/query ────────>  OpenAI GPT-4o-mini
+     │  (LLMPanel Data Mode)      │  inject: portfolio,          │
+     │                            │  risk, trades context        │
+     │                            │<──── data-driven answer ─────┘
+     │
+     ├─ Describe strategy ────>  POST /api/ai/generate-strategy  OpenAI GPT-4o
+     │  (StrategyGenerator)       │<──── FinScript code ──────────┘
+     │  Review → Run ─────────>  POST /api/ai/evaluate-strategy
+     │                            │  finscript.execute(code, data)
+     │                            │<──── trades + metrics ───────
+     │
+     ├─ Describe indicator ───>  POST /api/ai/generate-indicator  OpenAI GPT-4o
+     │  (IndicatorGenerator)      │<──── JavaScript code ─────────┘
+     │  Add to Chart              │  registerPlugin() at runtime
+     │
+     ├─ Inspect pattern ──────>  POST /api/ai/inspect-pattern    OpenAI GPT-4o
+     │  (AIInspector)             │  SSE stream ──────────────>  streaming tokens
+     │<───── streaming text ──────┘<────────────────────────────┘
+     │
+     ├─ Co-Move headline ─────>  POST /api/ai/co-movement ────>  OpenAI
+     │  (NewsCoMovement)          │<──── correlated tickers ──────┘
+     │
+     └─ Paste transcript ─────>  POST /api/ai/earnings-summary    OpenAI
+        (EarningsSummary)          │<──── bull/bear/risk ──────────┘
+```
+
+## Multi-Window Architecture
+
+```
+Window A                         BroadcastChannel('te-sync')    Window B
+    │                                   │                          │
+    ├─ Theme Change ─────────────────>  │  > THEME_CHANGED ───────>  theme sync
+    ├─ Symbol Change ────────────────>  │  > SYMBOL_CHANGED ──────>  symbol sync
+    └─ Backtest Complete ───────────>  │  > BACKTEST_COMPLETE ───>  notification
+                                       │
+    Each window filters its own messages via tabId to prevent echo loops
+```
+
+## Drag-and-Drop Architecture
+
+```
+Source Components         MIME Types                     Drop Targets
+    │                        │                              │
+SymbolSearch ───────────>  text/plain ──────────────────>  DropZone(kind="chart")
+PriceDragSource ────────>  application/x-price-level ──>  PriceDragTarget (Alert)
+DateDragSource ─────────>  application/x-date ─────────>  DateDropTarget (Backtest)
+    │                                                      OrderEntry
+    │                                                      Compare
+```
+
+## Right Sidebar Architecture
+
+```
+RightSidebar (320px fixed, CSS transition)
+├── News tab        → NewsPanel       → POST /api/news/for-tickers
+├── Calendar tab    → CalendarPanel   → POST /api/calendar/today
+├── Chat tab        → ChatPanel       → WS /ws/chat
+├── Co-Move tab     → NewsCoMovement  → POST /api/ai/co-movement
+└── Earnings tab    → EarningsSummary → POST /api/ai/earnings-summary
 ```
 
 ## Core Data Flow
@@ -214,34 +206,25 @@ Market Data → Signal Engines → Signals → Agent Analysis
 5. **Scoring**: Confidence and strength assignment
 6. **Output**: QuantSignal objects with metadata
 
-## Agent Pipeline
-
-1. **Signal Input**: Receive quant signals
-2. ** Persona Analysis**: Each agent analyzes from their perspective
-3. **Debate**: Bull vs Bear discussion
-4. **Consensus**: Final recommendation generation
-5. **Risk Review**: Risk team validation
-6. **Portfolio Update**: Position adjustments
-
-## Risk Pipeline
-
-1. **Order Submission**: New order arrives
-2. **Circuit Breaker Check**: Global risk state
-3. **Position Limit Check**: Per-symbol, sector limits
-4. **Stop Loss Check**: Existing protective stops
-5. **Position Sizing Check**: Kelly/fractional limits
-6. **Execution or Rejection**: Order either executes or is rejected
-
 ## API Design
 
 - **REST**: Synchronous requests/responses
-- **SSE**: Real-time dashboard updates
-- **WebSocket**: Market data streaming
+- **SSE**: Real-time streaming (dashboard updates, AI pattern inspection)
+- **WebSocket**: Market data streaming, chat
+- **BroadcastChannel**: Cross-tab synchronization (themes, symbols, backtest)
 - **Authentication**: JWT + API Key support
 - **Rate Limiting**: 100 requests/minute default
 
 ## State Management
 
 - **Frontend**: Zustand stores for UI state
+- **Multi-Window**: BroadcastChannel API (same-origin only, no server)
 - **Backend**: In-memory state + SQLAlchemy persistence
 - **Real-time**: SSE push to connected clients
+
+## Environment Variables for AI Features
+
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `OPENAI_API_KEY` | For AI features | Powers all 7 AI endpoints + streaming |
+| `ANTHROPIC_API_KEY` | Alternative | Used when OpenAI key unavailable |

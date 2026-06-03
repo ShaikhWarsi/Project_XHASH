@@ -47,15 +47,11 @@ function getGridArea(weight: number, totalWeight: number): { colSpan: number; ro
 
 export default function HeatMapWidget({ id, onRemove }: { id: string; onRemove?: () => void }) {
   const [hoveredSector, setHoveredSector] = useState<string | null>(null)
-  const [sectorQuotes, setSectorQuotes] = useState<any[] | null>(() => {
-    try {
-      const raw = sessionStorage.getItem('sector_quotes')
-      return raw ? JSON.parse(raw) : null
-    } catch { return null }
-  })
+  const [sectorQuotes, setSectorQuotes] = useState<any[] | null>(null)
+  const [fetchError, setFetchError] = useState(false)
+  const _simulated = true
 
   useEffect(() => {
-    if (sectorQuotes) return
     fetchQuotes(SECTOR_ETFS).then((quotes) => {
       const data = SECTOR_ETFS.map((symbol) => {
         const q = quotes[symbol]
@@ -67,8 +63,11 @@ export default function HeatMapWidget({ id, onRemove }: { id: string; onRemove?:
       })
       sessionStorage.setItem('sector_quotes', JSON.stringify(data))
       setSectorQuotes(data)
+    }).catch(() => {
+      setFetchError(true)
+      setSectorQuotes([])
     })
-  }, [sectorQuotes])
+  }, [])
 
   const sectors: SectorData[] = useMemo(() => {
     if (!sectorQuotes) return []

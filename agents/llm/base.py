@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 from typing import Optional
 
 from agents.base import TradingAgent
@@ -11,6 +12,7 @@ from llm.client import LLMClient
 
 from .schemas import ResearchPlan, TraderProposal, PortfolioDecision
 
+_SYNC_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=1)
 
 class LLMAgent(TradingAgent):
     def __init__(
@@ -42,9 +44,7 @@ class LLMAgent(TradingAgent):
             asyncio.get_running_loop()
         except RuntimeError:
             return asyncio.run(self._analyze_async(tickers, portfolio, signals, **kwargs))
-        import concurrent.futures
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            return pool.submit(lambda: asyncio.run(self._analyze_async(tickers, portfolio, signals, **kwargs))).result()
+        return _SYNC_POOL.submit(lambda: asyncio.run(self._analyze_async(tickers, portfolio, signals, **kwargs))).result()
 
     async def _analyze_async(
         self,

@@ -79,13 +79,20 @@ class Lexer:
             self._operator(c)
 
     def _number(self, first: str):
-        while self._peek().isdigit():
+        while self._peek().isdigit() or self._peek() == "_":
             self._advance()
         if self._peek() == "." and self._peek_next().isdigit():
             self._advance()
             while self._peek().isdigit():
                 self._advance()
-        val = float(self.source[self.start:self.current])
+        if self._peek().lower() == "e":
+            self._advance()
+            if self._peek() in "+-":
+                self._advance()
+            while self._peek().isdigit():
+                self._advance()
+        raw = self.source[self.start:self.current].replace("_", "")
+        val = float(raw)
         if val == int(val):
             val = int(val)
         self._emit(T.NUMBER, val)

@@ -65,7 +65,7 @@ async def run_hedge_fund(request_data: HedgeFundRequest, request: Request):
                 agents: list[PersonaAgent] = []
                 seen_keys: set[str] = set()
                 for node in request_data.graph_nodes:
-                    agent_key = (node.data.agent_key or "").replace(" ", "_").lower()
+                    agent_key = ((getattr(node.data, 'agent_key', None) or getattr(node.data, 'agentKey', None) or "")).replace(" ", "_").lower()
                     if agent_key in seen_keys:
                         continue
                     seen_keys.add(agent_key)
@@ -80,6 +80,9 @@ async def run_hedge_fund(request_data: HedgeFundRequest, request: Request):
                 if not agents:
                     from agents.hedge_fund.warren_buffett import WarrenBuffettAgent
                     agents.append(WarrenBuffettAgent("warren_buffett", "Warren Buffett", "Value investor focused on moats"))
+                    _simulated_fallback = True
+                else:
+                    _simulated_fallback = False
 
                 orchestrator = HedgeFundOrchestrator(persona_agents=agents)
 
@@ -92,7 +95,10 @@ async def run_hedge_fund(request_data: HedgeFundRequest, request: Request):
                     signals=None,
                 )
 
-                yield CompleteEvent(data={"decisions": result, "agent_count": len(agents)}).to_sse()
+                event_data = {"decisions": result, "agent_count": len(agents)}
+                if _simulated_fallback:
+                    event_data["_simulated"] = True
+                yield CompleteEvent(data=event_data).to_sse()
 
             except Exception as e:
                 logger.exception("Hedge fund run failed")

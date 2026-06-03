@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 const CACHE_KEYS = ['portfolio_data', 'signals_data', 'backtest_results', 'market_ticker']
 
@@ -24,9 +24,22 @@ interface OfflineBannerProps {
   lastSync?: string
 }
 
+let _failedEndpoints: string[] = []
+
+export function reportFailedEndpoint(url: string) {
+  if (!_failedEndpoints.includes(url)) {
+    _failedEndpoints.push(url)
+  }
+}
+
+export function clearFailedEndpoints() {
+  _failedEndpoints = []
+}
+
 export default function OfflineBanner({ lastSync }: OfflineBannerProps) {
   const [offline, setOffline] = useState(() => typeof window !== 'undefined' && !navigator.onLine)
   const [cacheInfo, setCacheInfo] = useState('')
+  const [failedEndpoints, setFailedEndpoints] = useState<string[]>([])
 
   useEffect(() => {
     const onOffline = () => { setOffline(true); updateCacheInfo() }
@@ -48,7 +61,14 @@ export default function OfflineBanner({ lastSync }: OfflineBannerProps) {
 
   useEffect(() => { if (offline) updateCacheInfo() }, [offline])
 
-  if (!offline) return null
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFailedEndpoints([..._failedEndpoints])
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  if (!offline && failedEndpoints.length === 0) return null
 
   return (
     <div
@@ -69,35 +89,58 @@ export default function OfflineBanner({ lastSync }: OfflineBannerProps) {
         transition: 'transform 0.25s ease, opacity 0.25s ease',
       }}
     >
-      <span style={{ fontWeight: 600 }}>Offline</span>
-      <span style={{ opacity: 0.7 }}>—</span>
-      <span>Showing cached data</span>
-      {cacheInfo && (
+      {offline ? (
         <>
-          <span style={{ opacity: 0.7 }}>·</span>
-          <span style={{ opacity: 0.7 }}>{cacheInfo}</span>
+          <span style={{ fontWeight: 600 }}>Offline</span>
+          <span style={{ opacity: 0.7 }}>—</span>
+          <span>Showing cached data</span>
+          {cacheInfo && (
+            <>
+              <span style={{ opacity: 0.7 }}>·</span>
+              <span style={{ opacity: 0.7 }}>{cacheInfo}</span>
+            </>
+          )}
+          {lastSync && (
+            <>
+              <span style={{ opacity: 0.7 }}>·</span>
+              <span style={{ opacity: 0.7 }}>Last sync: {lastSync}</span>
+            </>
+          )}
+          <button
+            onClick={clearCache}
+            style={{
+              background: 'rgba(0,0,0,0.15)',
+              border: 'none',
+              color: '#000',
+              cursor: 'pointer',
+              fontSize: 9,
+              padding: '1px 6px',
+              borderRadius: 2,
+            }}
+          >
+            CLEAR CACHE
+          </button>
+        </>
+      ) : (
+        <>
+          <span style={{ fontWeight: 600, opacity: 0.7 }}>API:</span>
+          <span>{failedEndpoints.join(', ')}</span>
+          <button
+            onClick={() => { _failedEndpoints = []; setFailedEndpoints([]) }}
+            style={{
+              background: 'rgba(0,0,0,0.15)',
+              border: 'none',
+              color: '#000',
+              cursor: 'pointer',
+              fontSize: 9,
+              padding: '1px 6px',
+              borderRadius: 2,
+            }}
+          >
+            DISMISS
+          </button>
         </>
       )}
-      {lastSync && (
-        <>
-          <span style={{ opacity: 0.7 }}>·</span>
-          <span style={{ opacity: 0.7 }}>Last sync: {lastSync}</span>
-        </>
-      )}
-      <button
-        onClick={clearCache}
-        style={{
-          background: 'rgba(0,0,0,0.15)',
-          border: 'none',
-          color: '#000',
-          cursor: 'pointer',
-          fontSize: 9,
-          padding: '1px 6px',
-          borderRadius: 2,
-        }}
-      >
-        CLEAR CACHE
-      </button>
     </div>
   )
 }

@@ -45,12 +45,12 @@ export function ObjectTree({ drawings, selectedId, onSelect, onDelete, onVisibil
         >
           <span onClick={(e) => { e.stopPropagation(); onVisibilityToggle(d.id) }}
             style={{ cursor: 'pointer', color: d.visible ? 'var(--accent-blue)' : 'var(--text-muted)', fontSize: '10px' }}>
-            {d.visible ? '??' : '?'}
+            {d.visible ? '\u25C9' : '\u25CB'}
           </span>
           <span style={{ flex: 1 }}>{TOOL_LABELS[d.type] || d.type}</span>
           <button onClick={(e) => { e.stopPropagation(); onDelete(d.id) }}
             style={{ background: 'none', border: 'none', color: '#ef5350', cursor: 'pointer', fontSize: '9px', padding: 0 }}>
-            ?
+            {'\u2716'}
           </button>
         </div>
       ))}

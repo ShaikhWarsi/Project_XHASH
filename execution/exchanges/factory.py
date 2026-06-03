@@ -69,8 +69,7 @@ def create_exchange_client(
         from execution.exchanges.htx import HtxClient
         return HtxClient(api_key=api_key, api_secret=api_secret, config=config)
 
-    logger.warning("Unknown exchange: %s", exchange)
-    return None
+    raise ValueError(f"Unknown exchange: {exchange!r}. Supported: binance, binance_futures, binance_spot, okx, bybit, coinbase, kraken, kraken_futures, kucoin, gate, bitget, deepcoin, htx")
 
 
 _client_cache: Dict[str, BaseRestClient] = {}

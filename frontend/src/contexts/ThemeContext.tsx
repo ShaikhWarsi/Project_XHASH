@@ -1,8 +1,8 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode, useRef } from 'react'
 
-export type ThemeName = 'classic' | 'matrix' | 'amber' | 'cyber' | 'terminal' | 'light' | 'auto'
+export type ThemeName = 'classic' | 'matrix' | 'amber' | 'cyber' | 'terminal' | 'light' | 'highcontrast' | 'sunlight' | 'auto'
 
-const THEME_CYCLE: ThemeName[] = ['classic', 'cyber', 'terminal', 'light', 'auto']
+const THEME_CYCLE: ThemeName[] = ['classic', 'cyber', 'terminal', 'light', 'highcontrast', 'sunlight', 'auto']
 
 const DARK_THEMES: ThemeName[] = ['classic', 'cyber', 'terminal']
 
@@ -41,15 +41,28 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [density, setDensityState] = useState<'normal' | 'compact'>(() =>
     (typeof window !== 'undefined' ? localStorage.getItem(STORAGE_DENSITY) as 'normal' | 'compact' : null) || 'normal'
   )
-  const [fontSize, setFontSizeState] = useState<number>(() =>
-    typeof window !== 'undefined' ? Number(localStorage.getItem(STORAGE_FONTSIZE)) || 14 : 14
-  )
+  const [fontSize, setFontSizeState] = useState<number>(() => {
+    if (typeof window === 'undefined') return 14
+    const saved = localStorage.getItem(STORAGE_FONTSIZE)
+    const parsed = parseInt(saved ?? '', 10)
+    return Number.isFinite(parsed) && parsed >= 8 && parsed <= 24 ? parsed : 14
+  })
   const rootRef = useRef(document.documentElement)
 
   const setTheme = useCallback((t: ThemeName) => {
     setThemeState(t)
     localStorage.setItem(STORAGE_THEME, t)
     setResolvedTheme(resolveTheme(t))
+    fetch('/api/user/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ theme: t }),
+    }).catch(() => {})
+    try {
+      const channel = new BroadcastChannel('te-sync')
+      channel.postMessage({ type: 'THEME_CHANGED', payload: { theme: t }, tabId: 'theme', timestamp: Date.now() })
+      channel.close()
+    } catch {}
   }, [])
 
   const cycleTheme = useCallback(() => {

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from decimal import Decimal
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,8 +33,13 @@ async def get_portfolio(session: AsyncSession = Depends(get_session)):
         for v in p.realized_gains.values():
             if isinstance(v, dict):
                 realized_pnl += v.get("long", 0) + v.get("short", 0)
-            elif isinstance(v, (int, float)):
-                realized_pnl += v
+            elif isinstance(v, (int, float, Decimal)):
+                realized_pnl += float(v)
+            else:
+                try:
+                    realized_pnl += float(v)
+                except (TypeError, ValueError):
+                    pass
 
     await PortfolioRepository.snapshot(session, p)
 

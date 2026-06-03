@@ -14,6 +14,7 @@ import json
 import logging
 import os
 import sys
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional
@@ -25,9 +26,36 @@ try:
 except ImportError:
     FastMCP = None
 
+MCP_AUTH_TOKEN = os.environ.get("MCP_AUTH_TOKEN", "")
+MCP_RATE_LIMIT = int(os.environ.get("MCP_RATE_LIMIT_PER_MIN", "120"))
+
 mcp = None
 if FastMCP is not None:
     mcp = FastMCP("Trading-Engine")
+
+
+class _MCPRateLimiter:
+    def __init__(self, max_per_minute: int = 120):
+        self._max = max_per_minute
+        self._hits: list[float] = []
+
+    def check(self) -> None:
+        now = time.monotonic()
+        self._hits = [t for t in self._hits if now - t < 60.0]
+        if len(self._hits) >= self._max:
+            raise RuntimeError("Rate limit exceeded. Try again later.")
+        self._hits.append(now)
+
+
+_mcp_rate_limiter = _MCPRateLimiter(max_per_minute=MCP_RATE_LIMIT)
+
+
+def _mcp_auth(headers: dict | None = None) -> None:
+    if not MCP_AUTH_TOKEN:
+        return
+    token = (headers or {}).get("authorization", "").removeprefix("Bearer ")
+    if token != MCP_AUTH_TOKEN:
+        raise PermissionError("Invalid or missing MCP auth token")
 
 
 # ── Market Data Tools ────────────────────────────────────────────
@@ -41,10 +69,25 @@ if mcp is not None:
     @mcp.tool()
     def get_stock_price(symbol: str) -> str:
         """Get current stock price and basic info for a symbol."""
+        _mcp_rate_limiter.check()
         provider = _get_data_provider()
         try:
             data = provider.fetch_ticker(symbol)
             return json.dumps(data, indent=2)
+        except Exception as e:
+            return json.dumps({"error": str(e)})
+
+    @mcp.tool()
+    def get_historical_data(symbol: str, days: int = 30) -> str:
+        """Get historical OHLCV data for a symbol."""
+        _mcp_rate_limiter.check()
+        provider = _get_data_provider()
+        try:
+            end = datetime.now()
+            start = end - timedelta(days=days)
+            df = provider.fetch_bars(symbol, "1d", start, end)
+            records = df.reset_index().to_dict(orient="records") if df is not None else []
+            return json.dumps(records, indent=2, default=str)
         except Exception as e:
             return json.dumps({"error": str(e)})
 

@@ -5,13 +5,16 @@ import type { PositionExtended } from '../api/types'
 interface PositionTableProps {
   positions: PositionExtended[]
   onClose?: (symbol: string) => void
+  onUpdate?: (symbol: string, updates: Partial<{ stopLoss: number; takeProfit: number; trailingStop: number }>) => void
   showBeta?: boolean
 }
 
-export default function PositionTable({ positions, onClose, showBeta = true }: PositionTableProps) {
+export default function PositionTable({ positions, onClose, onUpdate, showBeta = true }: PositionTableProps) {
   const { getPrice } = useLivePrices()
-  const [sortBy, setSortBy] = useState<keyof PositionExtended>('symbol')
+  const [sortBy, setSortBy] = useState<string>('symbol')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [editing, setEditing] = useState<{ symbol: string; field: string } | null>(null)
+  const [editValue, setEditValue] = useState('')
 
   const livePositions = useMemo(() =>
     positions.map((pos) => {
@@ -28,13 +31,13 @@ export default function PositionTable({ positions, onClose, showBeta = true }: P
   [positions, getPrice])
 
   const sorted = [...livePositions].sort((a, b) => {
-    const aVal = a[sortBy] ?? 0
-    const bVal = b[sortBy] ?? 0
+    const aVal = (a as any)[sortBy] ?? 0
+    const bVal = (b as any)[sortBy] ?? 0
     if (typeof aVal === 'string') return sortDir === 'asc' ? (aVal as string).localeCompare(bVal as string) : (bVal as string).localeCompare(aVal as string)
     return sortDir === 'asc' ? (aVal as number) - (bVal as number) : (bVal as number) - (aVal as number)
   })
 
-  const toggleSort = (key: keyof PositionExtended) => {
+  const toggleSort = (key: string) => {
     if (sortBy === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
     else { setSortBy(key); setSortDir('asc') }
   }
@@ -48,11 +51,11 @@ export default function PositionTable({ positions, onClose, showBeta = true }: P
   }
 
   const headers = showBeta
-    ? ['Symbol', 'Side', 'Qty', 'Entry', 'Mark', 'Value', 'Unrealized P&L', 'Day P&L', 'Beta', '']
-    : ['Symbol', 'Side', 'Qty', 'Entry', 'Mark', 'Value', 'Unrealized P&L', 'Day P&L', '']
-  const sortKeys: (keyof PositionExtended | '')[] = showBeta
-    ? ['symbol', 'side', 'quantity', 'entryPrice', 'currentPrice', 'marketValue', 'unrealizedPnl', 'dayPnl', 'beta', '']
-    : ['symbol', 'side', 'quantity', 'entryPrice', 'currentPrice', 'marketValue', 'unrealizedPnl', 'dayPnl', '']
+    ? ['Symbol', 'Side', 'Qty', 'Entry', 'Mark', 'Value', 'Unrealized P&L', 'Day P&L', 'Stop', 'Target', 'Trail', 'Beta', '']
+    : ['Symbol', 'Side', 'Qty', 'Entry', 'Mark', 'Value', 'Unrealized P&L', 'Day P&L', 'Stop', 'Target', 'Trail', '']
+  const sortKeys: (keyof PositionExtended | string)[] = showBeta
+    ? ['symbol', 'side', 'quantity', 'entryPrice', 'currentPrice', 'marketValue', 'unrealizedPnl', 'dayPnl', 'stopLoss', 'takeProfit', 'trailingStop', 'beta', '']
+    : ['symbol', 'side', 'quantity', 'entryPrice', 'currentPrice', 'marketValue', 'unrealizedPnl', 'dayPnl', 'stopLoss', 'takeProfit', 'trailingStop', '']
 
   return (
     <div style={{ overflowX: 'auto' }}>
@@ -62,7 +65,7 @@ export default function PositionTable({ positions, onClose, showBeta = true }: P
             {headers.map((h, i) => (
               <th
                 key={h}
-                onClick={() => sortKeys[i] && toggleSort(sortKeys[i] as keyof PositionExtended)}
+                onClick={() => sortKeys[i] && toggleSort(sortKeys[i])}
                 style={{ padding: '8px 12px', textAlign: i < 2 ? 'left' : 'right', color: 'var(--text-muted)', fontWeight: 500, cursor: sortKeys[i] ? 'pointer' : 'default', whiteSpace: 'nowrap' }}
                 aria-label={`${h}${sortBy === sortKeys[i] ? `, sorted ${sortDir}ending` : ''}`}
               >
@@ -72,7 +75,40 @@ export default function PositionTable({ positions, onClose, showBeta = true }: P
           </tr>
         </thead>
         <tbody>
-          {sorted.map((pos) => (
+          {sorted.map((pos) => {
+            const renderEditable = (field: string, value: number | undefined | null, label: string) => {
+              const isEditing = editing?.symbol === pos.symbol && editing?.field === field
+              return isEditing ? (
+                <input autoFocus type="number" step="0.01"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={() => {
+                    if (editValue !== '' && onUpdate) {
+                      onUpdate(pos.symbol, { [field]: parseFloat(editValue) })
+                    }
+                    setEditing(null)
+                    setEditValue('')
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      if (editValue !== '' && onUpdate) {
+                        onUpdate(pos.symbol, { [field]: parseFloat(editValue) })
+                      }
+                      setEditing(null)
+                      setEditValue('')
+                    }
+                    if (e.key === 'Escape') { setEditing(null); setEditValue('') }
+                  }}
+                  style={{ width: 60, background: 'var(--bg-app)', border: '1px solid var(--accent-blue)', borderRadius: 2, padding: '1px 4px', fontSize: 10, color: 'var(--text-primary)', textAlign: 'right' }}
+                />
+              ) : (
+                <span onClick={() => { setEditing({ symbol: pos.symbol, field }); setEditValue(value != null ? String(value) : '') }}
+                  style={{ cursor: 'text', borderBottom: '1px dashed var(--border-color)', padding: '1px 2px', color: value != null ? 'var(--text-primary)' : 'var(--text-muted)' }}
+                  title={`Click to edit ${label}`}
+                >{value != null ? `$${value.toFixed(2)}` : '—'}</span>
+              )
+            }
+            return (
             <tr key={pos.symbol} style={{ borderBottom: '1px solid var(--border-color)' }} className="hover:bg-[#2a2d3e]/30 transition-colors">
               <td style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-primary)' }}>{pos.symbol}</td>
               <td style={{ padding: '10px 12px' }}>
@@ -95,6 +131,9 @@ export default function PositionTable({ positions, onClose, showBeta = true }: P
                   ${pos.dayPnl.toFixed(2)}
                 </span>
               </td>
+              <td style={{ padding: '10px 12px', textAlign: 'right' }}>{renderEditable('stopLoss', (pos as any).stopLoss, 'Stop')}</td>
+              <td style={{ padding: '10px 12px', textAlign: 'right' }}>{renderEditable('takeProfit', (pos as any).takeProfit, 'Target')}</td>
+              <td style={{ padding: '10px 12px', textAlign: 'right' }}>{renderEditable('trailingStop', (pos as any).trailingStop, 'Trail')}</td>
               {showBeta && (
                 <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--text-secondary)' }}>{pos.beta.toFixed(2)}</td>
               )}
@@ -110,7 +149,7 @@ export default function PositionTable({ positions, onClose, showBeta = true }: P
                 )}
               </td>
             </tr>
-          ))}
+          )})}
         </tbody>
       </table>
     </div>

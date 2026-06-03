@@ -1,10 +1,13 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Outlet, useNavigate, useLocation } from 'react-router-dom'
+import { Outlet, useNavigate } from 'react-router-dom'
 import { Menu, Plus, FlaskConical, Activity, Bell, BarChart3 } from 'lucide-react'
 import Sidebar from './Sidebar'
 import MarketTickerBar from './MarketTickerBar'
 import CommandPalette from './CommandPalette'
 import KeyboardShortcutListener from './KeyboardShortcuts'
+import FunctionKeyRibbon from './FunctionKeyRibbon'
+import StatusStrip from './StatusStrip'
+import GlobalSymbolSearch from './GlobalSymbolSearch'
 import BreakingNewsBanner from './BreakingNewsBanner'
 import StatusBar from './StatusBar'
 import Breadcrumbs from './Breadcrumbs'
@@ -13,11 +16,17 @@ import OfflineBanner from './OfflineBanner'
 import TabBar from './TabBar'
 import MenuBar from './MenuBar'
 import ChatModeInterface from './ChatModeInterface'
+import RightSidebar from './rightsidebar/RightSidebar'
+import MotdBanner from './rightsidebar/MotdBanner'
+import { DistractionFreeProvider, useDistractionFree } from '../contexts/DistractionFreeContext'
+import { MultiWindowProvider } from '../contexts/MultiWindowContext'
+import { useMultiWindow } from '../hooks/useMultiWindow'
 import { TabProvider } from '../contexts/TabContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { useInterfaceMode } from '../contexts/InterfaceModeContext'
 import { useBreakpoint } from '../hooks/useBreakpoint'
 import useHelp from '../hooks/useHelp'
+import ErrorBoundary from './ErrorBoundary'
 
 const quickActions = [
   { label: 'New Backtest', path: '/strategy/backtest', icon: BarChart3 },
@@ -29,30 +38,52 @@ const quickActions = [
 const SWIPE_THRESHOLD = 80
 
 function TerminalLayout() {
-  const { setTheme } = useTheme()
+  const { setTheme, theme: currentTheme } = useTheme()
   const [showNews] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showQuickCreate, setShowQuickCreate] = useState(false)
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(false)
   const { isMobile } = useBreakpoint()
+  const { toggleMode } = useInterfaceMode()
   const { helpOverlay } = useHelp()
   const navigate = useNavigate()
-  const location = useLocation()
-  const [chartModeOverride, setChartModeOverride] = useState(false)
-  const isChartRoute = location.pathname === '/markets/chart'
-  const chartMode = isChartRoute || chartModeOverride
+  const { distractionFree, toggleDistractionFree } = useDistractionFree()
+  const { broadcast } = useMultiWindow({
+    onEvent: (event) => {
+      if (event.type === 'THEME_CHANGED') {
+        setTheme(event.payload.theme as any)
+      }
+    },
+  })
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'c') {
+      if (e.ctrlKey && e.shiftKey && e.key === 'C') {
         e.preventDefault()
-        setChartModeOverride(prev => !prev)
+        toggleMode()
+      }
+      if (e.ctrlKey && e.shiftKey && e.key === 'R') {
+        e.preventDefault()
+        setRightSidebarOpen((v) => !v)
+      }
+      if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+        e.preventDefault()
+        toggleDistractionFree()
+      }
+      if (e.ctrlKey && e.key === 'n') {
+        e.preventDefault()
+        window.open(window.location.origin, '_blank')
+      }
+      if (e.ctrlKey && e.shiftKey && e.key === 'N') {
+        e.preventDefault()
+        window.open(window.location.origin, '_blank')
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [])
+  }, [toggleMode, toggleDistractionFree])
 
   const toggleSidebar = useCallback(() => setSidebarOpen((v) => !v), [])
   const closeSidebar = useCallback(() => setSidebarOpen(false), [])
@@ -76,29 +107,29 @@ function TerminalLayout() {
   return (
     <div
       className="flex h-screen"
-      data-chart-fullscreen={chartMode ? 'true' : undefined}
       style={{ background: 'var(--bg-primary)' }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {!chartMode && <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />}
+      {!distractionFree && <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />}
       <div className="flex-1 flex flex-col min-w-0">
-        {!chartMode && <MenuBar />}
-        {!chartMode && <MarketTickerBar />}
-        {!chartMode && showNews && <BreakingNewsBanner />}
-        {!chartMode && <OfflineBanner />}
-        {!chartMode && <FavoritesBar />}
-        {!chartMode && <TabBar />}
+        {!distractionFree && <StatusStrip />}
+        {!distractionFree && <MenuBar />}
+        {!distractionFree && <FunctionKeyRibbon />}
+        {!distractionFree && <MarketTickerBar />}
+        {!distractionFree && <MotdBanner />}
+        {!distractionFree && showNews && <BreakingNewsBanner />}
+        {!distractionFree && <OfflineBanner />}
+        {!distractionFree && <FavoritesBar />}
+        {!distractionFree && <TabBar />}
         <main
           className="flex-1 overflow-y-auto"
           style={{
             background: 'var(--bg-primary)',
-            padding: chartMode ? 0 : 'var(--space-4)',
-            height: chartMode ? '100vh' : undefined,
-            overflow: chartMode ? 'hidden' : undefined,
+            padding: 'var(--space-4)',
           }}
         >
-          {!chartMode && (
+          {!distractionFree && (
             <div className="flex items-center gap-2 mb-2">
               {isMobile && (
                 <button
@@ -167,14 +198,33 @@ function TerminalLayout() {
               </div>
             </div>
           )}
-          {!chartMode && <Breadcrumbs />}
-          <div style={chartMode ? undefined : { animation: 'page-fade-in 0.2s ease' }}>
-            <Outlet />
+          {!distractionFree && <Breadcrumbs />}
+          <div style={{ animation: 'page-fade-in 0.2s ease' }}>
+            <ErrorBoundary category="page">
+              <Outlet />
+            </ErrorBoundary>
           </div>
         </main>
-        {!chartMode && <StatusBar />}
+        {!distractionFree && <StatusBar />}
       </div>
+      {!distractionFree && <RightSidebar open={rightSidebarOpen} onToggle={() => setRightSidebarOpen((v) => !v)} />}
+
+      {distractionFree && (
+        <button
+          onClick={toggleDistractionFree}
+          title="Exit distraction-free mode (Ctrl+Shift+D)"
+          className="fixed top-2 right-2 z-50 text-[9px] px-2 py-1 rounded-sm opacity-50 hover:opacity-100 transition-opacity cursor-pointer"
+          style={{
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border-color)',
+            color: 'var(--text-primary)',
+          }}
+        >
+          Exit Focus
+        </button>
+      )}
       <CommandPalette onThemeChange={setTheme} />
+      <GlobalSymbolSearch />
       <KeyboardShortcutListener />
       {helpOverlay}
     </div>
@@ -199,7 +249,11 @@ export default function Layout() {
     default:
       return (
         <TabProvider>
-          <TerminalLayout />
+          <MultiWindowProvider>
+            <DistractionFreeProvider>
+              <TerminalLayout />
+            </DistractionFreeProvider>
+          </MultiWindowProvider>
         </TabProvider>
       )
   }

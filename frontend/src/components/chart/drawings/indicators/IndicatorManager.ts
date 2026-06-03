@@ -63,7 +63,7 @@ export class IndicatorManager {
             name: plugin.name,
             type: plugin.outputType,
             data: rawData,
-            config: { id: plugin.id, name: plugin.name, params: mergedParams as Record<string, number>, paneId: '', visible: true, style: {} },
+            config: { id: plugin.id, name: plugin.name, type: plugin.outputType as any, params: mergedParams as Record<string, number>, paneId: '', visible: true, style: {} },
             signals: signals && signals.length > 0 ? signals : undefined,
           }
           resolve(result)
@@ -109,7 +109,7 @@ export class IndicatorManager {
       name: plugin.name,
       type: plugin.outputType,
       data,
-      config: { id: plugin.id, name: plugin.name, params: mergedParams as Record<string, number>, paneId: '', visible: true, style: {} },
+      config: { id: plugin.id, name: plugin.name, type: plugin.outputType as any, params: mergedParams as Record<string, number>, paneId: '', visible: true, style: {} },
       signals: signals && signals.length > 0 ? signals : undefined,
     }
   }
@@ -158,7 +158,7 @@ export class IndicatorManager {
   }
 }
 
-export type { IndicatorPreset } from './IndicatorPlugin'
+export type { IndicatorParams } from './IndicatorPlugin'
 
-import type { IndicatorPreset as IP } from './IndicatorPlugin'
+import type { IndicatorParams as IP } from './IndicatorPlugin'
 export const PRESET_INDICATORS: IP[] = IndicatorManager.getPresets() as any

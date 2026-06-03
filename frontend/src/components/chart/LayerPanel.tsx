@@ -64,7 +64,7 @@ export default function LayerPanel({ layers, onVisibilityToggle, onOpacityChange
         color: 'var(--text-muted, #8b95a5)', fontSize: 9, fontWeight: 600,
       }}>
         <span><Layers size={10} style={{ marginRight: 4 }} />LAYERS ({layers.length})</span>
-        {onClose && <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted, #5d6b7e)', cursor: 'pointer', fontSize: 9 }}>?</button>}
+        {onClose && <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted, #5d6b7e)', cursor: 'pointer', fontSize: 9 }}>{'\u2716'}</button>}
       </div>
 
       {sorted.map((layer) => (

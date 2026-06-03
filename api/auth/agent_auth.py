@@ -4,7 +4,7 @@ import json
 import logging
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import wraps
 from typing import Any, Callable, Optional
 
@@ -119,7 +119,7 @@ async def agent_required(
             detail={"code": 401, "message": f"Token is {row.status}"},
         )
 
-    if row.expires_at and row.expires_at < datetime.utcnow():
+    if row.expires_at and row.expires_at < datetime.now(timezone.utc):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"code": 401, "message": "Token expired"},
@@ -148,7 +148,7 @@ async def agent_required(
             },
         )
 
-    row.last_used_at = datetime.utcnow()
+    row.last_used_at = datetime.now(timezone.utc)
     await db.commit()
 
     request.state.agent_token = token_data

@@ -9,8 +9,8 @@ interface CoordMapper {
 interface FVG {
   top: number
   bottom: number
-  startTime: Time
-  endTime: Time
+  startTime?: Time
+  endTime?: Time
   direction: string
 }
 
@@ -18,12 +18,12 @@ interface OrderBlock {
   level: number
   direction: string
   confidence: number
-  time: Time
+  time?: Time
 }
 
 interface LiquidityLevel {
   level: number
-  direction: string
+  direction?: string
   confidence: number
 }
 
@@ -46,7 +46,7 @@ export function renderFVG(
   const y1 = Math.min(yTop, yBottom)
   const y2 = Math.max(yTop, yBottom)
   const height = y2 - y1
-  const isBull = fvg.direction === 'bullish' || fvg.direction === 'up'
+  const isBull = ['bullish', 'up', 'buy', 'long'].includes(fvg.direction.toLowerCase())
   const baseColor = isBull ? theme.up : theme.down
 
   const gradient = ctx.createLinearGradient(0, y1, 0, y2)
@@ -106,7 +106,7 @@ export function renderOrderBlock(
     return
   }
 
-  const isBull = ob.direction === 'bullish' || ob.direction === 'up'
+  const isBull = ['bullish', 'up', 'buy', 'long'].includes(ob.direction.toLowerCase())
   const baseColor = isBull ? theme.up : theme.down
   const bandHeight = Math.max(4, Math.min(16, ob.confidence * 16))
 

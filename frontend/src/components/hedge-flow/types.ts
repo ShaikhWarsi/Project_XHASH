@@ -3,6 +3,7 @@ import { type Node } from '@xyflow/react'
 export type AgentNodeData = {
   label: string
   agentKey: string
+  agent_key?: string
   description: string
   icon?: string
   status?: 'idle' | 'running' | 'done' | 'error'

@@ -1,13 +1,14 @@
 from __future__ import annotations
 import asyncio
 import logging
-import time
-import random
-import pandas as pd
-import yfinance as yf
+import os
+
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from api.websocket_manager import manager
+
 from api.state import app_state
+from api.services.motd_service import get_motd
+
+DEV_MODE = os.getenv("DEV_MODE", "true").lower() in ("true", "1", "yes")
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,8 @@ _price_cache_lock = asyncio.Lock()
 _cache_last_refresh = 0.0
 _is_refreshing = False
 _CACHE_TTL = 30.0
+_price_history: dict[str, list[float]] = {}
+_volume_cache: dict[str, int] = {}
 
 
 async def _refresh_price_cache(symbols: list[str] | None = None):
@@ -85,7 +88,22 @@ async def ws_prices(websocket: WebSocket, symbols: str = ""):
             for sym in tracked:
                 price = prices.get(sym)
                 if price:
-                    data[sym] = {"price": price}
+                    prev = _price_history.get(sym)
+                    openPrice = prev[0] if prev and len(prev) > 0 else price
+                    change = price - openPrice
+                    change_pct = (change / openPrice * 100) if openPrice else 0.0
+                    if sym not in _price_history:
+                        _price_history[sym] = []
+                    _price_history[sym].append(price)
+                    if len(_price_history[sym]) > 20:
+                        _price_history[sym].pop(0)
+                    data[sym] = {
+                        "price": price,
+                        "change": round(change, 2),
+                        "changePercent": round(change_pct, 2),
+                        "volume": _volume_cache.get(sym, 0),
+                        "marketCap": 0,
+                    }
             if data:
                 await websocket.send_json({
                     "type": "prices",
@@ -134,7 +152,7 @@ async def ws_orders(websocket: WebSocket):
                 await asyncio.wait_for(websocket.receive_text(), timeout=1.0)
             except asyncio.TimeoutError:
                 pass
-            orders = await app_state.async_get_open_orders() if hasattr(app_state, 'async_get_open_orders') else []
+            orders = await app_state.async_get_open_orders() if app_state and hasattr(app_state, 'async_get_open_orders') else []
             await websocket.send_json({
                 "type": "orders",
                 "data": orders,
@@ -158,26 +176,33 @@ async def ws_orderbook(websocket: WebSocket, symbol: str):
                 await asyncio.wait_for(websocket.receive_text(), timeout=0.5)
             except asyncio.TimeoutError:
                 pass
-            await _refresh_price_cache()
-            async with _price_cache_lock:
-                base_price = _price_cache.get(symbol.upper(), 100)
-            spread = round(base_price * 0.0005, 2) or 0.01
-            bids = []
-            asks = []
-            bid_total = 0
-            ask_total = 0
-            for i in range(12):
-                bid_size = random.uniform(200, 5000)
-                ask_size = random.uniform(200, 5000)
-                bid_total += bid_size
-                ask_total += ask_size
-                bids.append([round(base_price - (i + 1) * spread, 2), round(bid_size, 1)])
-                asks.append([round(base_price + (i + 1) * spread, 2), round(ask_size, 1)])
-            await websocket.send_json({
-                "type": "orderbook",
-                "data": {"symbol": symbol, "bids": bids, "asks": asks, "basePrice": base_price},
-                "timestamp": time.time()
-            })
+            if DEV_MODE:
+                await _refresh_price_cache()
+                async with _price_cache_lock:
+                    base_price = _price_cache.get(symbol.upper(), 100)
+                spread = round(base_price * 0.0005, 2) or 0.01
+                bids = []
+                asks = []
+                bid_total = 0
+                ask_total = 0
+                for i in range(12):
+                    bid_size = random.uniform(200, 5000)
+                    ask_size = random.uniform(200, 5000)
+                    bid_total += bid_size
+                    ask_total += ask_size
+                    bids.append([round(base_price - (i + 1) * spread, 2), round(bid_size, 1)])
+                    asks.append([round(base_price + (i + 1) * spread, 2), round(ask_size, 1)])
+                await websocket.send_json({
+                    "type": "orderbook",
+                    "data": {"symbol": symbol, "bids": bids, "asks": asks, "basePrice": base_price, "_simulated": True},
+                    "timestamp": time.time()
+                })
+            else:
+                await websocket.send_json({
+                    "type": "orderbook",
+                    "data": {"symbol": symbol, "bids": [], "asks": [], "basePrice": 0, "_simulated": False},
+                    "timestamp": time.time()
+                })
         logger.warning("ws_orderbook hit max iterations")
     except WebSocketDisconnect:
         await manager.disconnect(f"orderbook:{symbol}", websocket)
@@ -196,25 +221,34 @@ async def ws_trades(websocket: WebSocket, symbol: str):
                 await asyncio.wait_for(websocket.receive_text(), timeout=1.5)
             except asyncio.TimeoutError:
                 pass
-            await _refresh_price_cache()
-            async with _price_cache_lock:
-                base_price = _price_cache.get(symbol.upper(), 100)
-            trade_count = random.randint(1, 5)
-            trades = []
-            for _ in range(trade_count):
-                side = random.choice(["buy", "sell"])
-                offset = base_price * random.uniform(-0.002, 0.002)
-                trades.append({
-                    "price": round(base_price + offset, 2),
-                    "size": round(random.uniform(100, 2000), 1),
-                    "time": time.strftime("%H:%M:%S"),
-                    "side": side,
+            if DEV_MODE:
+                await _refresh_price_cache()
+                async with _price_cache_lock:
+                    base_price = _price_cache.get(symbol.upper(), 100)
+                trade_count = random.randint(1, 5)
+                trades = []
+                for _ in range(trade_count):
+                    side = random.choice(["buy", "sell"])
+                    offset = base_price * random.uniform(-0.002, 0.002)
+                    trades.append({
+                        "price": round(base_price + offset, 2),
+                        "size": round(random.uniform(100, 2000), 1),
+                        "time": time.strftime("%H:%M:%S"),
+                        "side": side,
+                        "_simulated": True,
+                    })
+                await websocket.send_json({
+                    "type": "trades",
+                    "data": trades,
+                    "timestamp": time.time()
                 })
-            await websocket.send_json({
-                "type": "trades",
-                "data": trades,
-                "timestamp": time.time()
-            })
+            else:
+                await websocket.send_json({
+                    "type": "trades",
+                    "data": [],
+                    "timestamp": time.time(),
+                    "_simulated": False,
+                })
         logger.warning("ws_trades hit max iterations")
     except WebSocketDisconnect:
         await manager.disconnect(f"trades:{symbol}", websocket)
@@ -246,3 +280,73 @@ async def ws_social_signals(websocket: WebSocket):
     except Exception as e:
         logger.warning("ws_social_signals error: %s", e)
         await manager.disconnect("signals", websocket)
+
+
+@router.websocket("/motd")
+async def ws_motd(websocket: WebSocket):
+    await manager.connect("motd", websocket)
+    try:
+        _ws_max_iter = 1000000
+        for _ in range(_ws_max_iter):
+            try:
+                await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
+            except asyncio.TimeoutError:
+                pass
+            motd = get_motd()
+            await websocket.send_json({
+                "type": "motd",
+                "data": motd,
+                "timestamp": time.time(),
+            })
+        logger.warning("ws_motd hit max iterations")
+    except WebSocketDisconnect:
+        await manager.disconnect("motd", websocket)
+    except Exception as e:
+        logger.warning("ws_motd error: %s", e)
+        await manager.disconnect("motd", websocket)
+
+
+@router.websocket("/news")
+async def ws_news(websocket: WebSocket):
+    await manager.connect("news", websocket)
+    try:
+        _ws_max_iter = 1000000
+        for _ in range(_ws_max_iter):
+            try:
+                await asyncio.wait_for(websocket.receive_text(), timeout=60.0)
+            except asyncio.TimeoutError:
+                pass
+            await manager.broadcast("news", {
+                "type": "news",
+                "data": {"items": []},
+                "timestamp": time.time(),
+            })
+        logger.warning("ws_news hit max iterations")
+    except WebSocketDisconnect:
+        await manager.disconnect("news", websocket)
+    except Exception as e:
+        logger.warning("ws_news error: %s", e)
+        await manager.disconnect("news", websocket)
+
+
+@router.websocket("/calendar")
+async def ws_calendar(websocket: WebSocket):
+    await manager.connect("calendar", websocket)
+    try:
+        _ws_max_iter = 1000000
+        for _ in range(_ws_max_iter):
+            try:
+                await asyncio.wait_for(websocket.receive_text(), timeout=60.0)
+            except asyncio.TimeoutError:
+                pass
+            await manager.broadcast("calendar", {
+                "type": "calendar",
+                "data": {},
+                "timestamp": time.time(),
+            })
+        logger.warning("ws_calendar hit max iterations")
+    except WebSocketDisconnect:
+        await manager.disconnect("calendar", websocket)
+    except Exception as e:
+        logger.warning("ws_calendar error: %s", e)
+        await manager.disconnect("calendar", websocket)

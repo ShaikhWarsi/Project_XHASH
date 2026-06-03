@@ -21,6 +21,22 @@ from .builtins import FinScriptRuntime
 
 NAN = float("nan")
 
+# ── RCE sandbox blocklist ──────────────────────
+_BLOCKED_NAMES: set[str] = {
+    "os", "sys", "subprocess", "shutil", "pathlib",
+    "eval", "exec", "compile", "open",
+    "__import__", "__builtins__", "__builtin__",
+    "__class__", "__base__", "__subclasses__", "__init__",
+    "__globals__", "__code__", "__closure__", "__dict__",
+    "getattr", "setattr", "delattr", "hasattr",
+    "globals", "locals", "vars", "dir",
+}
+_BLOCKED_METHODS: set[str] = {
+    "__import__", "__builtins__", "__class__",
+    "__base__", "__subclasses__", "__init__",
+    "__globals__", "__code__", "__closure__",
+}
+
 
 class InterpreterError(Exception):
     pass
@@ -134,9 +150,13 @@ class Interpreter:
         if isinstance(stmt, ExprStmt):
             self._eval_expr(stmt.expr, scope)
         elif isinstance(stmt, VarDecl):
+            if stmt.name in _BLOCKED_NAMES:
+                raise InterpreterError(f"cannot declare blocked name '{stmt.name}'")
             val = self._eval_expr(stmt.initializer, scope) if stmt.initializer else NAN
             scope[stmt.name] = val
         elif isinstance(stmt, AssignStmt):
+            if stmt.name in _BLOCKED_NAMES:
+                raise InterpreterError(f"cannot assign to blocked name '{stmt.name}'")
             scope[stmt.name] = self._eval_expr(stmt.value, scope)
         elif isinstance(stmt, CompoundAssignStmt):
             if stmt.name not in scope:
@@ -275,8 +295,12 @@ class Interpreter:
             fn = series_map.get(expr.name)
             if fn:
                 return fn()
+            if expr.name in _BLOCKED_NAMES:
+                raise InterpreterError(f"access to '{expr.name}' is blocked")
             return scope.get(expr.name, NAN)
         if isinstance(expr, VariableExpr):
+            if expr.name in _BLOCKED_NAMES:
+                raise InterpreterError(f"access to '{expr.name}' is blocked")
             if expr.name in scope:
                 return scope[expr.name]
             series_map = {
@@ -339,6 +363,8 @@ class Interpreter:
             if expr.op == UnaryOp.NOT:
                 return not self._truthy(val)
         if isinstance(expr, CallExpr):
+            if expr.callee in _BLOCKED_NAMES:
+                raise InterpreterError(f"call to '{expr.callee}' is blocked")
             if expr.callee in self.functions:
                 fn = self.functions[expr.callee]
                 args = [self._eval_expr(a, scope) for a in expr.args]
@@ -355,6 +381,8 @@ class Interpreter:
         if isinstance(expr, MethodCallExpr):
             obj = self._eval_expr(expr.obj, scope)
             args = [self._eval_expr(a, scope) for a in expr.args]
+            if expr.method in _BLOCKED_METHODS:
+                raise InterpreterError(f"method '{expr.method}' is blocked")
             if isinstance(obj, str) and hasattr(obj, expr.method):
                 return getattr(obj, expr.method)(*args)
             if isinstance(obj, list) and expr.method in ("push", "pop", "len"):

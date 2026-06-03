@@ -1,13 +1,24 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timedelta
 from typing import Optional
 
 import pandas as pd
 import yfinance as yf
+from pydantic import BaseModel
+
 from fastapi import APIRouter, HTTPException, Query
 
 router = APIRouter(prefix="/bars", tags=["bars"])
+
+class BarsQuery(BaseModel):
+    interval: str = "1d"
+    range: str | None = None
+    period_days: int | None = None
+    start_date: str | None = None
+    end_date: str | None = None
+
 
 _RANGE_MAP = {
     "1d": timedelta(days=1),
@@ -33,7 +44,8 @@ async def get_bars(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
 ):
-    interval = interval if interval in _VALID_INTERVALS else "1d"
+    if interval not in _VALID_INTERVALS:
+        raise HTTPException(status_code=400, detail=f"Invalid interval '{interval}'. Valid: {sorted(_VALID_INTERVALS)}")
     if start_date:
         start = start_date
     elif period_days is not None:
@@ -48,18 +60,20 @@ async def get_bars(
         yf_interval = "60m"
 
     try:
-        df = yf.download(symbol, start=start, end=end_date, interval=yf_interval, progress=False, auto_adjust=True)
+        df = await asyncio.to_thread(yf.download, symbol, start=start, end=end_date, interval=yf_interval, progress=False)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Data provider failed for {symbol}: {e}")
 
     if df.empty:
         raise HTTPException(status_code=404, detail=f"No data found for {symbol}")
 
-    expected = {"open", "high", "low", "close", "volume"}
+    COLUMN_MAP = {"open": "open", "high": "high", "low": "low", "close": "close", "volume": "volume", "adj close": "close"}
     if isinstance(df.columns, pd.MultiIndex):
-        df.columns = [c[0].lower() for c in df.columns]
+        df.columns = [c[0].strip().lower() for c in df.columns]
     else:
-        df.columns = [c.lower() for c in df.columns]
+        df.columns = [c.strip().lower() for c in df.columns]
+    df.rename(columns=COLUMN_MAP, inplace=True)
+    expected = {"open", "high", "low", "close", "volume"}
     missing = expected - set(df.columns)
     if missing:
         raise HTTPException(status_code=502, detail=f"Unexpected data format for {symbol}: missing columns {missing}")

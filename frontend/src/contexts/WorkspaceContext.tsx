@@ -29,7 +29,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [workspaces, setWorkspaces] = useState<Record<string, WorkspaceSnapshot>>(() => {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') } catch { return {} }
   })
-  const [currentWorkspace, setCurrent] = useState(() => localStorage.getItem(CURRENT_KEY) || '')
+  const [currentWorkspace, setCurrent] = useState(() => localStorage.getItem(CURRENT_KEY) || 'default')
   const wsRef = useRef(workspaces)
   wsRef.current = workspaces
 
@@ -43,10 +43,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     const next = {
       ...wsRef.current,
       [name]: {
-        name,
-        savedAt: new Date().toISOString(),
         ...existing,
         ...data,
+        name: name,
+        savedAt: new Date().toISOString(),
       },
     }
     persist(next)
@@ -59,25 +59,22 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     if (ws) {
       setCurrent(name)
       localStorage.setItem(CURRENT_KEY, name)
-      if (ws.widgetOrder) {
-        try {
-          const orderKey = ws.name === currentWorkspace ? '' : `${name}_order`
-          if (ws.widgetOrder) localStorage.setItem(`dashboard_widget_order`, JSON.stringify(ws.widgetOrder))
-          if (ws.widgetVisibility) localStorage.setItem(`dashboard_widget_order_visible`, JSON.stringify(ws.widgetVisibility))
-          if (ws.widgetSizes) localStorage.setItem(`dashboard_widget_order_sizes`, JSON.stringify(ws.widgetSizes))
-        } catch {}
-      }
+      try {
+        if (ws.widgetOrder) localStorage.setItem('dashboard_widget_order', JSON.stringify(ws.widgetOrder))
+        if (ws.widgetVisibility) localStorage.setItem('dashboard_widget_order_visible', JSON.stringify(ws.widgetVisibility))
+        if (ws.widgetSizes) localStorage.setItem('dashboard_widget_order_sizes', JSON.stringify(ws.widgetSizes))
+      } catch {}
     }
     return ws
-  }, [currentWorkspace])
+  }, [])
 
   const deleteWorkspace = useCallback((name: string) => {
     const next = { ...wsRef.current }
     delete next[name]
     persist(next)
     if (currentWorkspace === name) {
-      setCurrent('')
-      localStorage.removeItem(CURRENT_KEY)
+      setCurrent('default')
+      localStorage.setItem(CURRENT_KEY, 'default')
     }
   }, [currentWorkspace])
 

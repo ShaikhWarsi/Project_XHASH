@@ -46,12 +46,13 @@ _paper = {
     "trades": [],
     "lastPrices": {},
 }
+_paper_async_lock = asyncio.Lock()
 
 _wins = 0
 _losses = 0
 
 
-def _update_prices():
+async def _update_prices():
     import yfinance as yf
     try:
         symbols = list({p["symbol"] for p in _paper["positions"]})
@@ -59,7 +60,7 @@ def _update_prices():
             symbols = ["SPY", "QQQ", "AAPL"]
         for s in symbols[:5]:
             ticker = yf.Ticker(s)
-            df = ticker.history(period="1d")
+            df = await asyncio.to_thread(lambda t=ticker: t.history(period="1d"))
             if not df.empty:
                 _paper["lastPrices"][s] = float(df["Close"].iloc[-1])
     except Exception:
@@ -97,7 +98,7 @@ class PlaceOrderRequest(BaseModel):
 
 @router.get("/paper/account")
 async def get_paper_account():
-    _update_prices()
+    await _update_prices()
     _recalculate()
     return _paper
 
@@ -138,62 +139,49 @@ async def reset_paper():
 @router.post("/paper/order")
 async def place_paper_order(req: PlaceOrderRequest):
     global _wins, _losses
-    if not _paper["isRunning"]:
-        raise HTTPException(400, "Paper trading not started")
+    async with _paper_async_lock:
+        if not _paper["isRunning"]:
+            raise HTTPException(400, "Paper trading not started")
+        await _update_prices()
+        price = req.price or _paper["lastPrices"].get(req.symbol, 100.0)
+        trade_id = f"paper_{int(time.time() * 1000)}"
+        trade = PaperTrade(id=trade_id, symbol=req.symbol, side=req.side, type=req.type, quantity=req.quantity, price=price, timestamp=time.time()).model_dump()
+        _paper["trades"].append(trade)
+        _paper["totalTrades"] += 1
+        cost = price * req.quantity
 
-    _update_prices()
-    price = req.price or _paper["lastPrices"].get(req.symbol, 100.0)
-
-    trade_id = f"paper_{int(time.time() * 1000)}"
-    trade = PaperTrade(
-        id=trade_id,
-        symbol=req.symbol,
-        side=req.side,
-        type=req.type,
-        quantity=req.quantity,
-        price=price,
-        timestamp=time.time(),
-    ).model_dump()
-
-    _paper["trades"].append(trade)
-    _paper["totalTrades"] += 1
-    cost = price * req.quantity
-
-    if req.side in ("BUY", "COVER"):
-        if _paper["buyingPower"] < cost:
-            raise HTTPException(400, "Insufficient buying power")
-        _paper["balance"] -= cost
-        existing = next((p for p in _paper["positions"] if p["symbol"] == req.symbol and p["side"] == req.side), None)
-        if existing:
-            total_qty = existing["quantity"] + req.quantity
-            existing["entry_price"] = (existing["entry_price"] * existing["quantity"] + price * req.quantity) / total_qty
-            existing["quantity"] = total_qty
+        if req.side in ("BUY", "COVER"):
+            if _paper["buyingPower"] < cost:
+                raise HTTPException(400, "Insufficient buying power")
+            _paper["balance"] -= cost
+            existing = next((p for p in _paper["positions"] if p["symbol"] == req.symbol and p["side"] == req.side), None)
+            if existing:
+                total_qty = existing["quantity"] + req.quantity
+                existing["entry_price"] = (existing["entry_price"] * existing["quantity"] + price * req.quantity) / total_qty
+                existing["quantity"] = total_qty
+            else:
+                _paper["positions"].append(PaperPosition(symbol=req.symbol, side=req.side, quantity=req.quantity, entry_price=price, current_price=price).model_dump())
         else:
-            _paper["positions"].append(PaperPosition(
-                symbol=req.symbol, side=req.side, quantity=req.quantity, entry_price=price, current_price=price
-            ).model_dump())
-    else:
-        pos = next((p for p in _paper["positions"] if p["symbol"] == req.symbol and p["side"] == ("BUY" if req.side == "SELL" else "COVER")), None)
-        if not pos or pos["quantity"] < req.quantity:
-            raise HTTPException(400, f"Insufficient position to {req.side} {req.symbol}")
-        pnl = (price - pos["entry_price"]) * req.quantity if req.side == "SELL" else (pos["entry_price"] - price) * req.quantity
-        _paper["balance"] += price * req.quantity
-        pos["quantity"] -= req.quantity
-        trade["pnl"] = round(pnl, 2)
-        if pnl >= 0:
-            _wins += 1
-        else:
-            _losses += 1
-        if pos["quantity"] <= 0:
-            _paper["positions"] = [p for p in _paper["positions"] if p["symbol"] != req.symbol or p["side"] != pos["side"]]
+            pos = next((p for p in _paper["positions"] if p["symbol"] == req.symbol and p["side"] == ("BUY" if req.side == "SELL" else "SELL")), None)
+            if not pos or pos["quantity"] < req.quantity:
+                raise HTTPException(400, f"Insufficient position to {req.side} {req.symbol}")
+            pnl = (price - pos["entry_price"]) * req.quantity if req.side == "SELL" else (pos["entry_price"] - price) * req.quantity
+            _paper["balance"] += price * req.quantity
+            pos["quantity"] -= req.quantity
+            trade["pnl"] = round(pnl, 2)
+            if pnl >= 0: _wins += 1
+            else: _losses += 1
+            if pos["quantity"] <= 0:
+                _paper["positions"] = [p for p in _paper["positions"] if p["symbol"] != req.symbol or p["side"] != pos["side"]]
 
-    _recalculate()
+    async with _paper_async_lock:
+        _recalculate()
     return {"success": True, "trade": trade, "account": _paper}
 
 
 @router.get("/paper/positions")
 async def get_paper_positions():
-    _update_prices()
+    await _update_prices()
     _recalculate()
     return {"positions": _paper["positions"]}
 

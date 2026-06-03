@@ -296,7 +296,7 @@ class PIPPatternMinerEngine(SignalEngine):
             sig = np.zeros(len(self._data))
             for mem in self._pip_clusters[clust_i]:
                 arr_i = self._unique_pip_indices[mem]
-                sig[arr_i: arr_i + self._hold_period] = 1.0
+                sig[arr_i + 1: arr_i + 1 + self._hold_period] = 1.0
             sig_ret = self._returns * sig
             sig_ret = sig_ret.dropna().values if hasattr(sig_ret, 'dropna') else sig_ret[~np.isnan(sig_ret)]
             if len(sig_ret) == 0:
@@ -319,11 +319,11 @@ class PIPPatternMinerEngine(SignalEngine):
             if clust_i in self._selected_long:
                 for mem in self._pip_clusters[clust_i]:
                     arr_i = self._unique_pip_indices[mem]
-                    long_signal[arr_i: arr_i + self._hold_period] += 1.0
+                    long_signal[arr_i + 1: arr_i + 1 + self._hold_period] += 1.0
             elif clust_i in self._selected_short:
                 for mem in self._pip_clusters[clust_i]:
                     arr_i = self._unique_pip_indices[mem]
-                    short_signal[arr_i: arr_i + self._hold_period] += 1.0
+                    short_signal[arr_i + 1: arr_i + 1 + self._hold_period] += 1.0
 
         if self._selected_long:
             long_signal /= len(self._selected_long)

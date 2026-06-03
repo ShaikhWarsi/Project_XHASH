@@ -1,7 +1,17 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+
+import os
+
+from fastapi import APIRouter
+
+DEV_MODE = os.getenv("DEV_MODE", "true").lower() in ("true", "1", "yes")
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/china", tags=["china"])
+
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
@@ -94,9 +104,13 @@ _CHINA_INDICES = [
 
 @router.get("/stocks")
 async def china_stocks():
-    return {"stocks": _CHINA_STOCKS}
+    if DEV_MODE:
+        return {"stocks": _CHINA_STOCKS, "_simulated": True}
+    return {"stocks": [], "_simulated": False}
 
 
 @router.get("/indices")
 async def china_indices():
-    return {"indices": _CHINA_INDICES}
+    if DEV_MODE:
+        return {"indices": _CHINA_INDICES, "_simulated": True}
+    return {"indices": [], "_simulated": False}

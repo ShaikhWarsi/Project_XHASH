@@ -15,6 +15,14 @@ router = APIRouter(prefix="/renaissance", tags=["renaissance"])
 
 _run_results: dict[str, dict[str, Any]] = {}
 _run_counter = 0
+_RUN_TTL = 3600
+
+
+def _evict_stale_runs():
+    now = time.time()
+    stale = [k for k, v in _run_results.items() if now - v.get("timestamp", 0) > _RUN_TTL]
+    for k in stale:
+        _run_results.pop(k, None)
 
 
 async def _build_orchestrator(symbol: str):
@@ -47,7 +55,7 @@ async def _fetch_price_data(symbols: list[str]) -> dict[str, pd.DataFrame]:
     for s in symbols:
         try:
             ticker = yf.Ticker(s)
-            df = ticker.history(period="6mo")
+            df = await asyncio.to_thread(lambda t=ticker: t.history(period="6mo"))
             if not df.empty:
                 df.columns = [c.lower() for c in df.columns]
                 prices_df[s] = df
@@ -105,27 +113,22 @@ async def _run_analysis(orchestrator: Any, symbol: str) -> dict[str, Any]:
     signals = await _build_signal_matrix(symbols)
     risk_limits = await _build_risk_limits()
 
-    loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(
-        None,
-        lambda: orchestrator.deliberate(
-            tickers=symbols,
-            portfolio=portfolio,
-            signals=signals,
-            risk_limits=risk_limits,
-            prices_df=prices_df,
-        ),
+    result = await asyncio.to_thread(
+        orchestrator.deliberate,
+        tickers=symbols,
+        portfolio=portfolio,
+        signals=signals,
+        risk_limits=risk_limits,
+        prices_df=prices_df,
     )
 
-    workflow = await loop.run_in_executor(
-        None,
-        lambda: orchestrator.run_workflow(
-            tickers=symbols,
-            portfolio=portfolio,
-            signals=signals,
-            risk_limits=risk_limits,
-            prices_df=prices_df,
-        ),
+    workflow = await asyncio.to_thread(
+        orchestrator.run_workflow,
+        tickers=symbols,
+        portfolio=portfolio,
+        signals=signals,
+        risk_limits=risk_limits,
+        prices_df=prices_df,
     )
 
     return {
@@ -184,11 +187,13 @@ async def renaissance_analyze(symbol: str = Query("AAPL")):
 
 @router.get("/runs")
 async def list_renaissance_runs():
+    _evict_stale_runs()
     return {"runs": list(_run_results.values())}
 
 
 @router.get("/runs/{run_id}")
 async def get_renaissance_run(run_id: str):
+    _evict_stale_runs()
     result = _run_results.get(run_id)
     if not result:
         raise HTTPException(status_code=404, detail="Run not found")

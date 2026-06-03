@@ -1,6 +1,8 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Send, Terminal, Trash2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useInterfaceMode } from '../contexts/InterfaceModeContext'
+import { api } from '../api/client'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -17,11 +19,39 @@ export default function ChatModeInterface() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
+  const abortRef = useRef<AbortController | null>(null)
+  const navigate = useNavigate()
   const { toggleMode } = useInterfaceMode()
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  const handleToolCalls = useCallback((content: string) => {
+    const toolPatterns: Record<string, (args: Record<string, string>) => void> = {
+      RUN_BACKTEST: (args) => {
+        const symbol = args.symbol || ''
+        navigate(`/strategy/backtest?symbol=${symbol}`)
+      },
+      RUN_SCREENER: () => navigate('/markets/screener'),
+      SHOW_CHART: (args) => {
+        const symbol = args.symbol || ''
+        navigate(`/markets/chart?symbol=${symbol}`)
+      },
+    }
+    for (const [prefix, handler] of Object.entries(toolPatterns)) {
+      const regex = new RegExp(`${prefix}:({[^}]+})`)
+      const match = content.match(regex)
+      if (match) {
+        try {
+          const args = JSON.parse(match[1])
+          handler(args)
+        } catch {
+          handler({})
+        }
+      }
+    }
+  }, [navigate])
 
   const handleSend = async () => {
     if (!input.trim() || loading) return
@@ -30,15 +60,41 @@ export default function ChatModeInterface() {
     setInput('')
     setLoading(true)
 
-    setTimeout(() => {
-      const reply: Message = {
-        role: 'assistant',
-        content: `[Simulated response] Processing: "${userMsg.content}". Connect a real LLM backend to enable live responses.`,
-        timestamp: new Date(),
+    abortRef.current = new AbortController()
+    try {
+      const resp = await fetch('/api/llm/chat/stream', {
+        method: 'POST',
+        body: JSON.stringify({ message: userMsg.content, history: messages.map((m) => ({ role: m.role, content: m.content })) }),
+        headers: { 'Content-Type': 'application/json' },
+        signal: abortRef.current.signal,
+      })
+      if (!resp.body) throw new Error('No response body')
+      const reader = resp.body.getReader()
+      const decoder = new TextDecoder()
+      let replyContent = ''
+      const assistantMsg: Message = { role: 'assistant', content: '', timestamp: new Date() }
+      setMessages((prev) => [...prev, assistantMsg])
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        const chunk = decoder.decode(value, { stream: true })
+        replyContent += chunk
+        setMessages((prev) => {
+          const next = [...prev]
+          next[next.length - 1] = { ...next[next.length - 1], content: replyContent }
+          return next
+        })
       }
-      setMessages((prev) => [...prev, reply])
+      handleToolCalls(replyContent)
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return
+      const fallback: Message = { role: 'assistant', content: `Error: ${err?.message || 'Request failed'}`, timestamp: new Date() }
+      setMessages((prev) => [...prev, fallback])
+    } finally {
       setLoading(false)
-    }, 800)
+      abortRef.current = null
+    }
   }
 
   const clearChat = () => {

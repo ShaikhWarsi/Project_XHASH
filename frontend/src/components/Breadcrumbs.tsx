@@ -1,6 +1,6 @@
 import { useLocation, Link } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
-import { getRouteLabel, GROUP_LABELS } from '../utils/routes'
+import { getRouteLabel } from '../utils/routes'
 
 const PARENT_LABELS: Record<string, string> = {
   markets: 'Markets',
@@ -29,7 +29,7 @@ export default function Breadcrumbs() {
     const isLast = i === parts.length - 1
     const parentLabel = PARENT_LABELS[segment]
     if (parentLabel && !isLast) {
-      crumbs.push({ path: '', label: parentLabel })
+      crumbs.push({ path: '/' + segment, label: parentLabel })
     } else {
       crumbs.push({ path, label: getRouteLabel(path) })
     }

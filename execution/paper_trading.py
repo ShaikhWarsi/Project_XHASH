@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from core.enums import OrderSide, OrderType
@@ -41,13 +41,21 @@ class PaperTradingExecutor(ExecutionProvider):
         if order.order_type == OrderType.MARKET:
             price = price * (1 + self._slippage) if order.side in (OrderSide.BUY, OrderSide.COVER) else price * (1 - self._slippage)
 
+        # Validate buying power
+        order_value = price * order.quantity
+        if order.side in (OrderSide.BUY, OrderSide.COVER):
+            if order_value > self._portfolio.cash:
+                raise ValueError(
+                    f"Order value {order_value:.2f} exceeds buying power {self._portfolio.cash:.2f}"
+                )
+
         fill = Fill(
             order_id=order_id,
             symbol=order.symbol,
             side=order.side,
-            quantity=int(order.quantity),
+            quantity=int(order.quantity) if isinstance(order.quantity, (int, float)) else order.quantity,
             price=price,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
         self._fills.append(fill)
         apply_fill_to_portfolio(fill, self._portfolio)

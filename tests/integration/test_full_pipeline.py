@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
@@ -75,7 +75,7 @@ def test_signal_matrix_aggregation():
     for sigs in all_sigs.values():
         flat.extend(sigs)
 
-    matrix = SignalMatrix(timestamp=datetime.utcnow())
+    matrix = SignalMatrix(timestamp=datetime.now(timezone.utc))
     matrix.signals["TEST"] = flat
     matrix.composite_scores["TEST"] = 0.5
 
@@ -91,9 +91,9 @@ def test_hedge_fund_warren_buffett_agent():
         direction=SignalDir.BULLISH,
         strength=0.7, confidence=0.65,
         symbol="TEST", timeframe="1h",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
     )]
-    matrix = SignalMatrix(timestamp=datetime.utcnow())
+    matrix = SignalMatrix(timestamp=datetime.now(timezone.utc))
     matrix.signals["TEST"] = sigs
     matrix.composite_scores["TEST"] = 0.5
 
@@ -115,11 +115,11 @@ def test_hedge_fund_warren_buffett_agent():
 def test_hedge_fund_orchestrator():
     """HedgeFundOrchestrator runs multiple persona agents."""
     df = _make_ohlcv()
-    matrix = SignalMatrix(timestamp=datetime.utcnow())
+    matrix = SignalMatrix(timestamp=datetime.now(timezone.utc))
     matrix.signals["TEST"] = [
         QuantSignal(type=SignalType.STRUCTURE, direction=SignalDir.BULLISH,
                      strength=0.6, confidence=0.6, symbol="TEST", timeframe="1h",
-                     timestamp=datetime.utcnow()),
+                     timestamp=datetime.now(timezone.utc)),
     ]
     matrix.composite_scores["TEST"] = 0.3
 
@@ -151,7 +151,7 @@ def test_pipeline_end_to_end():
     fusor = StructureFusionEngine()
     state = fusor.fuse("TEST", "1h", signals)
 
-    matrix = SignalMatrix(timestamp=datetime.utcnow())
+    matrix = SignalMatrix(timestamp=datetime.now(timezone.utc))
     matrix.signals["TEST"] = signals
     sc = state.bullish_count - state.bearish_count
     matrix.composite_scores["TEST"] = max(-1, min(1, sc / max(state.total_signals, 1)))
@@ -173,7 +173,7 @@ def test_pipeline_end_to_end():
 def test_pipeline_with_directional_signals():
     """Full pipeline with known directional signals → agent produces output."""
     df = _make_ohlcv(100)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     signals = [
         QuantSignal(type=SignalType.ORDER_BLOCK, direction=SignalDir.BULLISH,

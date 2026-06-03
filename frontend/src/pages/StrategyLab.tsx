@@ -24,8 +24,10 @@ export default function StrategyLab() {
     }
     const params = new URLSearchParams({
       tickers: strategy.tickers.join(','),
-      strategy: 'hybrid',
       name: strategy.name,
+      timeframe: strategy.timeframe,
+      entryConditions: JSON.stringify(strategy.entryConditions),
+      exitConditions: JSON.stringify(strategy.exitConditions),
     })
     navigate(`/backtest?${params.toString()}`)
     addToast(`Running backtest for "${strategy.name}"...`, 'info')

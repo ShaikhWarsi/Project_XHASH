@@ -4,10 +4,13 @@ from core.types import Order, PortfolioState, RiskLimits
 
 
 class PositionSizer:
-    """Position sizing strategies (fixed, kelly, volatility-adjusted)."""
+    """Position sizing strategies (fixed, kelly, volatility-adjusted, correlation)."""
 
     def __init__(self, limits: RiskLimits):
         self.limits = limits
+        # TODO(C31): replace static correlation matrix with dynamic calculation
+        #            from rolling return windows so sizing adapts to changing
+        #            cross-asset correlations.
 
     def check(self, order: Order, portfolio: PortfolioState, price: float) -> tuple[bool, str]:
         if portfolio.total_value <= 0:

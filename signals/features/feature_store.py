@@ -4,7 +4,7 @@ import json
 import logging
 import sqlite3
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
@@ -61,7 +61,7 @@ class FeatureStore:
         features: Dict[str, float],
         metadata: Optional[Dict[str, Any]] = None,
     ):
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         meta_json = json.dumps(metadata) if metadata else None
         rows = [
             (symbol, name, value, now, meta_json)

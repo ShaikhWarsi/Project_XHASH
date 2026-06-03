@@ -9,6 +9,18 @@ import { computeIchimoku } from './ichimoku'
 import { computeVWAP } from './vwap'
 import { computeOBV } from './obv'
 import { computePSAR } from './psar'
+import { computeVSA } from './vsa'
+import { computeWyckoff } from './wyckoff'
+import { computeElliottWave } from './elliottwave'
+import { computeTWAP } from './twap'
+import { computePivots } from './pivots'
+import { computeMFI } from './mfi'
+import { computeSqueeze } from './squeeze'
+import { computeRangeFilter } from './rangeFilter'
+import { computeVolumeOscillator } from './volumeOscillator'
+import { computePriceOscillator } from './priceOscillator'
+import { computeADOscillator } from './adOscillator'
+import { computeWildersSmoothing } from './wildersSmoothing'
 
 export const INDICATOR_COMPUTE = {
   sma: computeSMA,
@@ -22,4 +34,16 @@ export const INDICATOR_COMPUTE = {
   vwap: computeVWAP,
   obv: computeOBV,
   psar: computePSAR,
+  vsa: computeVSA,
+  wyckoff: computeWyckoff,
+  elliottWave: computeElliottWave,
+  twap: computeTWAP,
+  pivots: computePivots,
+  mfi: computeMFI,
+  squeeze: computeSqueeze,
+  rangeFilter: computeRangeFilter,
+  volumeOscillator: computeVolumeOscillator,
+  priceOscillator: computePriceOscillator,
+  adOscillator: computeADOscillator,
+  wildersSmoothing: computeWildersSmoothing,
 }

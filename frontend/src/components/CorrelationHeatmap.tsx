@@ -68,7 +68,7 @@ export default function CorrelationHeatmap({ data, height = 500, draggable, onRe
 
     const Plotly = (window as any).Plotly
     if (!Plotly) {
-      import('plotly.js-dist-min').then((mod) => {
+      import('plotly.js-dist-min' as string).then((mod: any) => {
         renderChart(mod.default || mod)
       })
       return

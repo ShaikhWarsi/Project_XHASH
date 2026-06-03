@@ -13,6 +13,7 @@ import '@xyflow/react/dist/style.css'
 import { Save, Play, FolderOpen, Download } from 'lucide-react'
 
 import { nodeTypes, defaultNodes, defaultEdges } from '../components/hedge-flow/nodes'
+import type { AgentNodeData } from '../components/hedge-flow/types'
 import type { AppNode, InputNodeData, OutputNodeData } from '../components/hedge-flow/types'
 import type { Flow } from '../api/hedgeFund'
 import HedgeFlowSidebar from '../components/hedge-flow/Sidebar'
@@ -60,7 +61,7 @@ export default function HedgeFlow() {
       } else if (template.type === 'output') {
         data = { ...baseData, type: (template.subtype as OutputNodeData['type']) || 'portfolio' } as OutputNodeData
       } else {
-        data = { ...baseData, agentKey: template.key || '', description: template.description || '' }
+        data = { ...baseData, agent_key: template.key || '', description: template.description || '' } as AgentNodeData
       }
 
       const newNode: AppNode = { id, type: template.type, position, data }
@@ -97,7 +98,13 @@ export default function HedgeFlow() {
   const handleLoadFlow = useCallback(async (id: number) => {
     try {
       const flow = await getFlow(id)
-      setNodes(flow.nodes as AppNode[])
+      const normalized: AppNode[] = (flow.nodes as AppNode[]).map((n) => {
+        if (n.type === 'agent' && !(n.data as any).agent_key && (n.data as any).label) {
+          return { ...n, data: { ...n.data, agent_key: (n.data as any).label.toLowerCase().replace(/\s+/g, '_') } } as AppNode
+        }
+        return n
+      })
+      setNodes(normalized)
       setEdges(flow.edges)
       setFlowName(flow.name)
       setFlowId(flow.id)
@@ -149,25 +156,29 @@ export default function HedgeFlow() {
       })
 
       const decoder = new TextDecoder()
+      let sseBuf = ''
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        const chunk = decoder.decode(value)
-        for (const line of chunk.split('\n')) {
-          if (line.startsWith('data: ')) {
-            try {
-              const event = JSON.parse(line.slice(6))
-              if (event.type === 'progress') {
-                setOutput((o) => [...o, `${event.agent}: ${event.status}`])
-                setNodes((nds) =>
-                  nds.map((n) => {
-                    if (n.data?.label === event.agent) {
-                      return { ...n, data: { ...n.data, status: 'running' as const } }
-                    }
-                    return n
-                  })
-                )
-              } else if (event.type === 'complete') {
+        sseBuf += decoder.decode(value, { stream: true })
+        const parts = sseBuf.split('\n\n')
+        sseBuf = parts.pop() || ''
+        for (const block of parts) {
+          const dataLines = block.split('\n').filter(l => l.startsWith('data: ')).map(l => l.slice(6))
+          if (dataLines.length === 0) continue
+          try {
+            const event = JSON.parse(dataLines.join(''))
+            if (event.type === 'progress') {
+              setOutput((o) => [...o, `${event.agent}: ${event.status}`])
+              setNodes((nds) =>
+                nds.map((n) => {
+                  if (n.data?.label === event.agent) {
+                    return { ...n, data: { ...n.data, status: 'running' as const } }
+                  }
+                  return n
+                })
+              )
+            } else if (event.type === 'complete') {
                 setOutput((o) => [...o, '✓ Deliberation complete'])
                 setNodes((nds) =>
                   nds.map((n) => {
@@ -191,7 +202,6 @@ export default function HedgeFlow() {
             } catch {
               console.debug('Failed to parse hedge flow event')
             }
-          }
         }
       }
     } catch (e: unknown) {

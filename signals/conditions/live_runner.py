@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 import pandas as pd
@@ -20,7 +20,7 @@ class StrategySignal:
     action: str
     quantity: float
     price: float
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     reason: str = ""
 
 
@@ -107,7 +107,7 @@ class LiveRunner:
                         self.active_positions[symbol] = {
                             "entry_price": price,
                             "quantity": self.config.quantity,
-                            "entry_time": datetime.utcnow().isoformat(),
+                            "entry_time": datetime.now(timezone.utc).isoformat(),
                             "highest_price": price,
                         }
                         break

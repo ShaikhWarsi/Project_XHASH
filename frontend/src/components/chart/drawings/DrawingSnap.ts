@@ -10,23 +10,32 @@ export interface CoordMapper {
 export function findNearestPrice(
   crosshairX: number,
   data: CandlestickData[],
+  mapper: CoordMapper,
   threshold = 6
 ): { price: number; time: Time } | null {
-  const times = data.map((d) => d.time as any)
-  const timeValue = times[Math.round(crosshairX)]
-  if (timeValue && data[Math.round(crosshairX)]) {
-    const bar = data[Math.round(crosshairX)]
-    return { price: bar.close, time: bar.time }
+  const t = mapper.xToTime(crosshairX)
+  if (t == null) return null
+  let closest: CandlestickData | null = null
+  let minDist = Infinity
+  for (const bar of data) {
+    const bx = mapper.timeToX(bar.time)
+    if (bx == null) continue
+    const dist = Math.abs(bx - crosshairX)
+    if (dist < minDist && dist <= threshold) {
+      minDist = dist
+      closest = bar
+    }
   }
-  return null
+  return closest ? { price: closest.close, time: closest.time } : null
 }
 
 export function snapToLevel(price: number, levels: number[], threshold = 6): number | null {
   let closest: number | null = null
   let minDist = Infinity
+  const snapThresh = Math.max(0.01, (threshold ?? 6) * 0.1)
   for (const level of levels) {
     const dist = Math.abs(price - level)
-    if (dist < minDist && dist <= threshold * 0.1) {
+    if (dist < minDist && dist <= snapThresh) {
       minDist = dist
       closest = level
     }
@@ -35,6 +44,7 @@ export function snapToLevel(price: number, levels: number[], threshold = 6): num
 }
 
 export function snapToRoundNumber(price: number): number {
+  if (price === 0 || !isFinite(price)) return 0
   const magnitude = Math.pow(10, Math.floor(Math.log10(Math.abs(price))))
   const roundTo = magnitude
   return Math.round(price / roundTo) * roundTo

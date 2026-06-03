@@ -23,6 +23,9 @@ class SlackNotifier:
             "Content-Type": "application/json",
         }
 
+    def __repr__(self):
+        return f"SlackNotifier(channel={self._default_channel})"
+
     def _post(self, path: str, payload: dict) -> dict:
         resp = requests.post(
             f"{self.BASE_URL}/{path.lstrip('/')}",

@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Header
+from fastapi import APIRouter, Header, Query
 
 from ..market_intel import (
     get_etf_flows_payload,
@@ -40,7 +40,7 @@ async def market_intel_etf_flows():
 
 
 @router.get("/stocks/featured")
-async def market_intel_featured_stocks(limit: int = 6):
+async def market_intel_featured_stocks(limit: int = Query(default=6, ge=1, le=12)):
     safe_limit = max(1, min(limit, 12))
     return get_featured_stock_analysis_payload(limit=safe_limit)
 

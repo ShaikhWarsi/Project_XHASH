@@ -13,7 +13,6 @@ from data.providers import (
     DataProviderName,
     ProviderCache,
 )
-from data.providers.yfinance_provider import YFinanceProvider
 
 logger = logging.getLogger(__name__)
 
@@ -41,13 +40,6 @@ class FundamentalsRequest(BaseModel):
 class NewsRequest(BaseModel):
     symbol: Optional[str] = None
     limit: int = 50
-
-
-@router.on_event("startup")
-async def startup():
-    yfinance = YFinanceProvider()
-    global_provider_registry.register(yfinance, enabled=True)
-    logger.info("Registered YFinance provider")
 
 
 @router.get("/")
@@ -178,7 +170,7 @@ async def get_news(request: NewsRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/search")
+@router.get("/search")
 async def search_symbols(q: str = Query(..., min_length=1)):
     try:
         provider = global_provider_registry.get(DataProviderName.YFINANCE)

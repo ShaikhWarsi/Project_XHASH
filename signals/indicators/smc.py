@@ -11,6 +11,8 @@ from signals.base import SignalEngine
 class OrderBlockEngine(SignalEngine):
     """Order Block detection + FVG confirmation.
     Ported from custom_ob.py and smc_analysis.py.
+    Note: Does not handle market gaps or trading halts — price
+    discontinuities may produce false pivots.
     """
 
     def __init__(self, pivot_len: int = 5, fvg_lookback: int = 7, body_size_mult: float = 1.5):

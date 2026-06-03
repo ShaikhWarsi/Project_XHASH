@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 
@@ -25,8 +25,8 @@ class OrderRecord:
     status: OrderStatus = OrderStatus.PENDING
     filled_quantity: float = 0.0
     filled_price: float = 0.0
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     reject_reason: str = ""
     order_id: str = ""
 
@@ -55,13 +55,49 @@ class ExecutionProvider(ABC):
     def disconnect(self): ...
 
 
+class CircuitBreakerState:
+    """Per-symbol circuit breaker that halts trading after N consecutive failures."""
+
+    def __init__(self, max_consecutive_failures: int = 5):
+        self.max_consecutive_failures = max_consecutive_failures
+        self._failures: dict[str, int] = {}
+        self._halted: dict[str, bool] = {}
+
+    def record_failure(self, symbol: str):
+        self._failures[symbol] = self._failures.get(symbol, 0) + 1
+        if self._failures[symbol] >= self.max_consecutive_failures:
+            self._halted[symbol] = True
+
+    def record_success(self, symbol: str):
+        self._failures[symbol] = 0
+
+    def is_halted(self, symbol: str) -> bool:
+        return self._halted.get(symbol, False)
+
+    def reset(self, symbol: Optional[str] = None):
+        if symbol:
+            self._failures.pop(symbol, None)
+            self._halted.pop(symbol, None)
+        else:
+            self._failures.clear()
+            self._halted.clear()
+
+
 class OrderManager:
     def __init__(self, executor: ExecutionProvider):
         self._executor = executor
         self._orders: dict[str, OrderRecord] = {}
         self._order_timeout_sec: float = 300.0
+        self.circuit_breaker = CircuitBreakerState()
 
     def submit(self, order: Order) -> OrderRecord:
+        if self.circuit_breaker.is_halted(order.symbol):
+            record = OrderRecord(order=order, status=OrderStatus.REJECTED)
+            record.reject_reason = f"Circuit breaker active for {order.symbol}"
+            record.updated_at = datetime.now(timezone.utc)
+            self._orders[record.created_at.isoformat()] = record
+            return record
+
         record = OrderRecord(order=order)
         try:
             fill = self._executor.submit_order(order)
@@ -70,13 +106,16 @@ class OrderManager:
                 record.filled_quantity = fill.quantity
                 record.filled_price = fill.price
                 record.order_id = fill.order_id
+                self.circuit_breaker.record_success(order.symbol)
             else:
                 record.status = OrderStatus.SUBMITTED
                 record.order_id = order.order_id or ""
+                self.circuit_breaker.record_failure(order.symbol)
         except Exception as e:
             record.status = OrderStatus.REJECTED
             record.reject_reason = str(e)
-        record.updated_at = datetime.utcnow()
+            self.circuit_breaker.record_failure(order.symbol)
+        record.updated_at = datetime.now(timezone.utc)
         self._orders[record.order_id or record.created_at.isoformat()] = record
         return record
 
@@ -85,7 +124,7 @@ class OrderManager:
         if record and record.status in (OrderStatus.SUBMITTED, OrderStatus.PENDING):
             if self._executor.cancel_order(order_id):
                 record.status = OrderStatus.CANCELLED
-                record.updated_at = datetime.utcnow()
+                record.updated_at = datetime.now(timezone.utc)
                 return True
         return False
 
@@ -99,7 +138,7 @@ class OrderManager:
         return list(self._orders.values())
 
     def check_timeouts(self):
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         for record in self.get_open():
             elapsed = (now - record.updated_at).total_seconds()
             if elapsed > self._order_timeout_sec:

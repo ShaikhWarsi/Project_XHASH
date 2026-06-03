@@ -74,6 +74,10 @@ const ACTION_COMMANDS: Command[] = [
   { id: 'quick-whatif', label: 'What-If Analysis', path: '/trading/what-if', category: 'Actions', action: '\u21E5', description: 'Scenario analysis for portfolio' },
   { id: 'quick-alert', label: 'Create Alert', path: '/alerts', category: 'Actions', action: '\u21E5', description: 'Set up price or signal alert' },
   { id: 'quick-screener', label: 'Run Screener', path: '/markets/screener', category: 'Actions', action: '\u21E5', description: 'Screen markets by criteria' },
+  { id: 'switch-symbol', label: 'Switch Symbol', path: '/markets/chart', category: 'Actions', action: '\u21E5', description: 'Open prompt to switch active symbol' },
+  { id: 'search-help', label: 'Search Help', path: '/help', category: 'Actions', action: '\u21E5', description: 'Navigate to help center' },
+  { id: 'run-command', label: 'Run Command', path: '/terminal', category: 'Actions', action: '\u21E5', description: 'Show input for custom command' },
+  { id: 'chart-mode', label: 'Switch to Chart Mode', path: '__mode_chart', category: 'Actions', action: '\u21E5', description: 'Switch interface to chart mode' },
 ]
 
 const ALL_COMMANDS = [...NAV_COMMANDS, ...THEME_COMMANDS, ...ACTION_COMMANDS]
@@ -170,6 +174,8 @@ export default function CommandPalette({ onThemeChange }: CommandPaletteProps) {
     addRecentCommand(cmd.id)
     if (cmd.path.startsWith('__theme_')) {
       onThemeChange(cmd.path.replace('__theme_', '') as ThemeName)
+    } else if (cmd.path === '__mode_chart') {
+      try { localStorage.setItem('interface_mode', 'chart'); window.location.reload() } catch {}
     } else {
       navigate(cmd.path)
     }

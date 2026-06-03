@@ -11,8 +11,8 @@ const TIMEFRAMES = [
   { label: '1h', value: '60m' },
   { label: '4h', value: '240m' },
   { label: '1D', value: '1d' },
-  { label: '1W', value: '1wk' },
-  { label: '1M', value: '1mo' },
+  { label: '1W', value: '7d' },
+  { label: '1M', value: '30d' },
 ]
 
 export function TimeframeSelector({ interval, onIntervalChange }: TimeframeSelectorProps) {

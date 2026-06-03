@@ -33,7 +33,7 @@ export const usePortfolioStore = create<PortfolioStore>()(
             fetchTrades(),
           ])
           set({ portfolio, metrics, trades, loading: false })
-          eventBus.emit(EVENTS.SYMBOL_CHANGED, portfolio, metrics)
+          eventBus.emit(EVENTS.PORTFOLIO_UPDATED, portfolio, metrics)
         } catch (err) {
           set({ error: String(err), loading: false })
         }

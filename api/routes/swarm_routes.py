@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import string
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -13,7 +14,26 @@ from api.services.swarm.store import SwarmStore
 
 logger = logging.getLogger(__name__)
 
+router = APIRouter(prefix="/swarm", tags=["swarm"])
+
 _task_results: dict[str, dict[str, Any]] = {}
+_reaper_task: asyncio.Task | None = None
+
+
+async def _reaper_loop():
+    while True:
+        try:
+            SwarmStore.reap_stale_runs()
+        except Exception as e:
+            logger.warning("Reaper error: %s", e)
+        await asyncio.sleep(300)
+
+
+@router.on_event("startup")
+async def _start_reaper():
+    global _reaper_task
+    if _reaper_task is None:
+        _reaper_task = asyncio.create_task(_reaper_loop())
 
 
 async def _execute_task(run_id: str, task_id: str, agent_id: str, prompt_template: str):
@@ -21,7 +41,7 @@ async def _execute_task(run_id: str, task_id: str, agent_id: str, prompt_templat
         SwarmStore.update_task_status(run_id, task_id, "running")
 
         if agent_id and prompt_template:
-            prompt = prompt_template.replace("{run_id}", run_id).replace("{task_id}", task_id)
+            prompt = string.Template(prompt_template).safe_substitute(run_id=run_id, task_id=task_id)
             import yfinance as yf
 
             symbols = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA"]
@@ -29,7 +49,7 @@ async def _execute_task(run_id: str, task_id: str, agent_id: str, prompt_templat
             for symbol in symbols:
                 try:
                     ticker = yf.Ticker(symbol)
-                    df = ticker.history(period="1mo")
+                    df = await asyncio.to_thread(lambda t=ticker: t.history(period="1mo"))
                     if not df.empty:
                         price = float(df["Close"].iloc[-1])
                         change = float(df["Close"].pct_change().iloc[-1] * 100)
@@ -77,8 +97,6 @@ async def _execute_run_tasks(run_id: str):
             )
     SwarmStore.update_run_status(run_id, "completed")
 
-router = APIRouter(prefix="/swarm", tags=["swarm"])
-
 
 class CreateRunRequest(BaseModel):
     preset_name: str = ""
@@ -105,6 +123,7 @@ async def list_runs():
 async def create_run(req: CreateRunRequest, background_tasks: BackgroundTasks):
     run_id = f"run_{uuid.uuid4().hex[:12]}"
     run = SwarmStore.create_run(run_id, req.preset_name, req.user_vars)
+    background_tasks.add_task(_execute_run_tasks, run_id)
     return run
 
 

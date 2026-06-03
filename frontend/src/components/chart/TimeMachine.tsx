@@ -182,7 +182,7 @@ export default function TimeMachine({ data, onSeek, currentIndex, disabled, mult
 
   const lastTime = data[data.length - 1]?.time
   const curIdx = currentIndex != null ? Math.min(currentIndex, data.length - 1) : data.length - 1
-  const curTime = data[curIdx]?.time ?? lastTime
+  const curTime = Number(data[curIdx]?.time ?? lastTime)
   const pct = ((curIdx) / (data.length - 1)) * 100
   const isBookmarked = bookmarks.includes(curIdx)
 
@@ -277,7 +277,7 @@ export default function TimeMachine({ data, onSeek, currentIndex, disabled, mult
         >
           <option value="" disabled>BOOKMARKS</option>
           {bookmarks.map((b) => (
-            <option key={b} value={b}>{formatTime(data[b]?.time ?? 0)}</option>
+            <option key={b} value={b}>{formatTime(Number(data[b]?.time ?? 0))}</option>
           ))}
         </select>
       )}

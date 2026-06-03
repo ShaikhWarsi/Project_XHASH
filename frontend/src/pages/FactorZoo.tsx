@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import Spinner from '../components/Spinner'
+import { useToastStore } from '../store/toast'
 
 interface AlphaMeta {
   id: string
@@ -33,6 +34,16 @@ export default function FactorZoo() {
   const [benchResult, setBenchResult] = useState<any>(null)
   const [benchLoading, setBenchLoading] = useState(false)
   const [health, setHealth] = useState<any>(null)
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table')
+
+  const addToast = useToastStore((s) => s.addToast)
+
+  const PRESET_COMBOS = [
+    { name: 'Magic Formula', factors: 'ROIC + Earnings Yield' },
+    { name: 'Quality + Value + Momentum', factors: 'Quality + Value + Momentum' },
+    { name: 'Low Vol + Momentum', factors: 'Low Vol + Momentum' },
+    { name: 'Growth at Reasonable Price', factors: 'GARP' },
+  ]
 
   useEffect(() => {
     setLoading(true)
@@ -87,6 +98,11 @@ export default function FactorZoo() {
         <button onClick={() => setTab('browse')}
           className="border-0 cursor-pointer px-2 py-0.5"
           style={{ background: tab === 'browse' ? 'color-mix(in srgb, var(--accent-blue) 15%, transparent)' : 'none', color: tab === 'browse' ? 'var(--accent-blue)' : 'var(--text-muted)' }}>BROWSE</button>
+        {tab === 'browse' && (
+          <button onClick={() => setViewMode(viewMode === 'table' ? 'grid' : 'table')}
+            className="border border-default cursor-pointer px-2 py-0.5 text-[9px]"
+            style={{ background: viewMode === 'grid' ? 'color-mix(in srgb, var(--accent-blue) 15%, transparent)' : 'none', color: viewMode === 'grid' ? 'var(--accent-blue)' : 'var(--text-muted)' }}>{viewMode === 'table' ? 'Grid' : 'Table'}</button>
+        )}
         <button onClick={() => setTab('bench')}
           style={{ background: tab === 'bench' ? 'color-mix(in srgb, var(--accent-blue) 15%, transparent)' : 'none', color: tab === 'bench' ? 'var(--accent-blue)' : 'var(--text-muted)' }}>BENCH</button>
         {health && <span className="ml-auto text-[9px] text-muted">{health.loaded} loaded / {health.failed} failed</span>}
@@ -116,11 +132,42 @@ export default function FactorZoo() {
               {UNIVERSES.map((u) => <option key={u} value={u}>{u}</option>)}
             </select>
             <div className="text-[9px] text-muted mt-2">{filtered.length} alphas</div>
+            <div className="text-[9px] font-semibold text-muted mt-3 mb-1">PRESET COMBOS</div>
+            {PRESET_COMBOS.map((combo) => (
+              <div key={combo.name} className="bg-card border border-default rounded-sm p-1.5 mb-1.5">
+                <div className="text-[9px] font-semibold text-primary">{combo.name}</div>
+                <div className="text-[8px] text-muted mb-1">{combo.factors}</div>
+                <div className="flex gap-1">
+                  <button onClick={() => addToast(`Applied "${combo.name}" combination (${combo.factors})`, 'info')}
+                    className="text-[8px] bg-[var(--accent-blue)] text-white border-0 px-1.5 py-0.5 cursor-pointer rounded-sm">Apply</button>
+                  <button onClick={async () => { try { await api.post('/alphas/combos/apply', { combo: combo.name }); addToast(`Applied "${combo.name}" combination (${combo.factors})`, 'info') } catch { addToast('Failed to apply combo', 'error') } }}
+                    className="text-[8px] border border-default text-primary px-1.5 py-0.5 cursor-pointer rounded-sm bg-transparent">Add All to Backtest</button>
+                </div>
+              </div>
+            ))}
           </div>
 
           <div className="flex-1 flex overflow-hidden">
             <div className="flex-1 overflow-auto">
-              {loading ? <Spinner label="Loading alphas..." /> : (
+              {loading ? <Spinner label="Loading alphas..." /> : viewMode === 'grid' ? (
+                <div className="grid grid-cols-6 gap-2 p-2">
+                  {filtered.map((a) => (
+                    <div key={a.id} className="bg-card border border-default rounded p-1.5 relative group hover:border-[var(--accent-blue)] transition-colors">
+                      <div className="text-accent-blue text-[10px] font-bold truncate">{a.id}</div>
+                      <div className="text-[8px] text-muted mt-0.5">
+                        <span className="bg-[var(--bg-hover)] px-1 rounded-sm">{a.zoo}</span>
+                      </div>
+                      <div className="text-[8px] text-primary mt-0.5 truncate">{(a.meta?.theme || []).slice(0, 2).join(', ')}</div>
+                      <div className="absolute inset-0 bg-black/70 rounded hidden group-hover:flex flex-col items-center justify-center gap-1">
+                        <button onClick={async (e) => { e.stopPropagation(); try { await api.post(`/alphas/${a.id}/add-to-backtest`); addToast(`Alpha ${a.id} added to backtest config`, 'info') } catch { addToast('Failed to add alpha', 'error') } }}
+                          className="text-[8px] bg-[var(--accent-blue)] text-white border-0 px-2 py-0.5 cursor-pointer rounded-sm">Add to Backtest</button>
+                        <button onClick={async (e) => { e.stopPropagation(); try { await api.post(`/alphas/${a.id}/plot`); addToast(`Alpha ${a.id} plotted`, 'info') } catch { addToast('Failed to plot alpha', 'error') } }}
+                          className="text-[8px] bg-transparent border border-white text-white px-2 py-0.5 cursor-pointer rounded-sm">Plot on Chart</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="text-muted text-[9px] text-left border-b border-default">

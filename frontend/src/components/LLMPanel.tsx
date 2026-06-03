@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import Card from './ui/Card'
 import Badge from './ui/Badge'
 import Skeleton from './Skeleton'
-import { fetchLLMModels, llmComplete } from '../api/llm'
+import { fetchLLMModels, llmComplete, llmQuery } from '../api/llm'
 import type { LLMModel } from '../api/llm'
 import { useToastStore } from '../store/toast'
 
@@ -17,6 +17,8 @@ interface Message {
 
 const MAX_HISTORY = 20
 
+type Mode = 'chat' | 'query'
+
 export default function LLMPanel() {
   const addToast = useToastStore((s) => s.addToast)
   const [models, setModels] = useState<LLMModel[]>([])
@@ -28,6 +30,8 @@ export default function LLMPanel() {
   const [error, setError] = useState<string | null>(null)
   const [temperature, setTemperature] = useState(0.7)
   const [showSettings, setShowSettings] = useState(false)
+  const [mode, setMode] = useState<Mode>('chat')
+  const [contextStatus, setContextStatus] = useState<string[]>([])
   const responseRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -55,19 +59,30 @@ export default function LLMPanel() {
     setSending(true)
 
     try {
-      const res = await llmComplete(selectedModel, prompt, { reasoning: true, temperature })
-      const assistantMsg: Message = {
-        role: 'assistant',
-        content: res.content,
-        reasoning: res.reasoning,
-        model: selectedModel,
+      if (mode === 'query') {
+        const res = await llmQuery(prompt, messages.map((m) => ({ role: m.role, content: m.content })))
+        setContextStatus(res.context_used)
+        const assistantMsg: Message = {
+          role: 'assistant',
+          content: res.response,
+          model: 'data-query',
+        }
+        setMessages((prev) => [...prev, assistantMsg].slice(-MAX_HISTORY))
+      } else {
+        const res = await llmComplete(selectedModel, prompt, { reasoning: true, temperature })
+        const assistantMsg: Message = {
+          role: 'assistant',
+          content: res.content,
+          reasoning: res.reasoning,
+          model: selectedModel,
+        }
+        setMessages((prev) => [...prev, assistantMsg].slice(-MAX_HISTORY))
       }
-      setMessages((prev) => [...prev, assistantMsg].slice(-MAX_HISTORY))
     } catch (err: any) {
-      addToast(err?.message || 'LLM request failed', 'error')
+      addToast(err?.message || 'Request failed', 'error')
     }
     setSending(false)
-  }, [selectedModel, prompt, temperature, addToast])
+  }, [selectedModel, prompt, temperature, addToast, mode, messages])
 
   const clearHistory = () => {
     setMessages([])
@@ -123,7 +138,54 @@ export default function LLMPanel() {
         </div>
       )}
 
-      {models.length > 0 && (
+      <div className="flex gap-1 mb-2">
+        <button
+          onClick={() => setMode('chat')}
+          className="font-mono-data text-[9px] px-2 py-0.5 rounded-sm cursor-pointer"
+          style={{
+            background: mode === 'chat' ? 'rgba(59,130,246,0.2)' : 'transparent',
+            border: mode === 'chat' ? '1px solid var(--accent-blue)' : '1px solid var(--border-color)',
+            color: mode === 'chat' ? 'var(--accent-blue)' : 'var(--text-muted)',
+          }}
+        >
+          General Chat
+        </button>
+        <button
+          onClick={() => setMode('query')}
+          className="font-mono-data text-[9px] px-2 py-0.5 rounded-sm cursor-pointer"
+          style={{
+            background: mode === 'query' ? 'rgba(34,197,94,0.2)' : 'transparent',
+            border: mode === 'query' ? '1px solid var(--accent-green)' : '1px solid var(--border-color)',
+            color: mode === 'query' ? 'var(--accent-green)' : 'var(--text-muted)',
+          }}
+        >
+          Ask Terminal ▼
+        </button>
+      </div>
+
+      {mode === 'query' && contextStatus.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-2">
+          {contextStatus.map((ctx) => (
+            <span
+              key={ctx}
+              className="text-[8px] font-mono-data px-1 py-0.5 rounded-sm"
+              style={{ background: 'rgba(34,197,94,0.15)', color: 'var(--accent-green)' }}
+            >
+              ● {ctx}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {mode === 'query' && (
+        <div className="flex flex-wrap gap-1 mb-1.5">
+          <span className="text-[8px] font-mono-data px-1 py-0.5 rounded-sm bg-hover text-muted">Portfolio</span>
+          <span className="text-[8px] font-mono-data px-1 py-0.5 rounded-sm bg-hover text-muted">Risk</span>
+          <span className="text-[8px] font-mono-data px-1 py-0.5 rounded-sm bg-hover text-muted">Trades</span>
+        </div>
+      )}
+
+      {models.length > 0 && mode === 'chat' && (
         <div className="flex flex-wrap gap-1 mb-2">
           {models.map((m) => (
             <div

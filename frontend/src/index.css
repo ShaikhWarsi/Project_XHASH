@@ -32,6 +32,12 @@
     pointer-events: none;
     z-index: 9999;
   }
+  .fs-8 { font-size: 8px; }
+  .fs-9 { font-size: 9px; }
+  .fs-10 { font-size: 10px; }
+  .fs-11 { font-size: 11px; }
+  .fs-12 { font-size: 12px; }
+  .fs-13 { font-size: 13px; }
 }
 
 :root {
@@ -331,6 +337,77 @@
   --input-border: #d4d4d4;
   --input-text: #1a1a1a;
   --input-focus: #2563eb;
+}
+
+.theme-highcontrast {
+  --bg-primary: #000000;
+  --bg-secondary: #0d0d0d;
+  --bg-card: #0d0d0d;
+  --bg-hover: #1a1a1a;
+  --bg-sidebar: #0a0a0a;
+  --text-primary: #ffffff;
+  --text-secondary: #cccccc;
+  --text-muted: #888888;
+  --accent-green: #00ff00;
+  --accent-red: #ff0000;
+  --accent-blue: #00aaff;
+  --accent-yellow: #ffff00;
+  --accent-orange: #ff8800;
+  --border-color: #ffffff;
+  --ticker-bg: #000000;
+  --chart-bg: #0d0d0d;
+  --chart-text: #cccccc;
+  --chart-grid: #333333;
+  --chart-border: #ffffff;
+  --chart-candle-up: #00ff00;
+  --chart-candle-down: #ff0000;
+  --chart-volume: #00aaff;
+  --chart-line: #00ff00;
+  --input-bg: #1a1a1a;
+  --input-border: #ffffff;
+  --input-text: #ffffff;
+  --input-focus: #00aaff;
+  --card-padding: 1rem;
+  --card-radius: 4px;
+  --shadow-sm: 0 1px 3px rgba(255,255,255,0.1);
+  --shadow-md: 0 4px 8px rgba(255,255,255,0.12);
+  --shadow-lg: 0 8px 24px rgba(255,255,255,0.15);
+  --glow-blue: 0 0 8px rgba(0,170,255,0.5);
+  --glow-green: 0 0 8px rgba(0,255,0,0.5);
+  --glow-red: 0 0 8px rgba(255,0,0,0.5);
+}
+
+.theme-sunlight {
+  --bg-primary: #fff5e6;
+  --bg-secondary: #ffedd5;
+  --bg-card: #ffffff;
+  --bg-hover: #fff5e6;
+  --bg-sidebar: #ffedd5;
+  --text-primary: #1a1a00;
+  --text-secondary: #555533;
+  --text-muted: #888866;
+  --accent-green: #006600;
+  --accent-red: #cc0000;
+  --accent-blue: #0044cc;
+  --accent-yellow: #996600;
+  --accent-orange: #cc4400;
+  --border-color: #cccc99;
+  --ticker-bg: #ffedd5;
+  --chart-bg: #ffffff;
+  --chart-text: #555533;
+  --chart-grid: #dddccc;
+  --chart-border: #cccc99;
+  --chart-candle-up: #006600;
+  --chart-candle-down: #cc0000;
+  --chart-volume: #0044cc;
+  --chart-line: #006600;
+  --input-bg: #ffffff;
+  --input-border: #cccc99;
+  --input-text: #1a1a00;
+  --input-focus: #0044cc;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.15);
+  --shadow-md: 0 4px 8px rgba(0,0,0,0.18);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.22);
 }
 
 .theme-auto {

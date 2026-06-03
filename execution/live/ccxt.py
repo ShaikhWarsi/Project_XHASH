@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from core.enums import OrderSide, OrderType
@@ -47,7 +47,7 @@ class CCXTExecutor(ExecutionProvider):
 
             params = {}
             if order.side == OrderSide.SHORT:
-                params["reduceOnly"] = False
+                params["reduceOnly"] = True
 
             resp = self._exchange.create_order(
                 symbol=order.symbol,
@@ -67,7 +67,7 @@ class CCXTExecutor(ExecutionProvider):
                 side=order.side,
                 quantity=int(filled_qty),
                 price=avg_price,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
             )
         except Exception as e:
             logger.error("CCXT submit_order failed: %s", e)

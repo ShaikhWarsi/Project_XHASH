@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { TrendingUp, TrendingDown } from 'lucide-react'
 import BaseWidget from './BaseWidget'
+import { fetchQuotes } from '../../api/client'
 
 const SCAN_TICKERS = [
   'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA', 'NFLX',
@@ -26,9 +27,37 @@ export default function TopMoversWidget({ id, onRemove }: { id: string; onRemove
         const data = JSON.parse(raw)
         setGainers(data.gainers || [])
         setLosers(data.losers || [])
+        setLoading(false)
+        return
       } catch {}
     }
-    setLoading(false)
+    const abort = new AbortController()
+    fetchQuotes(SCAN_TICKERS, abort.signal)
+      .then((quotes) => {
+        if (abort.signal.aborted) return
+        const items: QuoteItem[] = []
+        for (const sym of SCAN_TICKERS) {
+          const q = quotes[sym]
+          if (q?.c != null) {
+            items.push({ symbol: sym, price: q.c, change_percent: q.dp ?? 0 })
+          }
+        }
+        items.sort((a, b) => b.change_percent - a.change_percent)
+        const mid = Math.ceil(items.length / 2)
+        setGainers(items.slice(0, mid))
+        setLosers(items.slice(mid).reverse())
+        sessionStorage.setItem('mover_quotes', JSON.stringify({ gainers: items.slice(0, mid), losers: items.slice(mid).reverse() }))
+      })
+      .catch(() => {
+        if (!abort.signal.aborted) {
+          setGainers([])
+          setLosers([])
+        }
+      })
+      .finally(() => {
+        if (!abort.signal.aborted) setLoading(false)
+      })
+    return () => abort.abort()
   }, [])
 
   const list = tab === 'gainers' ? gainers : losers

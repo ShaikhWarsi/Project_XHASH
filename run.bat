@@ -7,10 +7,10 @@ echo ========================================
 echo.
 
 echo [1/2] Starting Backend API (port 8000)...
-start "Backend API" cmd /c "cd /d "%~dp0" && uvicorn api.app:create_app --factory --host 127.0.0.1 --port 8000 --reload"
+start "Backend API" cmd /k "cd /d "%~dp0" && echo Backend starting... && "%USERPROFILE%\AppData\Local\Programs\Python\Python311\python.exe" -m uvicorn api.app:create_app --factory --host 127.0.0.1 --port 8000 --reload"
 
 echo [2/2] Starting Frontend (Vite)...
-start "Frontend" cmd /c "cd /d "%~dp0frontend" && npm run dev"
+start "Frontend" cmd /k "cd /d "%~dp0frontend" && echo Frontend starting... && npm run dev"
 
 echo.
 echo Both services starting in separate windows.

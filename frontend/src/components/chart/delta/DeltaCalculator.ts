@@ -71,7 +71,7 @@ export function calculateCumulativeDelta(
   }))
 }
 
-export function getDeltaColor(delta: number, _cumulative: number, buyRatio: number): string {
+export function getDeltaColor(_delta: number, _cumulative: number, buyRatio: number): string {
   if (buyRatio > 0.65) return '#22c55e'
   if (buyRatio > 0.55) return '#4ade80'
   if (buyRatio < 0.35) return '#ef4444'

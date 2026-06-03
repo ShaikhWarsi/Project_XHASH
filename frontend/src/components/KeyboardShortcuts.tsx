@@ -24,6 +24,10 @@ const NAV_SHORTCUTS = [
   { keys: 'g d', label: 'Data Pipeline', action: '/data/pipeline' },
   { keys: 'g e', label: 'Signal Engines', action: '/data/signal-engines' },
   { keys: 'g g', label: 'Settings', action: '/settings' },
+  { keys: 'g u', label: 'Strategy Code', action: '/strategy/code' },
+  { keys: 'g v', label: 'Visual Strategy', action: '/strategy/visual' },
+  { keys: 'g x', label: 'Screener', action: '/markets/screener' },
+  { keys: 'g z', label: 'Factor Zoo', action: '/research/factor-zoo' },
 ]
 
 const CTRL_SHORTCUTS = [
@@ -37,8 +41,9 @@ const CTRL_SHORTCUTS = [
   { keys: `${MOD}8`, label: 'Agents' },
   { keys: `${MOD}9`, label: 'Backtest' },
   { keys: `${MOD}0`, label: 'LLM' },
-  { keys: `${MOD}O`, label: 'Settings' },
-  { keys: `${MOD}R`, label: 'Risk' },
+  { keys: `${MOD}O`, label: 'Options Chain' },
+  { keys: `${MOD}U`, label: 'Calendar' },
+  { keys: `${MOD}E`, label: 'Settings' },
 ]
 
 const F_KEY_ROUTES = [
@@ -51,8 +56,8 @@ const F_KEY_ROUTES = [
   { keys: 'F7', label: 'Risk', action: '/risk' },
   { keys: 'F8', label: 'Agents', action: '/ai/agents' },
   { keys: 'F9', label: 'Backtest', action: '/strategy/backtest' },
-  { keys: 'F10', label: 'Settings', action: '/settings' },
-  { keys: 'F11', label: 'Alerts', action: '/alerts' },
+  { keys: 'F10', label: 'Options Chain', action: '/markets/options' },
+  { keys: 'F11', label: 'Calendar', action: '/markets/calendar' },
   { keys: 'F12', label: 'Toggle Chat', action: '__toggle_chat' },
 ]
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react'
-import { createChart, CandlestickSeries, LineSeries, type IChartApi, type ISeriesApi, ColorType } from 'lightweight-charts'
+import { createChart, CandlestickSeries, LineSeries, AreaSeries, type IChartApi, type ISeriesApi, ColorType } from 'lightweight-charts'
 import { Maximize2, Minimize2, MessageSquare } from 'lucide-react'
 import ChartAnnotations, { type ChartAnnotation } from './ChartAnnotations'
 
@@ -30,6 +30,8 @@ export default function ChartContainer({
   const [showAnnotations, setShowAnnotations] = useState(false)
   const [annotations, setAnnotations] = useState<ChartAnnotation[]>([])
   const [crosshairTime, setCrosshairTime] = useState<string | number | null>(null)
+  const onCrosshairMoveRef = useRef(onCrosshairMove)
+  onCrosshairMoveRef.current = onCrosshairMove
 
   useEffect(() => {
     setWindowHeight(window.innerHeight)
@@ -51,42 +53,57 @@ export default function ChartContainer({
   useEffect(() => {
     if (!chartRef.current) return
     const styles = getComputedStyle(document.documentElement)
+    const bgColor = styles.getPropertyValue('--chart-bg').trim() || '#0a0e14'
+    const textColor = styles.getPropertyValue('--chart-text').trim() || '#d1d4dc'
+    const gridColor = styles.getPropertyValue('--chart-grid').trim() || '#2a2d3e'
+    const borderColor = styles.getPropertyValue('--chart-border').trim() || '#2a2d3e'
+    const candleUp = styles.getPropertyValue('--chart-candle-up').trim() || '#22c55e'
+    const candleDown = styles.getPropertyValue('--chart-candle-down').trim() || '#ef4444'
+    const lineColor = styles.getPropertyValue('--chart-line').trim() || '#3b82f6'
     const chart = createChart(chartRef.current, {
       height: isExpanded ? windowHeight - 100 : height,
       layout: {
-        background: { type: ColorType.Solid, color: styles.getPropertyValue('--chart-bg').trim() || 'var(--bg-card)' },
-        textColor: styles.getPropertyValue('--chart-text').trim() || 'var(--chart-text)',
+        background: { type: ColorType.Solid, color: bgColor },
+        textColor,
       },
       grid: {
-        vertLines: { color: styles.getPropertyValue('--chart-grid').trim() || 'var(--chart-grid)' },
-        horzLines: { color: styles.getPropertyValue('--chart-grid').trim() || 'var(--chart-grid)' },
+        vertLines: { color: gridColor },
+        horzLines: { color: gridColor },
       },
-      rightPriceScale: { borderColor: styles.getPropertyValue('--chart-border').trim() || 'var(--chart-border)' },
-      timeScale: { borderColor: styles.getPropertyValue('--chart-border').trim() || 'var(--chart-border)', timeVisible: true, secondsVisible: false },
-      crosshair: { mode: 0, vertLine: { color: 'var(--accent-blue)', width: 1, labelBackgroundColor: 'var(--accent-blue)' }, horzLine: { color: 'var(--accent-blue)', width: 1, labelBackgroundColor: 'var(--accent-blue)' } },
+      rightPriceScale: { borderColor },
+      timeScale: { borderColor, timeVisible: true, secondsVisible: false },
+      crosshair: { mode: 0, vertLine: { color: '#3b82f6', width: 1, labelBackgroundColor: '#3b82f6' }, horzLine: { color: '#3b82f6', width: 1, labelBackgroundColor: '#3b82f6' } },
     })
     chartApiRef.current = chart
 
     chart.subscribeCrosshairMove((params) => {
       if (params.time) setCrosshairTime(params.time as any)
-      if (onCrosshairMove) onCrosshairMove(params)
+      onCrosshairMoveRef.current?.(params)
     })
 
     if (type === 'candlestick') {
       const series = chart.addSeries(CandlestickSeries, {
-        upColor: styles.getPropertyValue('--chart-candle-up').trim() || 'var(--chart-candle-up)',
-        downColor: styles.getPropertyValue('--chart-candle-down').trim() || 'var(--chart-candle-down)',
-        borderUpColor: styles.getPropertyValue('--chart-candle-up').trim() || 'var(--chart-candle-up)',
-        borderDownColor: styles.getPropertyValue('--chart-candle-down').trim() || 'var(--chart-candle-down)',
-        wickUpColor: styles.getPropertyValue('--chart-candle-up').trim() || 'var(--chart-candle-up)',
-        wickDownColor: styles.getPropertyValue('--chart-candle-down').trim() || 'var(--chart-candle-down)',
+        upColor: candleUp,
+        downColor: candleDown,
+        borderUpColor: candleUp,
+        borderDownColor: candleDown,
+        wickUpColor: candleUp,
+        wickDownColor: candleDown,
         ...options,
       } as any)
       seriesRef.current = series
     } else if (type === 'line') {
       const series = chart.addSeries(LineSeries, {
-        color: styles.getPropertyValue('--chart-line').trim() || 'var(--chart-line)',
+        color: lineColor,
         lineWidth: 2,
+        ...options,
+      } as any)
+      seriesRef.current = series
+    } else if (type === 'area') {
+      const series = chart.addSeries(AreaSeries, {
+        lineColor,
+        topColor: lineColor + '40',
+        bottomColor: lineColor + '05',
         ...options,
       } as any)
       seriesRef.current = series
@@ -98,23 +115,41 @@ export default function ChartContainer({
       chartApiRef.current = null
       seriesRef.current = null
     }
-  }, [type, height, isExpanded, windowHeight, options, onCrosshairMove])
+  }, [type, height, isExpanded, windowHeight, options])
+
+  const seenSetRef = useRef<Set<any>>(new Set())
 
   useEffect(() => {
     if (seriesRef.current && data.length > 0) {
-      const seen = new Set()
+      const seen = seenSetRef.current
       const deduped: any[] = []
-      for (let i = data.length - 1; i >= 0; i--) {
-        const key = data[i].time
+      for (const item of data) {
+        const key = item.time
         if (!seen.has(key)) {
           seen.add(key)
-          deduped.unshift(data[i])
+          deduped.push(item)
         }
       }
-      seriesRef.current.setData(deduped)
-      chartApiRef.current?.timeScale().fitContent()
+      if (deduped.length > 0) {
+        seriesRef.current.setData(data)
+        chartApiRef.current?.timeScale().fitContent()
+      }
     }
   }, [data])
+
+  useEffect(() => {
+    if (!seriesRef.current) return
+    const markers = annotations
+      .filter((a) => a.time != null && !a.replyTo)
+      .map((a) => ({
+        time: typeof a.time === 'number' ? a.time : (new Date(a.time as string).getTime() / 1000) as any,
+        position: 'aboveBar' as const,
+        color: a.color,
+        shape: 'circle' as const,
+        text: a.text.slice(0, 30),
+      }))
+    ;(seriesRef.current as any).setMarkers(markers)
+  }, [annotations])
 
   const handleAddAnnotation = useCallback((a: Omit<ChartAnnotation, 'id' | 'createdAt'>) => {
     const annotation: ChartAnnotation = {
@@ -127,7 +162,18 @@ export default function ChartContainer({
 
   const handleRemoveAnnotation = useCallback((id: string) => {
     setAnnotations((prev) => prev.filter((a) => a.id !== id))
-  }, [])
+    if (seriesRef.current) {
+      ;(seriesRef.current as any).setMarkers(
+        annotations.filter((a) => a.id !== id && !a.replyTo).map((a) => ({
+          time: typeof a.time === 'number' ? a.time : (new Date(a.time as string).getTime() / 1000) as any,
+          position: 'aboveBar' as const,
+          color: a.color,
+          shape: 'circle' as const,
+          text: a.text.slice(0, 30),
+        }))
+      )
+    }
+  }, [annotations])
 
   return (
     <div className={`transition-all duration-300 ease-linear ${isExpanded ? 'fixed inset-0 z-[9999] p-4' : ''}`}

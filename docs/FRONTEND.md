@@ -1,6 +1,6 @@
 # Frontend Guide
 
-The Trading Engine includes a comprehensive 30-page React SPA with real-time updates, advanced charting, and interactive strategy building.
+The Trading Engine includes a comprehensive 30-page React SPA with real-time updates, advanced charting, interactive strategy building, AI-powered features, multi-window support, and desktop-grade UI/UX.
 
 ## Tech Stack
 
@@ -13,312 +13,226 @@ The Trading Engine includes a comprehensive 30-page React SPA with real-time upd
 | Charts | TradingView Lightweight Charts, Plotly.js |
 | UI Flow | React Flow |
 | Styling | Tailwind CSS |
-| HTTP | Axios |
+| HTTP | Fetch API |
 | Build | Vite |
+| Cross-Tab Sync | BroadcastChannel API |
+| Drag & Drop | Native HTML5 API |
+| AI Streaming | SSE (Server-Sent Events) |
 
 ## Pages Overview
 
 ### Dashboard
-
-**File:** [Dashboard.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\Dashboard.tsx)
-
-Main landing page showing:
-- Portfolio NAV, cash, P&L
-- Open positions table
-- Real-time metrics (total return, Sharpe)
-- SSE-powered live updates
+Portfolio NAV, cash, P&L, open positions table, real-time metrics, SSE-powered live updates.
 
 ### Portfolio
-
-**File:** [Portfolio.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\Portfolio.tsx)
-
-- Holdings management
-- Position details
-- Allocation pie charts
+Holdings management, position details, allocation pie charts.
 
 ### Chart
-
-**File:** [Chart.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\Chart.tsx)
-
-- TradingView Lightweight Charts integration
-- Multiple timeframes (1m to 1M)
-- Drawing tools (trendlines, fibs, shapes)
-- Indicator overlays (SMA, EMA, Bollinger, etc.)
+TradingView Lightweight Charts — Heikin-Ashi, Point & Figure, bar, candle types. Drawing tools (trendlines, fibs, speed/resistance lines). Indicator overlays. TimeMachine/Bar Replay with tick sound. Snap to OHLC toggle. Pattern detection (head & shoulders, double top/bottom, triangles, flags, wedges). Drag price to alert. AI Inspector integration.
 
 ### Signals
-
-**File:** [Signals.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\Signals.tsx)
-
-- Signal scanner across tickers
-- Filter by signal type, direction, confidence
-- Real-time signal generation
+Signal scanner across tickers. Filter by type, direction, confidence.
 
 ### Backtest
-
-**File:** [Backtest.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\Backtest.tsx)
-
-- Strategy backtesting interface
-- Parameter configuration
-- Equity curve visualization
-- Performance metrics display
+Strategy backtesting with parameter config, equity curve, performance metrics. Drag date from chart to pre-fill start date.
 
 ### Agents
-
-**File:** [Agents.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\Agents.tsx)
-
-- AI agent council visualization
-- Agent status monitoring
-- Task assignment
+AI agent council visualization, status monitoring, task assignment.
 
 ### HedgeFund
-
-**File:** [HedgeFund.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\HedgeFund.tsx)
-
-- 16 hedge fund personas
-- Persona-based analysis
-- Opinion aggregation
-- Visual persona cards
+16 hedge fund personas with persona-based analysis and visual cards.
 
 ### RiskDashboard
-
-**File:** [RiskDashboard.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\RiskDashboard.tsx)
-
-- Real-time risk metrics
-- VaR, CVaR display
-- Drawdown charts
-- Circuit breaker status
+Real-time risk metrics, VaR/CVaR, drawdown charts, circuit breaker status.
 
 ### StrategyLab
-
-**File:** [StrategyLab.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\StrategyLab.tsx)
-
-- Visual strategy builder
-- Drag-and-drop components
-- Condition definition
-- Signal combination
+Visual strategy builder + **AI Strategy Generator** (natural language → FinScript code → review → backtest).
 
 ### StrategyOptimizer
-
-**File:** [StrategyOptimizer.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\StrategyOptimizer.tsx)
-
-- Parameter optimization
-- Grid search, random search
-- Performance heatmaps
-- Best parameters selection
+Parameter optimization, grid/random search, performance heatmaps.
 
 ### PortfolioOptimization
-
-**File:** [PortfolioOptimization.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\PortfolioOptimization.tsx)
-
-- Portfolio construction
-- Optimizer selection (Mean-Variance, Risk Parity, etc.)
-- Weight allocation visualization
-- Constraints configuration
+Portfolio construction, optimizer selection, weight visualization.
 
 ### RLTrainer
-
-**File:** [RLTrainer.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\RLTrainer.tsx)
-
-- Reinforcement learning training
-- Environment configuration
-- Training progress
-- Model performance
+Reinforcement learning training with environment config and progress tracking.
 
 ### FactorAnalysis
-
-**File:** [FactorAnalysis.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\FactorAnalysis.tsx)
-
-- Alpha factor research
-- Factor returns analysis
-- IC analysis
-- Factor correlation
+Alpha factor research, returns analysis, IC analysis, correlation.
 
 ### GeopoliticalAnalysis
-
-**File:** [GeopoliticalAnalysis.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\GeopoliticalAnalysis.tsx)
-
-- Macro event tracking
-- Impact analysis
-- Event correlation
+Macro event tracking, impact analysis, event correlation.
 
 ### CfaAnalytics
-
-**File:** [CfaAnalytics.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\CfaAnalytics.tsx)
-
-- CFA-level financial analysis
-- Valuation metrics
-- Financial ratios
-- Fixed income analytics
+CFA-level financial analysis, valuation metrics, financial ratios.
 
 ### HypothesisLab
-
-**File:** [HypothesisLab.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\HypothesisLab.tsx)
-
-- Statistical hypothesis testing
-- A/B testing framework
-- Results visualization
+Statistical hypothesis testing, A/B testing framework.
 
 ### DataPipeline
-
-**File:** [DataPipeline.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\DataPipeline.tsx)
-
-- ETL management
-- Data source configuration
-- Transformation rules
-- Schedule management
+ETL management, data source config, transformation rules.
 
 ### TaskOrchestration
-
-**File:** [TaskOrchestration.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\TaskOrchestration.tsx)
-
-- Workflow automation
-- Task dependencies
-- Execution monitoring
+Workflow automation, task dependencies, execution monitoring.
 
 ### SwarmDashboard
-
-**File:** [SwarmDashboard.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\SwarmDashboard.tsx)
-
-- Multi-agent swarm visualization
-- Agent collaboration status
-- Task distribution
+Multi-agent swarm visualization, collaboration status.
 
 ### SocialTrading
-
-**File:** [SocialTrading.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\SocialTrading.tsx)
-
-- Copy trading
-- Signal sharing
-- Community features
+Copy trading, signal sharing, community features.
 
 ### Plugins
-
-**File:** [Plugins.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\Plugins.tsx)
-
-- Extension management
-- Custom plugin installation
-- Plugin marketplace
+Extension management, custom plugin installation.
 
 ### VisualStrategy
-
-**File:** [VisualStrategy.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\VisualStrategy.tsx)
-
-- Node-based strategy editor
-- React Flow integration
-- Visual condition builder
+Node-based strategy editor with React Flow integration.
 
 ### Structure
-
-**File:** [Structure.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\Structure.tsx)
-
-- Market structure analysis
-- Swing highs/lows
-- Structure break detection
+Market structure analysis, swing highs/lows, structure break detection.
 
 ### HedgeFlow
-
-**File:** [HedgeFlow.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\HedgeFlow.tsx)
-
-- Agent flow builder
-- Node-based agent orchestration
-- Input/output connections
+Agent flow builder, node-based orchestration.
 
 ### AdvancedCharts
-
-**File:** [AdvancedCharts.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\AdvancedCharts.tsx)
-
-- Multi-chart layouts
-- Symbol comparison
-- Custom chart configurations
+Multi-chart layouts, symbol comparison.
 
 ### MmcAnalysis
-
-**File:** [MmcAnalysis.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\MmcAnalysis.tsx)
-
-- MMC strategy analysis
-- Order block detection
-- Fair value gap analysis
+MMC strategy analysis, order block detection, fair value gap.
 
 ### FactorZoo
-
-**File:** [FactorZoo.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\FactorZoo.tsx)
-
-- 158 alpha factor browser
-- Factor performance visualization
-- Custom factor creation
+158 alpha factor browser, factor performance, custom factor creation.
 
 ### StrategyCode
-
-**File:** [StrategyCode.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\StrategyCode.tsx)
-
-- Monaco code editor
-- FinScript editing
-- Syntax highlighting
+Monaco code editor, FinScript editing, syntax highlighting.
 
 ### PaperTrading
-
-**File:** [PaperTrading.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\PaperTrading.tsx)
-
-- Simulated trading
-- Order entry
-- P&L tracking
+Simulated trading, order entry, P&L tracking.
 
 ### WatchlistPage
-
-**File:** [WatchlistPage.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\WatchlistPage.tsx)
-
-- Custom watchlists
-- Quick quote viewing
-- Watchlist management
+Custom watchlists, quick quote viewing.
 
 ### Orders
-
-**File:** [Orders.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\Orders.tsx)
-
-- Order management
-- Order status tracking
-- Cancellation
+Order management, status tracking, cancellation.
 
 ### Trades
-
-**File:** [Trades.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\Trades.tsx)
-
-- Trade history
-- Trade details
-- Export functionality
+Trade history, details, export.
 
 ### Settings
-
-**File:** [Settings.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\pages\Settings.tsx)
-
-- Theme selection (4 themes)
-- API key configuration
-- Notification settings
+7 theme selection, API key config, notification settings.
 
 ## Components
+
+### AI Features
+
+| Component | File | Description |
+|-----------|------|-------------|
+| AIBriefing | [AIBriefing.tsx](../frontend/src/components/AIBriefing.tsx) | Modal overlay with LLM-generated portfolio + market briefing. Triggered by BRIEF button in StatusBar. Shows skeleton loading, portfolio value, market regime badge, top movers. |
+| StreamResponse | [StreamResponse.tsx](../frontend/src/components/StreamResponse.tsx) | Reusable component that reads an SSE stream and renders text token-by-token with a blinking cursor. Handles loading, error, and completion states. Used by AIInspector. |
+| NewsCoMovement | [NewsCoMovement.tsx](../frontend/src/components/NewsCoMovement.tsx) | Right sidebar panel. User enters a headline + comma-separated tickers. AI analyzes which tickers are co-moving in response. Shows direction (↑↓), confidence %, and reasoning. |
+| EarningsSummary | [EarningsSummary.tsx](../frontend/src/components/EarningsSummary.tsx) | Right sidebar panel. User enters a symbol + pastes transcript text. AI extracts bull case (3-5 bullets), bear case (3-5 bullets), and single biggest risk. |
+| StrategyGenerator | [StrategyGenerator.tsx](../frontend/src/components/StrategyGenerator.tsx) | Full strategy generation workflow: (1) describe strategy in plain English (2) AI generates FinScript code (3) review with yellow warning banner (4) run backtest via FinScript engine (5) see metrics + trades. |
+| IndicatorGenerator | [IndicatorGenerator.tsx](../frontend/src/components/IndicatorGenerator.tsx) | Describe an indicator in plain English → AI generates JavaScript using `indicator({...})` plugin API → "Add to Chart" registers it at runtime via `registerPlugin()`. |
+| AIInspector | [AIInspector.tsx](../frontend/src/components/AIInspector.tsx) | Streaming modal that shows when user clicks "What is this?" on a detected pattern. Displays confidence/target/stop grid, then streams LLM analysis (explanation, historical analogs, trading implications, confidence assessment). |
 
 ### Layout Components
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Layout | [Layout.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\components\Layout.tsx) | Main app layout |
-| Sidebar | [Sidebar.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\components\Sidebar.tsx) | Navigation sidebar |
+| Layout | [Layout.tsx](../frontend/src/components/Layout.tsx) | Main app layout. Handles distraction-free mode, multi-window keyboard shortcuts, right sidebar toggle, swipe gestures on mobile. |
+| StatusBar | [StatusBar.tsx](../frontend/src/components/StatusBar.tsx) | Bottom bar with live/paper indicator, latency, portfolio value, positions/orders/signals counts, clock, theme toggle, detail expand, **BRIEF button**. |
+| StatusStrip | [StatusStrip.tsx](../frontend/src/components/StatusStrip.tsx) | Top strip with WS status, last tick, P99 latency, market session, stale ms, equity. |
+| Sidebar | [Sidebar.tsx](../frontend/src/components/Sidebar.tsx) | Navigation sidebar with route links. |
+
+### Right Sidebar
+
+| Tab | Component | Description |
+|-----|-----------|-------------|
+| News | [NewsPanel.tsx](../frontend/src/components/rightsidebar/NewsPanel.tsx) | Groups yfinance + market intel headlines by ticker from held positions. Click navigates to chart. |
+| Calendar | [CalendarPanel.tsx](../frontend/src/components/rightsidebar/CalendarPanel.tsx) | Today's macro events, earnings, dividends. Click ticker → chart. |
+| Chat | [ChatPanel.tsx](../frontend/src/components/rightsidebar/ChatPanel.tsx) | Team/AI WebSocket chat with typing indicator. In-memory broadcast. |
+| Co-Move | [NewsCoMovement.tsx](../frontend/src/components/NewsCoMovement.tsx) | Headline correlation analysis via AI. |
+| Earnings | [EarningsSummary.tsx](../frontend/src/components/EarningsSummary.tsx) | Earnings transcript summarization via AI. |
 
 ### Chart Components
 
 | Component | File | Description |
 |-----------|------|-------------|
-| ChartContainer | [ChartContainer.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\components\ChartContainer.tsx) | Chart wrapper |
-| ChartEngine | [ChartEngine.ts](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\components\chart\ChartEngine.ts) | Chart logic |
-| DrawingManager | [DrawingManager.ts](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\components\chart\drawings\DrawingManager.ts) | Drawing tools |
+| ChartContainer | [ChartContainer.tsx](../frontend/src/components/ChartContainer.tsx) | Chart wrapper with series type handling. |
+| ChartEngine | [ChartEngine.ts](../frontend/src/components/chart/ChartEngine.ts) | Core chart logic. Heikin-Ashi, Point & Figure, OHLC. seekToIndex() for Bar Replay. snapToOHLC flag. |
+| PatternDetector | [PatternDetector.ts](../frontend/src/components/chart/patterns/PatternDetector.ts) | Detects head & shoulders, double top/bottom, triangles, flags, wedges. Renders with target/SL lines. |
+| IndicatorManager | [IndicatorManager.ts](../frontend/src/components/chart/drawings/indicators/IndicatorManager.ts) | Manages runtime indicator registration via `addIndicator()`. |
+| IndicatorPlugin | [IndicatorPlugin.ts](../frontend/src/components/chart/drawings/indicators/IndicatorPlugin.ts) | Plugin system for custom indicators with `indicator({...})` API. |
 
 ### Trading Components
 
 | Component | File | Description |
 |-----------|------|-------------|
-| OrderBook | [OrderBook.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\components\OrderBook.tsx) | Order book display |
-| OrderEntryPanel | [OrderEntryPanel.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\components\OrderEntryPanel.tsx) | Order entry form |
-| PositionTable | [PositionTable.tsx](file:///c:\Users\Mohammad\OneDrive\Desktop\Finance\aa\trademania\trading-engine\frontend\src\components\PositionTable.tsx) | Position display |
+| OrderBook | [OrderBook.tsx](../frontend/src/components/OrderBook.tsx) | Order book depth display. |
+| OrderEntryPanel | [OrderEntryPanel.tsx](../frontend/src/components/OrderEntryPanel.tsx) | Order entry form. |
+| PositionTable | [PositionTable.tsx](../frontend/src/components/PositionTable.tsx) | Position display. |
+
+### Drag & Drop Components
+
+| Component | File | Description |
+|-----------|------|-------------|
+| DropZone | [DropZone.tsx](../frontend/src/components/dragndrop/DropZone.tsx) | Accepts `text/plain` (symbol) drops. Kind: chart, order, compare, widget. |
+| PriceDragTarget | [PriceDragTarget.tsx](../frontend/src/components/dragndrop/PriceDragTarget.tsx) | Accepts `application/x-price-level` drops. Opens AlertDialog with pre-filled price. |
+| DateDropTarget | [DateDropTarget.tsx](../frontend/src/components/dragndrop/DateDropTarget.tsx) | Accepts `application/x-date` drops. Calls `setConfig({ start: date })`. |
+| SymbolDragContext | [SymbolDragContext.tsx](../frontend/src/contexts/SymbolDragContext.tsx) | Context provider for symbol dragging. |
+
+## Contexts
+
+| Context | File | Description |
+|---------|------|-------------|
+| ThemeContext | [ThemeContext.tsx](../frontend/src/contexts/ThemeContext.tsx) | 7 themes: classic, cyber, terminal, light, auto, highcontrast, sunlight. |
+| DistractionFreeContext | [DistractionFreeContext.tsx](../frontend/src/contexts/DistractionFreeContext.tsx) | Toggle `Ctrl+Shift+D`. Hides all chrome, shows floating "Exit Focus" button. |
+| MultiWindowContext | [MultiWindowContext.tsx](../frontend/src/contexts/MultiWindowContext.tsx) | BroadcastChannel sync for theme/symbol/backtest changes across tabs. |
+| SymbolDragContext | [SymbolDragContext.tsx](../frontend/src/contexts/SymbolDragContext.tsx) | Manages drag state for symbol dragging across components. |
+| TabProvider | [TabContext.tsx](../frontend/src/contexts/TabContext.tsx) | Tab state management. |
+| InterfaceModeContext | [InterfaceModeContext.tsx](../frontend/src/contexts/InterfaceModeContext.tsx) | Terminal vs Chat mode toggle (`Ctrl+Shift+C`). |
+
+## Hooks
+
+| Hook | File | Description |
+|------|------|-------------|
+| useMultiWindow | [useMultiWindow.ts](../frontend/src/hooks/useMultiWindow.ts) | BroadcastChannel subscribe/broadcast with self-message filtering. |
+| useHeldTickers | [useHeldTickers.ts](../frontend/src/hooks/useHeldTickers.ts) | Returns deduplicated tickers from portfolio positions. Used by RightSidebar. |
+| useWebSocket | [useWebSocket.ts](../frontend/src/hooks/useWebSocket.ts) | WebSocket connection with retry and cleanup. |
+| useBreakpoint | [useBreakpoint.ts](../frontend/src/hooks/useBreakpoint.ts) | Mobile/desktop responsive breakpoint detection. |
+| useHelp | [useHelp.ts](../frontend/src/hooks/useHelp.ts) | Help overlay toggle. |
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+Shift+D` | Toggle distraction-free mode |
+| `Ctrl+Shift+R` | Toggle right sidebar |
+| `Ctrl+Shift+C` | Toggle terminal/chat mode |
+| `Ctrl+N` | Open new window (multi-window) |
+| `Ctrl+Shift+N` | Open new window (alternative) |
+| `?` | Show help overlay |
+
+## Multi-Window Sync
+
+Uses `BroadcastChannel('te-sync')` to synchronize:
+
+| Event | Payload | Effect |
+|-------|---------|--------|
+| `THEME_CHANGED` | `{ theme }` | All windows update theme |
+| `SYMBOL_CHANGED` | `{ symbol }` | All windows navigate to symbol |
+| `BACKTEST_COMPLETE` | `{ id, symbol, return }` | Notification in other windows |
+
+Each tab has a unique `tabId` (generated once via `crypto.randomUUID()` + localStorage) to filter its own broadcasts.
+
+## Drag & Drop MIME Types
+
+| MIME Type | Source | Target |
+|-----------|--------|--------|
+| `text/plain` | SymbolSearch items | DropZone (chart/order/compare/widget) |
+| `application/x-price-level` | Chart price levels | PriceDragTarget (alert button) |
+| `application/x-date` | Chart dates | DateDropTarget (backtest start) |
+
+The `makeDateDraggable` and `extractDateFromDrag` utility functions handle the date MIME type.
 
 ## State Management
 
@@ -338,42 +252,38 @@ import { useSignalStore } from '../store/signals'
 const { signals, load } = useSignalStore()
 ```
 
-## API Client
+## API Client (LLM & AI)
+
+All AI functions are in `api/llm.ts`:
 
 ```typescript
-import { apiClient } from '../api/client'
+import { llmComplete, llmCompleteStream, briefingGet, coMovementGet,
+  earningsSummaryGet, generateStrategy, evaluateStrategy,
+  generateIndicator, inspectPattern, llmQuery } from '../api/llm'
 
-// GET request
-const data = await apiClient.get('/portfolio')
+// Streaming (used by AIInspector)
+await llmCompleteStream('gpt-4o', prompt, (token) => {
+  setText(prev => prev + token)
+})
 
-// POST request
-const result = await apiClient.post('/backtest', { tickers: ['AAPL'] })
-```
-
-## WebSocket Connection
-
-```typescript
-import { useWebSocket } from '../hooks/useWebSocket'
-
-const { connect, disconnect, subscribe } = useWebSocket()
-
-// Subscribe to dashboard updates
-useEffect(() => {
-  const unsub = subscribe('dashboard', (data) => {
-    setSnapshot(data)
-  })
-  return unsub
-}, [])
+// Non-streaming (used by Briefing, Strategy, etc.)
+const briefing = await briefingGet()
+const strategy = await generateStrategy('Buy when RSI < 30')
+const result = await evaluateStrategy(strategy.code)
+const indicator = await generateIndicator('Green when price > SMA')
+const query = await llmQuery('What is my biggest position?')
 ```
 
 ## Theming
 
-4 themes supported: Light, Dark, High Contrast, Custom
+7 themes: `classic`, `cyber`, `terminal`, `light`, `auto`, `highcontrast`, `sunlight`
 
 ```typescript
 import { useTheme } from '../contexts/ThemeContext'
 const { theme, setTheme } = useTheme()
 ```
+
+Theme cycles in order: `classic → cyber → terminal → light → auto → highcontrast → sunlight → classic`
 
 ## Running Development
 
@@ -384,3 +294,11 @@ npm run dev
 ```
 
 Frontend available at `http://localhost:5173`
+
+## TypeScript
+
+All new components pass TypeScript strict mode with zero errors:
+
+```bash
+cd frontend && npx tsc --noEmit --pretty
+```

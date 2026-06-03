@@ -28,6 +28,8 @@ class SMSNotifier:
         self._api_secret = api_secret
 
     def send(self, to: str, message: str) -> dict:
+        if not to or not isinstance(to, str) or len(to) < 4:
+            raise IntegrationError(f"Invalid phone number: {to!r}")
         if self._provider == "twilio":
             return self._send_twilio(to, message)
         elif self._provider == "vonage":

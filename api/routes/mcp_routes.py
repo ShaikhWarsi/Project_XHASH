@@ -14,19 +14,20 @@ router = APIRouter(prefix="/mcp", tags=["mcp"])
 async def list_mcp_tools():
     from mcp_server import mcp
     tools = []
-    for tool in mcp._tool_manager._tools.values():
-        tools.append({
-            "name": tool.name,
-            "description": tool.description,
-            "parameters": tool.parameters,
-        })
+    try:
+        tool_manager = mcp.get_tool_manager()
+        for tool in tool_manager.list_tools():
+            tools.append({
+                "name": tool.name,
+                "description": tool.description,
+                "parameters": tool.parameters,
+            })
+    except Exception:
+        return {"tools": [], "count": 0}
     return {"tools": tools, "count": len(tools)}
 
 
 @router.get("/providers")
 async def list_mcp_providers():
-    try:
-        from api.mcp_extensions import mcp_server
-        return {"status": "available"}
-    except ImportError:
-        return {"status": "not_loaded"}
+    from mcp_server import mcp
+    return {"status": "available", "providers": list(mcp.list_providers()) if hasattr(mcp, "list_providers") else []}

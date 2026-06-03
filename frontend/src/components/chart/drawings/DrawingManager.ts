@@ -20,8 +20,15 @@ import { TextLabel } from './tools/TextLabel'
 import { Arrow } from './tools/Arrow'
 import { Brush } from './tools/Brush'
 import { GannFan } from './tools/GannFan'
+import { GannBox } from './tools/GannBox'
+import { GannSquare } from './tools/GannSquare'
+import { AutoFibRetracement } from './tools/AutoFibRetracement'
+import { AutoPitchfork } from './tools/AutoPitchfork'
+import { SpeedResistanceLines } from './tools/SpeedResistanceLines'
 import { LongMarker } from './tools/LongMarker'
 import { ShortMarker } from './tools/ShortMarker'
+import { AnchoredVWAPTool } from './tools/AnchoredVWAPTool'
+import { RulerTool } from './tools/RulerTool'
 import { CoordMapper } from '../CoordMapper'
 
 const TOOL_MAP: Record<string, new (id: string, type: ToolType, points?: any[], style?: Partial<DrawingStyle>) => DrawingTool> = {
@@ -32,16 +39,53 @@ const TOOL_MAP: Record<string, new (id: string, type: ToolType, points?: any[], 
   channel: Channel, text_label: TextLabel, arrow: Arrow, brush: Brush,   gann_fan: GannFan,
   long_marker: LongMarker,
   short_marker: ShortMarker,
+  anchored_vwap: AnchoredVWAPTool,
+  ruler: RulerTool,
+  gann_box: GannBox,
+  gann_square: GannSquare,
+  auto_fib: AutoFibRetracement,
+  auto_pitchfork: AutoPitchfork,
+  speed_resistance_lines: SpeedResistanceLines,
 }
 
 const MAX_HISTORY = 50
+const STORAGE_VERSION = 1
+
+const STORAGE_MIGRATIONS: Record<number, (data: any) => any> = {
+  0: (data: any) => {
+    if (Array.isArray(data)) {
+      return { version: 1, drawings: data }
+    }
+    return data
+  },
+}
+
+function migrateStorage(raw: any): { version: number; drawings: any[] } {
+  if (!raw || typeof raw !== 'object') return { version: STORAGE_VERSION, drawings: [] }
+  let data = raw
+  if (Array.isArray(data)) {
+    data = { version: 0, drawings: data }
+  }
+  let version = data.version ?? 0
+  let current = { ...data }
+  while (version < STORAGE_VERSION) {
+    const migrator = STORAGE_MIGRATIONS[version]
+    if (!migrator) break
+    current = migrator(current)
+    version = current.version ?? STORAGE_VERSION
+  }
+  if (!Array.isArray(current.drawings)) current.drawings = []
+  return { version: current.version ?? STORAGE_VERSION, drawings: current.drawings }
+}
 
 export class DrawingManager {
-  readonly levelsManager: LevelsManager
+  private chart: IChartApi
   private drawings: DrawingTool[] = []
-  private selectedId: string | null = null
-  private activeToolType: ToolType | null = null
+  private mapper: CoordMapper
   private activeDrawing: DrawingTool | null = null
+  private activeToolType: ToolType | null = null
+  chartData: any[] = []
+  levelsManager = new LevelsManager()
   private nextId = 1
   private history: DrawingData[][] = []
   private historyIndex = -1
@@ -49,7 +93,7 @@ export class DrawingManager {
   private dragStartX = 0
   private dragStartY = 0
   private hoveredId: string | null = null
-  private mapper: CoordMapper
+  private selectedId: string | null = null
   private onChanged: (() => void) | null = null
   private onError: ((message: string) => void) | null = null
   private storageKey = ''
@@ -57,8 +101,8 @@ export class DrawingManager {
   private beforeUnloadHandler: (() => void) | null = null
 
   constructor(_chart: IChartApi, mapper: CoordMapper) {
+    this.chart = _chart
     this.mapper = mapper
-    this.levelsManager = new LevelsManager()
     this.levelsManager.setOnChanged(() => this.scheduleChange())
     this.beforeUnloadHandler = () => this.saveToStorage()
     if (typeof window !== 'undefined') {
@@ -147,6 +191,9 @@ export class DrawingManager {
     if (!Ctor) return null
     const id = `drawing_${this.nextId++}`
     const drawing = new Ctor(id, type, points, style)
+    if ((drawing as any).setChartData && this.chartData.length > 0) {
+      (drawing as any).setChartData(this.chartData)
+    }
     this.drawings.push(drawing)
     this.selectedId = id
     drawing.setSelected(true)
@@ -158,6 +205,9 @@ export class DrawingManager {
     const Ctor = TOOL_MAP[data.type]
     if (!Ctor) return null
     const drawing = new Ctor(data.id, data.type as ToolType, data.points, data.style)
+    if ((drawing as any).setChartData && this.chartData.length > 0) {
+      (drawing as any).setChartData(this.chartData)
+    }
     drawing.visible = data.visible
     drawing.createdAt = data.createdAt
     return drawing
@@ -171,6 +221,9 @@ export class DrawingManager {
         if (!Ctor) return
         const id = `drawing_${this.nextId++}`
         this.activeDrawing = new Ctor(id, this.activeToolType)
+        if ((this.activeDrawing as any).setChartData && this.chartData.length > 0) {
+          (this.activeDrawing as any).setChartData(this.chartData)
+        }
         this.drawings.push(this.activeDrawing)
         this.selectedId = id
       }
@@ -260,9 +313,14 @@ export class DrawingManager {
     try {
       const raw = localStorage.getItem(key)
       if (!raw) return
-      const data: DrawingData[] = JSON.parse(raw)
+      const parsed = JSON.parse(raw)
+      const migrated = migrateStorage(parsed)
+      const data: DrawingData[] = migrated.drawings.filter((d: any) => d && d.type)
       this.drawings = data.map((d) => this.createFromData(d)).filter(Boolean) as DrawingTool[]
       this.saveHistory()
+      if (migrated.version !== STORAGE_VERSION || !parsed.version) {
+        this.saveToStorage()
+      }
     } catch {
       this.onError?.('Failed to load drawings: stored data is corrupt')
     }
@@ -271,8 +329,9 @@ export class DrawingManager {
   saveToStorage() {
     if (!this.storageKey) return
     try {
-      const data = this.drawings.map((d) => d.toJSON())
-      localStorage.setItem(this.storageKey, JSON.stringify(data))
+      const drawings = this.drawings.map((d) => d.toJSON())
+      const payload = { version: STORAGE_VERSION, drawings }
+      localStorage.setItem(this.storageKey, JSON.stringify(payload))
     } catch {
       this.onError?.('Failed to save drawings: localStorage may be full')
     }

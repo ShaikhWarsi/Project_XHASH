@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, field_validator
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +14,15 @@ class WhatIfRequest(BaseModel):
     current_weights: dict[str, float]
     target_weights: dict[str, float]
     rebalance_cost: float = 0.001
+    tax_rate: float = 0.0005
+
+    @field_validator("current_weights", "target_weights")
+    @classmethod
+    def _validate_weights(cls, v: dict[str, float]) -> dict[str, float]:
+        for sym, w in v.items():
+            if w < 0 or w > 1:
+                raise HTTPException(400, f"Weight for {sym} must be between 0 and 1")
+        return v
 
 
 class WhatIfResponse(BaseModel):
@@ -34,7 +43,7 @@ async def portfolio_whatif(req: WhatIfRequest):
 
     turnover = round(turnover, 6)
     cost = round(turnover * req.rebalance_cost, 6)
-    tax_impact = round(turnover * 0.0005, 6)
+    tax_impact = round(turnover * req.tax_rate, 6)
     total_cost = round(cost + tax_impact, 6)
 
     return WhatIfResponse(

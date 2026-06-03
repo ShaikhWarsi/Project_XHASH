@@ -48,14 +48,14 @@ export async function getProviderStats(): Promise<Record<string, unknown>> {
 
 export async function getOHLCV(
   params: OHLCVParams
-): Promise<ProviderResponse & { data?: { bars: OHLCV[] } }> {
+): Promise<ProviderResponse<any> & { data?: { bars: OHLCV[] } }> {
   return request('/ohlcv', {
     method: 'POST',
     body: JSON.stringify(params),
   })
 }
 
-export async function getQuote(symbol: string): Promise<ProviderResponse & { data?: Quote }> {
+export async function getQuote(symbol: string): Promise<ProviderResponse<any> & { data?: Quote }> {
   return request('/quote', {
     method: 'POST',
     body: JSON.stringify({ symbol }),
@@ -64,7 +64,7 @@ export async function getQuote(symbol: string): Promise<ProviderResponse & { dat
 
 export async function getFundamentals(
   symbol: string
-): Promise<ProviderResponse & { data?: FundamentalData }> {
+): Promise<ProviderResponse<any> & { data?: FundamentalData }> {
   return request('/fundamentals', {
     method: 'POST',
     body: JSON.stringify({ symbol }),
@@ -74,7 +74,7 @@ export async function getFundamentals(
 export async function getNews(
   symbol?: string,
   limit = 50
-): Promise<ProviderResponse & { data?: { articles: MarketNews[] } }> {
+): Promise<ProviderResponse<any> & { data?: { articles: MarketNews[] } }> {
   return request('/news', {
     method: 'POST',
     body: JSON.stringify({ symbol, limit }),
@@ -83,7 +83,7 @@ export async function getNews(
 
 export async function searchSymbols(
   query: string
-): Promise<ProviderResponse & { data?: { symbols: string[] } }> {
+): Promise<ProviderResponse<any> & { data?: { symbols: string[] } }> {
   return request(`/search?q=${encodeURIComponent(query)}`, {
     method: 'POST',
   })

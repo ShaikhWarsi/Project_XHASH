@@ -1,4 +1,4 @@
-import type { Time, CandlestickData } from 'lightweight-charts'
+import type { CandlestickData } from 'lightweight-charts'
 import type { ChartThemeColors } from '../ChartTheme'
 
 export interface TPOLetter {
@@ -14,10 +14,6 @@ export interface MarketProfileData {
   pointOfControl: number
   initialBalance: { high: number; low: number }
   dayType: 'trend' | 'normal' | 'doubleDistribution'
-}
-
-interface CoordMapper {
-  priceToY(price: number): number | null
 }
 
 interface RenderLayout {
@@ -54,7 +50,7 @@ function generateLetter(index: number): string {
 export class MarketProfile {
   generateTPO(
     data: CandlestickData[],
-    timezone: string,
+    _timezone: string,
     sessionStart: string = SESSION_START,
     sessionEnd: string = SESSION_END
   ): MarketProfileData {
@@ -80,9 +76,11 @@ export class MarketProfile {
 
       const periodIndex = Math.floor((barMinutes - startMinutes) / periodMinutes)
       const letter = generateLetter(periodIndex)
-      const periodLabel = minutesToTimeLabel(startMinutes + periodIndex * periodMinutes)
+      const _periodLabel = minutesToTimeLabel(startMinutes + periodIndex * periodMinutes)
 
-      const priceStep = this.estimatePriceStep(data)
+      const priceStep = Math.max(0.01, this.estimatePriceStep(data))
+      const maxTicksPerBucket = Math.max(1, Math.round((bar.high - bar.low) / priceStep))
+      if (maxTicksPerBucket > 500) continue
       const priceLevel = Math.round(bar.high / priceStep) * priceStep
       const lowLevel = Math.round(bar.low / priceStep) * priceStep
 
@@ -320,6 +318,7 @@ export class MarketProfile {
     const maxPrice = Math.max(...prices)
     const minPrice = Math.min(...prices)
     const range = maxPrice - minPrice
+    if (range <= 0 || !isFinite(range)) return 0.01
     const step = Math.pow(10, Math.floor(Math.log10(range / 30)))
     return Math.max(step, 0.01)
   }

@@ -18,6 +18,9 @@ class TelegramNotifier:
         self._chat_id = chat_id
         self._timeout = timeout
 
+    def __repr__(self):
+        return f"TelegramNotifier(chat_id={self._chat_id})"
+
     def _url(self, method: str) -> str:
         return f"{self.BASE_URL}{self._token}/{method.lstrip('/')}"
 
@@ -56,7 +59,7 @@ class TelegramNotifier:
             f"Side: {side}\\n"
             f"Qty: {quantity:.4f}\\n"
             f"Price: ${price:.2f}\\n"
-            f"Time: {__import__('datetime').datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
+            f"Time: {__import__('datetime').datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC"
         )
         return self.send_message(text)
 

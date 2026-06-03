@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { portfolioWhatIf } from '../api/client'
 import type { WhatIfResult } from '../api/types'
 import Card from '../components/ui/Card'
-import Badge from '../components/ui/Badge'
+// import Badge from '../components/ui/Badge'
 
 interface TickerWeight {
   symbol: string

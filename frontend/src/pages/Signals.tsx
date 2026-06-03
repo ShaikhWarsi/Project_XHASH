@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSignalStore } from '../store/signals'
 import Card from '../components/ui/Card'
+import Badge from '../components/ui/Badge'
 import Skeleton from '../components/Skeleton'
 import EmptyState from '../components/ui/EmptyState'
 import type { QuantSignal } from '../api/types'
-import { useToastStore } from '../store/toast'
 import { useUrlState } from '../hooks/useUrlState'
 
 const FONT_DATA = 'font-mono-data text-[11px]'
@@ -13,29 +13,40 @@ const FONT_SM = 'font-mono-data text-[10px]'
 const FONT_LABEL = 'font-mono-data text-[9px] tracking-wider'
 
 export default function Signals() {
-  const { signals, load } = useSignalStore()
-  const addToast = useToastStore((s) => s.addToast)
+  const { signals, loading, error, load, update } = useSignalStore()
   const navigate = useNavigate()
   const [search, setSearch] = useUrlState('q', '')
   const [sortBy, setSortBy] = useState<'composite' | 'symbol'>('composite')
   const [direction, setDirection] = useState<'asc' | 'desc'>('desc')
   const [typeFilter, setTypeFilter] = useUrlState('type', 'all')
+  const [pinned, setPinned] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem('signals_pinned') || '[]') } catch { return [] } })
+  const [regimeFilter, setRegimeFilter] = useState<string>('all')
+  const [tab, setTab] = useState<'list' | 'heatmap'>('list')
+  const heatmapRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    load().catch((err) => addToast(`Failed to load signals: ${err?.message || 'Unknown error'}`, 'error'))
-    const interval = setInterval(load, 5000)
-    return () => clearInterval(interval)
+    load().catch(() => {})
+    const base = import.meta.env.VITE_API_BASE ?? '/api'
+    const es = new EventSource(`${base}/signals/stream`)
+    es.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data)
+        if (data.signals && Object.keys(data.signals).length > 0) update(data)
+      } catch { /* silent */ }
+    }
+    es.onerror = () => { /* EventSource auto-reconnects */ }
+    return () => { es.close() }
   }, [])
 
   const signalTypes = useMemo(() => {
-    if (!signals) return []
+    if (!signals?.signals) return ['all']
     const types = new Set<string>()
     Object.values(signals.signals).forEach((sigs) => sigs.forEach((s) => types.add(s.type)))
     return ['all', ...Array.from(types).sort()]
   }, [signals])
 
   const filteredSymbols = useMemo(() => {
-    if (!signals) return []
+    if (!signals?.signals) return []
     let entries = Object.entries(signals.signals)
     if (search) {
       const q = search.toUpperCase()
@@ -55,6 +66,12 @@ export default function Signals() {
     })
   }, [signals, search, sortBy, direction, typeFilter])
 
+  const togglePin = (symbol: string) => {
+    const next = pinned.includes(symbol) ? pinned.filter((s) => s !== symbol) : [...pinned, symbol]
+    setPinned(next)
+    localStorage.setItem('signals_pinned', JSON.stringify(next))
+  }
+
   const toggleSort = (field: typeof sortBy) => {
     if (sortBy === field) setDirection((d) => (d === 'asc' ? 'desc' : 'asc'))
     else { setSortBy(field); setDirection('desc') }
@@ -72,8 +89,59 @@ export default function Signals() {
     )
   }
 
+  const regimeOptions = ['all', ...new Set(signals?.signals ? Object.values(signals.signals).flat().map((s) => typeof s.metadata?.regime === 'string' ? s.metadata.regime : signals.regime?.primary || 'unknown') : [])]
+  const hasPinned = pinned.length > 0
+  const sortedSymbols = hasPinned
+    ? [...filteredSymbols.sort((a, b) => (pinned.includes(b[0]) ? 1 : 0) - (pinned.includes(a[0]) ? 1 : 0))]
+    : filteredSymbols
+
+  useEffect(() => {
+    if (tab !== 'heatmap' || !heatmapRef.current || !signals?.signals) return
+    let cancelled = false
+    import('plotly.js-dist-min').then((mod: any) => {
+      if (cancelled) return
+      const symbols = Object.keys(signals.signals!).slice(0, 30)
+      const types = [...new Set(symbols.flatMap((s) => (signals.signals![s] || []).map((sig) => sig.type)))]
+      const z = symbols.map((s) => types.map((t) => {
+        const sigs = signals.signals![s] || []
+        const match = sigs.find((sig) => sig.type === t)
+        return match ? match.confidence * (match.direction || 1) : 0
+      }))
+      mod.newPlot(heatmapRef.current, [{
+        z, x: types, y: symbols,
+        type: 'heatmap', colorscale: ['#ef4444', '#fef2f2', '#dcfce7', '#22c55e'],
+        zmid: 0, hoverongaps: false,
+      }], {
+        paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+        margin: { l: 60, r: 10, t: 10, b: 60 }, height: 400,
+        xaxis: { color: '#666', tickangle: -45, gridcolor: 'rgba(255,255,255,0.04)' },
+        yaxis: { color: '#666', gridcolor: 'rgba(255,255,255,0.04)', autorange: 'reversed' },
+        colorbar: { title: { text: 'Conf', font: { color: '#999', size: 9 } }, tickfont: { color: '#999', size: 8 }, thickness: 8 },
+      })
+    })
+    return () => { cancelled = true }
+  }, [tab, signals])
+
   return (
     <div className="flex flex-col gap-1.5">
+      {/* TAB BAR */}
+      <div className="flex items-center gap-2 bg-card border border-default px-2 py-1 flex-wrap">
+        <Badge label="SIGNALS" variant="info" />
+        {(['list', 'heatmap'] as const).map((t) => (
+          <button key={t} onClick={() => setTab(t)}
+            className="font-mono-data text-[10px] px-2.5 py-0.5 cursor-pointer"
+            style={{ background: tab === t ? 'rgba(59,130,246,0.15)' : 'none', border: 'none', color: tab === t ? 'var(--accent-blue)' : 'var(--text-muted)' }}>
+            {t === 'list' ? 'LIST' : 'HEATMAP'}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'heatmap' ? (
+        <Card title="SIGNAL TYPES × SYMBOLS HEATMAP">
+          <div ref={heatmapRef} />
+        </Card>
+      ) : (
+      <>
       {/* FILTER BAR */}
       <div className="flex gap-1.5 items-center">
         <div className="flex items-center border border-default bg-card px-1.5 py-0.5">
@@ -84,6 +152,10 @@ export default function Signals() {
         <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}
           className="bg-card border border-default text-primary font-mono-data text-[10px] px-1.5 py-0.5 outline-none">
           {signalTypes.map((t) => (<option key={t} value={t}>{t === 'all' ? 'ALL TYPES' : t.toUpperCase()}</option>))}
+        </select>
+        <select value={regimeFilter} onChange={(e) => setRegimeFilter(e.target.value)}
+          className="bg-card border border-default text-primary font-mono-data text-[10px] px-1.5 py-0.5 outline-none">
+          {regimeOptions.map((r) => (<option key={r} value={r}>{r === 'all' ? 'ALL REGIMES' : r.toUpperCase()}</option>))}
         </select>
         <button onClick={() => toggleSort('composite')}
           className="border border-default font-mono-data text-[10px] px-2 py-0.5 cursor-pointer" style={{ background: sortBy === 'composite' ? 'var(--accent-cyan)' : 'var(--bg-card)', color: sortBy === 'composite' ? '#000' : 'var(--text-secondary)' }}>
@@ -99,6 +171,12 @@ export default function Signals() {
           </span>
         )}
       </div>
+
+      {error && (
+        <div className="text-[10px] font-mono-data text-down px-2 py-1 rounded-sm" style={{ background: 'rgba(239,68,68,0.1)' }}>
+          {error}
+        </div>
+      )}
 
       {/* REGIME + COMPOSITE ROW */}
       <div className="grid grid-cols-2 gap-1.5">
@@ -117,17 +195,22 @@ export default function Signals() {
         <Card title="COMPOSITE SCORES">
           {Object.keys(signals.composite_scores).length > 0 ? (
             <div className="flex flex-col gap-0.5">
-              {Object.entries(signals.composite_scores).map(([symbol, score]) => (
-                <div key={symbol} className="flex items-center gap-2">
-                  <span className={`${FONT_DATA} font-semibold text-accent-cyan w-[60px]`}>{symbol}</span>
-                  <div className="flex-1 h-2.5 bg-[var(--border-color)] relative">
-                    <div className="h-full" style={{ width: `${Math.abs(score) * 100}%`, background: score >= 0 ? 'var(--accent-green)' : 'var(--accent-red)', transition: 'width 0.3s' }} />
+              {Object.entries(signals.composite_scores).map(([symbol, score]) => {
+                const scoreVal = score ?? 0
+                const absPct = Math.min(Math.abs(scoreVal) * 100, 100)
+                const isPos = scoreVal >= 0
+                return (
+                  <div key={symbol} className="flex items-center gap-2">
+                    <span className={`${FONT_DATA} font-semibold text-accent-cyan w-[60px]`}>{symbol}</span>
+                    <div className="flex-1 h-2.5 bg-[var(--border-color)] relative">
+                      <div className="h-full" style={{ width: `${absPct}%`, background: isPos ? 'var(--accent-green)' : 'var(--accent-red)', transition: 'width 0.3s' }} />
+                    </div>
+                    <span className={`${FONT_DATA} w-[50px] text-right`} style={{ color: isPos ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+                      {isPos ? '+' : ''}{(scoreVal * 100).toFixed(0)}%
+                    </span>
                   </div>
-                  <span className={`${FONT_DATA} w-[50px] text-right`} style={{ color: score >= 0 ? 'var(--accent-green)' : 'var(--accent-red)' }}>
-                    {score >= 0 ? '+' : ''}{(score * 100).toFixed(0)}%
-                  </span>
-                </div>
-              ))}
+                )
+              })}
             </div>
           ) : (
             <EmptyState title="No scores" compact />
@@ -136,39 +219,66 @@ export default function Signals() {
       </div>
 
       {/* SIGNAL DETAILS */}
-      <Card title={`SIGNALS (${filteredSymbols.length} SYMBOLS)`}>
-        {filteredSymbols.length > 0 ? (
+      <Card title={`SIGNALS (${sortedSymbols.length} SYMBOLS)`}>
+        {sortedSymbols.length > 0 ? (
           <div>
-            {filteredSymbols.map(([symbol, sigs]) => (
+            {sortedSymbols.map(([symbol, sigs]) => {
+              const compScore = signals.composite_scores[symbol] ?? 0
+              const isPinned = pinned.includes(symbol)
+              const sparkVals = sigs.length >= 3
+                ? sigs.slice(0, 20).map((s) => s.strength ?? compScore)
+                : Array.from({ length: 20 }, (_, i) => compScore * (1 - i * 0.03))
+              const sparkMin = Math.min(...sparkVals), sparkMax = Math.max(...sparkVals), sparkRange = sparkMax - sparkMin || 1
+              const sigRegime = typeof sigs[0]?.metadata?.regime === 'string' ? sigs[0].metadata.regime : signals.regime?.primary || 'unknown'
+              if (regimeFilter !== 'all' && sigRegime !== regimeFilter) return null
+              return (
               <div key={symbol} className="mb-1.5 border-b border-default pb-1">
-                <div className="flex items-center gap-2 cursor-pointer mb-0.5" onClick={() => navigate(`/chart?symbol=${symbol}`)}>
+                <div className="flex items-center gap-2 cursor-pointer mb-0.5" onClick={() => navigate(`/markets/chart?symbol=${symbol}`)}>
+                  <button onClick={(e) => { e.stopPropagation(); togglePin(symbol) }}
+                    className="bg-none border-none cursor-pointer font-mono-data text-[10px] px-1"
+                    style={{ color: isPinned ? 'var(--accent-yellow)' : 'var(--text-muted)' }}>
+                    {isPinned ? '\u2605' : '\u2606'}
+                  </button>
+                  {/* Sparkline */}
+                  <svg width="48" height="16" className="shrink-0">
+                    <polyline
+                      fill="none"
+                      stroke={compScore >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'}
+                      strokeWidth="1.5"
+                      points={sparkVals.map((v, i) => `${i * 48 / sparkVals.length},${12 - (v - sparkMin) / sparkRange * 10}`).join(' ')}
+                    />
+                  </svg>
                   <span className={`${FONT_DATA} font-bold text-accent-cyan`}>{symbol}</span>
-                  <span className={`${FONT_SM} px-1.5`} style={{ background: (signals.composite_scores[symbol] ?? 0) > 0.2 ? 'rgba(34,197,94,0.15)' : (signals.composite_scores[symbol] ?? 0) < -0.2 ? 'rgba(239,68,68,0.15)' : 'rgba(234,179,8,0.15)', color: (signals.composite_scores[symbol] ?? 0) > 0.2 ? 'var(--accent-green)' : (signals.composite_scores[symbol] ?? 0) < -0.2 ? 'var(--accent-red)' : 'var(--accent-yellow)' }}>
-                    {(signals.composite_scores[symbol] ?? 0) > 0.2 ? 'BULLISH' : (signals.composite_scores[symbol] ?? 0) < -0.2 ? 'BEARISH' : 'NEUTRAL'}
+                  <span className={`${FONT_SM} px-1.5`} style={{ background: compScore > 0.2 ? 'rgba(34,197,94,0.15)' : compScore < -0.2 ? 'rgba(239,68,68,0.15)' : 'rgba(234,179,8,0.15)', color: compScore > 0.2 ? 'var(--accent-green)' : compScore < -0.2 ? 'var(--accent-red)' : 'var(--accent-yellow)' }}>
+                    {compScore > 0.2 ? 'BULLISH' : compScore < -0.2 ? 'BEARISH' : 'NEUTRAL'}
                   </span>
                   <span className={`${FONT_SM} text-muted ml-auto`}>[CHART]</span>
                 </div>
-                <div className="py-0.5 font-mono-data text-[9px] tracking-wider text-muted border-b border-default" style={{ display: 'grid', gridTemplateColumns: '1.5fr 0.8fr 0.8fr 0.8fr 0.8fr', gap: 0 }}>
-                  <span>Type</span><span className="text-center">Dir</span><span className="text-right">Strength</span><span className="text-right">Conf</span><span className="text-right">Price</span>
+                <div className="py-0.5 font-mono-data text-[9px] tracking-wider text-muted border-b border-default" style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.5fr 0.6fr 0.6fr 0.6fr 0.8fr', gap: 0 }}>
+                  <span>Type</span><span className="text-center">Dir</span><span className="text-right">Str</span><span className="text-right">Conf</span><span className="text-right">Price</span><span className="text-right">Regime</span>
                 </div>
                 {sigs.slice(0, 8).map((sig, i) => (
-                  <div key={i} className="py-0 font-mono-data text-[11px] text-primary border-b border-default" style={{ display: 'grid', gridTemplateColumns: '1.5fr 0.8fr 0.8fr 0.8fr 0.8fr', gap: 0 }}>
+                  <div key={i} className="py-0 font-mono-data text-[11px] text-primary border-b border-default" style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.5fr 0.6fr 0.6fr 0.6fr 0.8fr', gap: 0 }}>
                     <span className="text-secondary">{sig.type}</span>
                     <span className="text-center" style={{ color: sig.direction > 0 ? 'var(--accent-green)' : sig.direction < 0 ? 'var(--accent-red)' : 'var(--accent-yellow)' }}>
                       {sig.direction > 0 ? '\u25B2' : sig.direction < 0 ? '\u25BC' : '\u25C6'}
                     </span>
-                    <span className="text-right">{(sig.strength * 100).toFixed(0)}%</span>
-                    <span className="text-right">{(sig.confidence * 100).toFixed(0)}%</span>
+                    <span className="text-right">{((sig.strength ?? 0) * 100).toFixed(0)}%</span>
+                    <span className="text-right">{((sig.confidence ?? 0) * 100).toFixed(0)}%</span>
                     <span className="text-right">${sig.price?.toFixed(2) ?? '\u2014'}</span>
+                    <span className="text-right text-muted">{typeof sig.metadata?.regime === 'string' ? sig.metadata.regime : signals.regime?.primary || '—'}</span>
                   </div>
                 ))}
               </div>
-            ))}
+              )
+            })}
           </div>
         ) : (
           <EmptyState title="No signals matching filter" compact />
         )}
       </Card>
+      </>
+      )}
     </div>
   )
 }

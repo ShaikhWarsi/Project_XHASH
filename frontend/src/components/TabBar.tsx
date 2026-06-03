@@ -1,10 +1,46 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 import { X, LayoutDashboard, Pin, PinOff } from 'lucide-react'
 import { useTabs } from '../contexts/TabContext'
+import { api } from '../api/client'
+
+const ORDER_KEY = 'tab_order'
+const DEFAULT_ORDER = 'default'
+
+function loadOrder(): string[] | null {
+  try {
+    const raw = localStorage.getItem(ORDER_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch { return null }
+}
+
+function saveOrder(ids: string[]) {
+  localStorage.setItem(ORDER_KEY, JSON.stringify(ids))
+}
 
 export default function TabBar() {
   const { tabs, activeTab, openTab, closeTab, togglePinTab } = useTabs()
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [tabOrder, setTabOrder] = useState<string[]>(() => loadOrder() || DEFAULT_ORDER as any)
+  const [dragTab, setDragTab] = useState<string | null>(null)
+  const [tabHealth, setTabHealth] = useState<Map<string, boolean>>(new Map())
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await api.get('/health')
+        const ok = res.status === 200
+        setTabHealth(new Map(tabs.map((t) => [t.id, ok])))
+      } catch {
+        setTabHealth(new Map(tabs.map((t) => [t.id, false])))
+      }
+    }, 15000)
+    api.get('/health').then((r) => {
+      setTabHealth(new Map(tabs.map((t) => [t.id, r.status === 200])))
+    }).catch(() => {
+      setTabHealth(new Map(tabs.map((t) => [t.id, false])))
+    })
+    return () => clearInterval(interval)
+  }, [tabs])
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -13,7 +49,68 @@ export default function TabBar() {
     }
   }, [activeTab])
 
-  if (tabs.length <= 1) return null
+  const orderedTabs = useCallback(() => {
+    if (Array.isArray(tabOrder)) {
+      const orderMap = new Map(tabOrder.map((id, i) => [id, i]))
+      const sorted = [...tabs].sort((a, b) => {
+        const ai = orderMap.get(a.id)
+        const bi = orderMap.get(b.id)
+        if (ai != null && bi != null) return ai - bi
+        if (ai != null) return -1
+        if (bi != null) return 1
+        return 0
+      })
+      return sorted
+    }
+    return tabs
+  }, [tabs, tabOrder])
+
+  useEffect(() => {
+    if (!Array.isArray(tabOrder)) {
+      setTabOrder(tabs.map((t) => t.id))
+    }
+  }, [tabs, tabOrder])
+
+  const handleDragStart = (tabId: string) => {
+    setDragTab(tabId)
+  }
+
+  const handleDragOver = (e: React.DragEvent, tabId: string) => {
+    e.preventDefault()
+    if (!dragTab || dragTab === tabId || !Array.isArray(tabOrder)) return
+    const idx = tabOrder.indexOf(dragTab)
+    const targetIdx = tabOrder.indexOf(tabId)
+    if (idx === -1 || targetIdx === -1) return
+    const next = [...tabOrder]
+    next.splice(idx, 1)
+    next.splice(targetIdx, 0, dragTab)
+    setTabOrder(next)
+  }
+
+  const handleDrop = () => {
+    if (Array.isArray(tabOrder)) saveOrder(tabOrder)
+    setDragTab(null)
+  }
+
+  if (tabs.length <= 1) {
+    return (
+      <div
+        style={{
+          background: 'var(--bg-secondary)',
+          borderBottom: '1px solid var(--border-color)',
+          minHeight: 30,
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0 12px',
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: 9,
+          color: 'var(--text-muted)',
+        }}
+      >
+        Dashboard
+      </div>
+    )
+  }
 
   return (
     <div
@@ -34,13 +131,18 @@ export default function TabBar() {
         .tab-fkey { opacity: 0; transition: opacity 0.1s; }
         .tab-item:hover .tab-fkey { opacity: 0.7; }
       `}</style>
-      {tabs.map((tab, index) => {
+      {orderedTabs().map((tab, index) => {
         const isActive = tab.id === activeTab
+        const health = tabHealth.get(tab.id)
         return (
           <div
             key={tab.id}
             data-active={isActive}
             className="tab-item"
+            draggable
+            onDragStart={() => handleDragStart(tab.id)}
+            onDragOver={(e) => handleDragOver(e, tab.id)}
+            onDrop={handleDrop}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -57,6 +159,7 @@ export default function TabBar() {
               color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
               transition: 'background 0.1s, color 0.1s',
               flexShrink: 0,
+              opacity: dragTab === tab.id ? 0.4 : 1,
             }}
             onClick={() => openTab(tab.path)}
             onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-secondary)' } }}
@@ -72,6 +175,17 @@ export default function TabBar() {
                 F{index + 1}
               </span>
             )}
+            <span
+              style={{
+                display: 'inline-block',
+                width: 5,
+                height: 5,
+                borderRadius: '50%',
+                backgroundColor: health === false ? 'var(--accent-red)' : 'var(--accent-green)',
+                flexShrink: 0,
+              }}
+              title={health === false ? 'Disconnected' : 'Connected'}
+            />
             {tab.id === '/' && <LayoutDashboard size={10} style={{ opacity: 0.6, flexShrink: 0 }} />}
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: isActive ? 600 : 400 }}>
               {tab.label}

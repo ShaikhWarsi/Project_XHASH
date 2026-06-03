@@ -18,6 +18,16 @@ class ParseError(Exception):
     pass
 
 
+# Operator precedence (lowest to highest):
+#   OR, AND, NOT
+#   COMPARISON (== != < > <= >=)
+#   ADDITION (+ -)
+#   MULTIPLICATION (* / %)
+#   UNARY (- !)
+#   EXPONENT (^)
+# Chained comparisons (a > b > c) are parsed as (a > b) AND (b > c).
+
+
 class Parser:
     def __init__(self, tokens: list[Token]):
         self.tokens = tokens

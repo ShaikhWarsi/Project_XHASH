@@ -26,7 +26,7 @@ class BacktestRequest(BaseModel):
 def _run_backtest_job(payload: dict, on_progress=None):
     from backtesting.engine import BacktestEngine
     import pandas as pd
-    from datetime import datetime
+    from datetime import datetime, timezone
     from data.registry import ProviderRegistry
     from core.enums import Timeframe
 
@@ -45,7 +45,7 @@ def _run_backtest_job(payload: dict, on_progress=None):
         raise RuntimeError("No data provider available")
 
     start = datetime.fromisoformat(start_date) if start_date else datetime(2020, 1, 1)
-    end = datetime.fromisoformat(end_date) if end_date else datetime.utcnow()
+    end = datetime.fromisoformat(end_date) if end_date else datetime.now(timezone.utc)
     tf = Timeframe(timeframe) if hasattr(Timeframe, timeframe) else Timeframe("1d")
 
     data = provider.fetch_bars(symbol=symbol, timeframe=tf, start=start, end=end)

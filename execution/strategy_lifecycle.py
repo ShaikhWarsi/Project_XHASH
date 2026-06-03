@@ -91,9 +91,13 @@ def auto_stop_live_strategy(
                 await session.commit()
                 break
 
-        loop = asyncio.new_event_loop()
-        loop.run_until_complete(_update())
-        loop.close()
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(_update())
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            loop.run_until_complete(_update())
+            loop.close()
     except Exception as e:
         logger.warning("auto_stop: DB update failed for strategy %s: %s", sid, e)
 

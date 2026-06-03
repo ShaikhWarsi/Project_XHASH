@@ -16,8 +16,7 @@ router = APIRouter(prefix="/signals", tags=["signals"])
 
 async def signal_event_generator(request: Request, symbols: list[str] | None, engines: list[str] | None):
     try:
-        _max_iter = 1000000
-        for _ in range(_max_iter):
+        while True:
             if await request.is_disconnected():
                 break
 
@@ -29,7 +28,7 @@ async def signal_event_generator(request: Request, symbols: list[str] | None, en
                         continue
                     filtered = [
                         s for s in sigs
-                        if not engines or s.type.value in engines or s.type in engines
+                        if not engines or s.type.value in engines
                     ]
                     if filtered:
                         signals_dict[symbol] = [
@@ -64,8 +63,6 @@ async def signal_event_generator(request: Request, symbols: list[str] | None, en
                 yield "data: {}\n\n"
 
             await asyncio.sleep(2)
-        else:
-            logger.warning("signal_event_generator hit max iterations")
     except asyncio.CancelledError:
         pass
 

@@ -60,7 +60,7 @@ export class ChartAlertSystem {
     symbol: string,
     indicator: string,
     value: number,
-    direction: 'above' | 'below'
+    _direction: 'above' | 'below'
   ): ChartAlert {
     const alert: ChartAlert = {
       id: this.generateId(),

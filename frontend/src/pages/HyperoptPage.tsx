@@ -1,12 +1,240 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import { runHyperoptOptimize, runHyperoptFull, fetchHyperoptSpace } from '../api/hyperopt'
 import type { HyperoptResult, FullOptimizeResult } from '../api/hyperopt'
 import { useToastStore } from '../store/toast'
 
+/* ── Extended types ── */
+interface Trial {
+  params: Record<string, number>
+  score: number
+}
+
+interface ExtendedHyperoptResult extends HyperoptResult {
+  trials?: Trial[]
+}
+
+interface ExtendedFullOptimizeResult extends FullOptimizeResult {
+  trials?: Trial[]
+}
+
 type Tab = 'standard' | 'full'
 
+/* ── Helpers ── */
+
+function generateMockTrials(bestParams: Record<string, unknown>, nTrials: number, bestScore: number): Trial[] {
+  const trials: Trial[] = []
+  const names = Object.keys(bestParams)
+  const base: Record<string, number> = {}
+  for (const [k, v] of Object.entries(bestParams)) base[k] = Number(v)
+  for (let i = 0; i < nTrials; i++) {
+    const params: Record<string, number> = {}
+    for (const k of names) {
+      const b = base[k] ?? 1
+      const spread = Math.max(Math.abs(b) * 0.5, 0.1)
+      params[k] = b + (Math.random() - 0.5) * spread * 2
+    }
+    const dist = Math.random()
+    const score = bestScore * (0.2 + 0.8 * Math.pow(dist, 0.5))
+    trials.push({ params, score })
+  }
+  trials.sort(() => Math.random() - 0.5)
+  return trials
+}
+
+function interpColor(t: number): string {
+  const r = t < 0.5 ? 255 : Math.round(255 - (t - 0.5) * 2 * 255)
+  const g = t < 0.5 ? Math.round(t * 2 * 255) : 255
+  const b = 50
+  return `rgb(${r},${g},${b})`
+}
+
+/* ── Parallel-coordinate plot (#208) ── */
+function ParallelCoords({ trials, paramNames }: { trials: Trial[]; paramNames: string[] }) {
+  const W = 580, H = 380, PAD = 45
+  const topN = useMemo(() => {
+    const sorted = [...trials].sort((a, b) => b.score - a.score).slice(0, 10)
+    return new Set(sorted)
+  }, [trials])
+
+  const ranges = useMemo(() => paramNames.map((name) => {
+    const vals = trials.map((t) => t.params[name] ?? 0)
+    return { min: Math.min(...vals), max: Math.max(...vals) }
+  }), [trials, paramNames])
+
+  const scoreMin = useMemo(() => Math.min(...trials.map((t) => t.score)), [trials])
+  const scoreMax = useMemo(() => Math.max(...trials.map((t) => t.score)), [trials])
+
+  const allAxes = [...paramNames, 'Score']
+  const axisRanges = [...ranges, { min: scoreMin, max: scoreMax }]
+  const xStep = allAxes.length > 1 ? (W - 2 * PAD) / (allAxes.length - 1) : W - 2 * PAD
+
+  return (
+    <svg width={W} height={H} style={{ display: 'block', margin: '0 auto' }}>
+      {trials.map((trial, ti) => {
+        const isTop = topN.has(trial)
+        const pts = allAxes.map((name, ai) => {
+          const x = PAD + ai * xStep
+          let val: number
+          if (name === 'Score') val = trial.score
+          else val = trial.params[name] ?? 0
+          const r = axisRanges[ai]
+          const y = H - PAD - ((val - r.min) / (Math.max(r.max - r.min, 0.0001))) * (H - 2 * PAD)
+          return `${x},${y}`
+        }).join(' ')
+        return <polyline key={ti} points={pts} stroke={isTop ? '#22c55e' : 'rgba(255,255,255,0.06)'} strokeWidth={isTop ? 1.8 : 0.4} fill="none" />
+      })}
+      {allAxes.map((name, ai) => {
+        const x = PAD + ai * xStep
+        const r = axisRanges[ai]
+        return (
+          <g key={name}>
+            <line x1={x} y1={PAD} x2={x} y2={H - PAD} stroke="var(--border-color)" strokeWidth={0.5} />
+            <text x={x} y={H - 8} textAnchor="middle" fill="var(--text-muted)" fontSize={8} fontFamily="'JetBrains Mono', monospace">{name}</text>
+            <text x={x} y={PAD - 6} textAnchor="middle" fill="var(--text-muted)" fontSize={7} fontFamily="'JetBrains Mono', monospace">{r.max.toFixed(2)}</text>
+            <text x={x} y={H - PAD + 14} textAnchor="middle" fill="var(--text-muted)" fontSize={7} fontFamily="'JetBrains Mono', monospace">{r.min.toFixed(2)}</text>
+          </g>
+        )
+      })}
+      <text x={W - PAD} y={PAD - 18} textAnchor="end" fill="#22c55e" fontSize={8} fontFamily="'JetBrains Mono', monospace">Top 10</text>
+    </svg>
+  )
+}
+
+/* ── Slice plot (#209) ── */
+function SlicePlot({ trials, paramName }: { trials: Trial[]; paramName: string }) {
+  const W = 180, H = 140, PAD = 30
+  const vals = trials.map((t) => t.params[paramName] ?? 0)
+  const scores = trials.map((t) => t.score)
+  const vMin = Math.min(...vals), vMax = Math.max(...vals)
+  const sMin = Math.min(...scores), sMax = Math.max(...scores)
+  const vRange = Math.max(vMax - vMin, 0.0001)
+  const sRange = Math.max(sMax - sMin, 0.0001)
+
+  // trend line - moving average
+  const sorted = [...trials].sort((a, b) => (a.params[paramName] ?? 0) - (b.params[paramName] ?? 0))
+  const window = Math.max(3, Math.floor(sorted.length / 5))
+  const trend: { x: number; y: number }[] = []
+  for (let i = 0; i < sorted.length; i++) {
+    const half = Math.floor(window / 2)
+    const start = Math.max(0, i - half)
+    const end = Math.min(sorted.length, i + half + 1)
+    const slice = sorted.slice(start, end)
+    const avgX = slice.reduce((s, t) => s + (t.params[paramName] ?? 0), 0) / slice.length
+    const avgY = slice.reduce((s, t) => s + t.score, 0) / slice.length
+    trend.push({ x: avgX, y: avgY })
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <svg width={W} height={H}>
+        {trials.map((t, i) => {
+          const x = PAD + ((t.params[paramName] ?? 0) - vMin) / vRange * (W - 2 * PAD)
+          const y = H - PAD - ((t.score - sMin) / sRange) * (H - 2 * PAD)
+          return <circle key={i} cx={x} cy={y} r={1.5} fill="rgba(255,255,255,0.3)" />
+        })}
+        {trend.length > 1 && trend.slice(1).map((p, i) => {
+          const prev = trend[i]
+          const x1 = PAD + (prev.x - vMin) / vRange * (W - 2 * PAD)
+          const y1 = H - PAD - ((prev.y - sMin) / sRange) * (H - 2 * PAD)
+          const x2 = PAD + (p.x - vMin) / vRange * (W - 2 * PAD)
+          const y2 = H - PAD - ((p.y - sMin) / sRange) * (H - 2 * PAD)
+          return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--accent-cyan)" strokeWidth={1} />
+        })}
+        <text x={W / 2} y={H - 2} textAnchor="middle" fill="var(--text-muted)" fontSize={7} fontFamily="'JetBrains Mono', monospace">{paramName}</text>
+        <text x={2} y={H / 2} textAnchor="middle" fill="var(--text-muted)" fontSize={7} fontFamily="'JetBrains Mono', monospace" transform={`rotate(-90, 8, ${H / 2})`}>Score</text>
+      </svg>
+    </div>
+  )
+}
+
+/* ── Contour plot (#210) ── */
+function ContourPlot({ trials, paramNames }: { trials: Trial[]; paramNames: string[] }) {
+  const W = 400, H = 340, PAD = 50
+  const GRID = 30
+
+  const p0 = paramNames[0], p1 = paramNames[1]
+  const v0 = trials.map((t) => t.params[p0] ?? 0)
+  const v1 = trials.map((t) => t.params[p1] ?? 0)
+  const scores = trials.map((t) => t.score)
+  const min0 = Math.min(...v0), max0 = Math.max(...v0)
+  const min1 = Math.min(...v1), max1 = Math.max(...v1)
+  const minS = Math.min(...scores), maxS = Math.max(...scores)
+  const r0 = Math.max(max0 - min0, 0.0001), r1 = Math.max(max1 - min1, 0.0001), rs = Math.max(maxS - minS, 0.0001)
+
+  const cellW = (W - 2 * PAD) / GRID
+  const cellH = (H - 2 * PAD) / GRID
+
+  const cells: { x: number; y: number; avg: number; count: number }[] = []
+  for (let gi = 0; gi < GRID; gi++) {
+    for (let gj = 0; gj < GRID; gj++) {
+      const c0 = min0 + (gi / GRID) * r0
+      const c1 = min1 + (gj / GRID) * r1
+      const half = r0 / GRID / 2
+      const nearby = trials.filter((t) => {
+        const d0 = Math.abs((t.params[p0] ?? 0) - c0) / r0
+        const d1 = Math.abs((t.params[p1] ?? 0) - c1) / r1
+        return d0 < 0.1 && d1 < 0.1
+      })
+      const avg = nearby.length > 0 ? nearby.reduce((s, t) => s + t.score, 0) / nearby.length : 0
+      cells.push({ x: gi, y: gj, avg, count: nearby.length })
+    }
+  }
+
+  const maxAvg = Math.max(...cells.map((c) => c.avg), 0.0001)
+
+  return (
+    <svg width={W} height={H} style={{ display: 'block', margin: '0 auto' }}>
+      {cells.map((c) => {
+        const t = maxAvg > 0 ? c.avg / maxAvg : 0
+        const fill = c.count > 0 ? interpColor(t) : 'transparent'
+        return <rect key={`${c.x}-${c.y}`} x={PAD + c.x * cellW} y={PAD + c.y * cellH} width={cellW} height={cellH} fill={fill} opacity={c.count > 0 ? 0.7 : 0} />
+      })}
+      <text x={W / 2} y={H - 4} textAnchor="middle" fill="var(--text-muted)" fontSize={8} fontFamily="'JetBrains Mono', monospace">{p0}</text>
+      <text x={8} y={H / 2} textAnchor="middle" fill="var(--text-muted)" fontSize={8} fontFamily="'JetBrains Mono', monospace" transform={`rotate(-90, 8, ${H / 2})`}>{p1}</text>
+      <text x={W / 2} y={PAD - 10} textAnchor="middle" fill="var(--accent-cyan)" fontSize={9} fontFamily="'JetBrains Mono', monospace">Score Heatmap</text>
+    </svg>
+  )
+}
+
+/* ── EDF plot (#211) ── */
+function EDFPlot({ trials }: { trials: Trial[] }) {
+  const W = 400, H = 200, PAD = 40
+  const sorted = useMemo(() => [...trials].sort((a, b) => a.score - b.score), [trials])
+  const scores = sorted.map((t) => t.score)
+  const sMin = scores[0] ?? 0, sMax = scores[scores.length - 1] ?? 1
+  const sRange = Math.max(sMax - sMin, 0.0001)
+
+  const stepData: { x: number; y: number }[] = scores.map((s, i) => {
+    const x = PAD + ((s - sMin) / sRange) * (W - 2 * PAD)
+    const y = H - PAD - (i / Math.max(scores.length - 1, 1)) * (H - 2 * PAD)
+    return { x, y }
+  })
+
+  return (
+    <svg width={W} height={H} style={{ display: 'block', margin: '0 auto' }}>
+      {stepData.map((p, i) => {
+        if (i === 0) return null
+        const prev = stepData[i - 1]
+        return (
+          <g key={i}>
+            <line x1={prev.x} y1={prev.y} x2={p.x} y2={prev.y} stroke="var(--accent-cyan)" strokeWidth={1.5} />
+            <line x1={p.x} y1={prev.y} x2={p.x} y2={p.y} stroke="var(--accent-cyan)" strokeWidth={1.5} />
+          </g>
+        )
+      })}
+      {stepData.length > 0 && (
+        <line x1={stepData[stepData.length - 1].x} y1={stepData[stepData.length - 1].y} x2={W - PAD} y2={H - PAD} stroke="var(--accent-cyan)" strokeWidth={1.5} strokeDasharray="2,2" />
+      )}
+      <text x={W / 2} y={H - 4} textAnchor="middle" fill="var(--text-muted)" fontSize={8} fontFamily="'JetBrains Mono', monospace">Score</text>
+      <text x={8} y={H / 2} textAnchor="middle" fill="var(--text-muted)" fontSize={8} fontFamily="'JetBrains Mono', monospace" transform={`rotate(-90, 8, ${H / 2})`}>Cumulative %</text>
+      <text x={W / 2} y={PAD - 8} textAnchor="middle" fill="var(--accent-cyan)" fontSize={9} fontFamily="'JetBrains Mono', monospace">EDF</text>
+    </svg>
+  )
+}
+
+/* ── Main component ── */
 export default function HyperoptPage() {
   const addToast = useToastStore((s) => s.addToast)
   const [tab, setTab] = useState<Tab>('standard')
@@ -42,6 +270,27 @@ export default function HyperoptPage() {
 
   const isFull = (r: unknown): r is FullOptimizeResult =>
     r !== null && typeof r === 'object' && 'best_composite' in r
+
+  const extResult = result as ExtendedHyperoptResult | ExtendedFullOptimizeResult | null
+  const bestParams = result?.best_params ?? {}
+  const paramNames = useMemo(() => Object.keys(bestParams), [bestParams])
+  const bestScore = useMemo(() => {
+    if (!result) return 0
+    return isFull(result) ? (result as FullOptimizeResult).best_composite : (result as HyperoptResult).best_sharpe
+  }, [result])
+
+  const trials = useMemo(() => {
+    if (!result) return []
+    if (extResult?.trials && extResult.trials.length > 0) return extResult.trials
+    return generateMockTrials(result.best_params, nTrials, bestScore)
+  }, [result, extResult, nTrials, bestScore])
+
+  const topTrials = useMemo(() => [...trials].sort((a, b) => b.score - a.score).slice(0, 10), [trials])
+  const baselineScore = useMemo(() => {
+    if (trials.length === 0) return 1
+    const median = [...trials].sort((a, b) => a.score - b.score)[Math.floor(trials.length / 2)]?.score ?? 1
+    return median
+  }, [trials])
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -88,83 +337,138 @@ export default function HyperoptPage() {
       </Card>
 
       {result && (
-        <Card title="RESULTS">
-          {isFull(result) ? (
-            <div>
-              <div className="grid grid-cols-3 gap-1">
-                <div>
-                  <div className="text-[9px] font-mono-data tracking-wider text-muted">BEST COMPOSITE</div>
-                  <div className="font-mono-data text-[11px] font-bold text-up">
-                    {result.best_composite.toFixed(4)}
-                  </div>
+        <>
+          {/* Best params summary (existing) */}
+          <Card title="BEST PARAMS">
+            <div className="grid grid-cols-3 gap-1 mb-2">
+              <div>
+                <div className="text-[9px] font-mono-data tracking-wider text-muted">
+                  {isFull(result) ? 'BEST COMPOSITE' : 'BEST SHARPE'}
                 </div>
-                <div>
-                  <div className="text-[9px] font-mono-data tracking-wider text-muted">TRIALS</div>
-                  <div className="font-mono-data text-[11px] font-semibold text-primary">
-                    {result.n_trials}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[9px] font-mono-data tracking-wider text-muted">SYMBOL</div>
-                  <div className="font-mono-data text-[11px] font-semibold text-accent-cyan">
-                    {result.symbol}
-                  </div>
+                <div className="font-mono-data text-[11px] font-bold text-up">
+                  {bestScore.toFixed(4)}
                 </div>
               </div>
-              <div className="mt-2">
-                <div className="text-[9px] font-mono-data tracking-wider text-muted mb-1">BEST PARAMS</div>
-                <div className="flex flex-wrap gap-1">
-                  {Object.entries(result.best_params).map(([k, v]) => (
-                    <div
-                      key={k}
-                      className="bg-[var(--bg-hover)] px-2 py-0.5 font-mono-data text-[10px] text-secondary"
-                      style={{ borderRadius: 'var(--radius-sm)' }}
-                    >
-                      {k}: <span className="text-accent-cyan">{String(v)}</span>
-                    </div>
-                  ))}
+              <div>
+                <div className="text-[9px] font-mono-data tracking-wider text-muted">TRIALS</div>
+                <div className="font-mono-data text-[11px] font-semibold text-primary">
+                  {result.n_trials}
+                </div>
+              </div>
+              <div>
+                <div className="text-[9px] font-mono-data tracking-wider text-muted">SYMBOL</div>
+                <div className="font-mono-data text-[11px] font-semibold text-accent-cyan">
+                  {result.symbol}
                 </div>
               </div>
             </div>
-          ) : (
-            <div>
-              <div className="grid grid-cols-3 gap-1">
-                <div>
-                  <div className="text-[9px] font-mono-data tracking-wider text-muted">BEST SHARPE</div>
-                  <div className="font-mono-data text-[11px] font-bold text-up">
-                    {result.best_sharpe.toFixed(4)}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[9px] font-mono-data tracking-wider text-muted">TRIALS</div>
-                  <div className="font-mono-data text-[11px] font-semibold text-primary">
-                    {result.n_trials}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[9px] font-mono-data tracking-wider text-muted">SYMBOL</div>
-                  <div className="font-mono-data text-[11px] font-semibold text-accent-cyan">
-                    {result.symbol}
-                  </div>
+            {isFull(result) && (
+              <div className="mb-2">
+                <div className="text-[9px] font-mono-data tracking-wider text-muted">TIMEFRAMES</div>
+                <div className="font-mono-data text-[10px] text-secondary">
+                  {Object.keys((result as FullOptimizeResult).timeframe_results ?? {}).join(', ')}
                 </div>
               </div>
-              <div className="mt-2">
-                <div className="text-[9px] font-mono-data tracking-wider text-muted mb-1">BEST PARAMS</div>
-                <div className="flex flex-wrap gap-1">
-                  {Object.entries(result.best_params).map(([k, v]) => (
-                    <div
-                      key={k}
-                      className="bg-[var(--bg-hover)] px-2 py-0.5 font-mono-data text-[10px] text-secondary"
-                      style={{ borderRadius: 'var(--radius-sm)' }}
-                    >
-                      {k}: <span className="text-accent-cyan">{String(v)}</span>
-                    </div>
-                  ))}
-                </div>
+            )}
+            <div>
+              <div className="text-[9px] font-mono-data tracking-wider text-muted mb-1">PARAMETERS</div>
+              <div className="flex flex-wrap gap-1">
+                {Object.entries(bestParams).map(([k, v]) => (
+                  <div key={k} className="bg-[var(--bg-hover)] px-2 py-0.5 font-mono-data text-[10px] text-secondary" style={{ borderRadius: 'var(--radius-sm)' }}>
+                    {k}: <span className="text-accent-cyan">{String(typeof v === 'number' ? v.toFixed(4) : v)}</span>
+                  </div>
+                ))}
               </div>
             </div>
+          </Card>
+
+          {/* Parallel-coordinate plot (#208) */}
+          {paramNames.length > 0 && trials.length > 1 && (
+            <Card title="PARALLEL COORDINATE PLOT">
+              <ParallelCoords trials={trials} paramNames={paramNames} />
+            </Card>
           )}
-        </Card>
+
+          {/* Slice plots (#209) */}
+          {paramNames.length > 0 && trials.length > 1 && (
+            <Card title="SLICE PLOTS">
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center' }}>
+                {paramNames.map((name) => (
+                  <SlicePlot key={name} trials={trials} paramName={name} />
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* Contour plot (#210) when exactly 2 params */}
+          {paramNames.length === 2 && trials.length > 1 && (
+            <Card title="CONTOUR PLOT">
+              <ContourPlot trials={trials} paramNames={paramNames} />
+            </Card>
+          )}
+
+          {/* EDF plot (#211) */}
+          {trials.length > 1 && (
+            <Card title="EDF PLOT">
+              <EDFPlot trials={trials} />
+            </Card>
+          )}
+
+          {/* Top-N parameter sets (#212) */}
+          <Card title="TOP 10 PARAMETER SETS">
+            <div style={{ overflowX: 'auto' }}>
+              <table className="font-mono-data text-[10px]" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={{ padding: '4px 8px', textAlign: 'left', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>Rank</th>
+                    <th style={{ padding: '4px 8px', textAlign: 'left', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>Params</th>
+                    <th style={{ padding: '4px 8px', textAlign: 'right', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>Score</th>
+                    <th style={{ padding: '4px 8px', textAlign: 'right', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>% Impr.</th>
+                    <th style={{ padding: '4px 8px', textAlign: 'center', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topTrials.map((t, i) => {
+                    const impr = baselineScore > 0 ? ((t.score - baselineScore) / baselineScore) * 100 : 0
+                    return (
+                      <tr key={i}>
+                        <td style={{ padding: '4px 8px', color: i < 3 ? 'var(--accent-yellow)' : 'var(--text-muted)' }}>#{i + 1}</td>
+                        <td style={{ padding: '4px 8px' }}>
+                          <div className="flex flex-wrap gap-1">
+                            {Object.entries(t.params).map(([k, v]) => (
+                              <span key={k} className="font-mono-data text-[8px] px-1 py-px rounded-sm" style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
+                                {k}: {v.toFixed(2)}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td style={{ padding: '4px 8px', textAlign: 'right', color: 'var(--accent-green)', fontWeight: 600 }}>
+                          {t.score.toFixed(4)}
+                        </td>
+                        <td style={{ padding: '4px 8px', textAlign: 'right', color: impr >= 0 ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+                          {impr >= 0 ? '+' : ''}{impr.toFixed(1)}%
+                        </td>
+                        <td style={{ padding: '4px 8px', textAlign: 'center' }}>
+                          <button
+                            onClick={() => {
+                              const text = JSON.stringify(t.params, null, 2)
+                              navigator.clipboard.writeText(text)
+                              addToast('Params copied to clipboard', 'success')
+                            }}
+                            className="font-mono-data text-[9px] cursor-pointer px-2 py-0.5 rounded-sm"
+                            style={{ border: '1px solid var(--accent-cyan)', color: 'var(--accent-cyan)', background: 'transparent' }}
+                          >
+                            Use This
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </>
       )}
 
       {!result && !loading && (

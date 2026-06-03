@@ -131,7 +131,7 @@ export function renderSignalsOnChart(
 
     if (sorted.length === 1) {
       const item = sorted[0]
-      const s = renderSingle(ctx, item, theme, canvasWidth, phase, hits)
+      const s = renderSingle(ctx, item, theme, canvasWidth, phase, hits, mapper)
       if (s === 'buy') {
         ctx.strokeStyle = theme.up + '60'
       } else if (s === 'sell') {
@@ -182,12 +182,11 @@ function renderSingle(
   canvasWidth: number,
   phase: number,
   hits: HitTestRect[],
+  mapper: CoordMapper,
 ): SignalSide {
   const sig = item.signal
   const x = item.x
-  const y = item.signal.price
-  const yPx = ctx.canvas ? mapperPriceY(ctx, item.signal.price) : 48
-  const price = sig.price
+  const yPx = mapper.priceToY(item.signal.price) ?? (ctx.canvas ? ctx.canvas.height / 2 : 48)
 
   const isStr = isStrong(sig.type)
   const isB = isBuy(sig.type)
@@ -276,11 +275,6 @@ function renderSingleAt(
 
   ctx.restore()
   return isB ? 'buy' : 'sell'
-}
-
-function mapperPriceY(ctx: CanvasRenderingContext2D, _price: number): number {
-  const canvas = ctx.canvas
-  return canvas ? canvas.height / 2 : 48
 }
 
 export function renderSignalLegend(

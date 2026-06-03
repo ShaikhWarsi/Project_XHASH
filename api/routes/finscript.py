@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-import os
+import asyncio
+import importlib.resources
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -8,7 +9,11 @@ from pydantic import BaseModel
 
 router = APIRouter(prefix="/finscript", tags=["finscript"])
 
-TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "finscript" / "templates"
+try:
+    _templates_ref = importlib.resources.files("finscript").joinpath("templates")
+    TEMPLATES_DIR = Path(str(_templates_ref))
+except (ModuleNotFoundError, TypeError):
+    TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "finscript" / "templates"
 
 
 def _list_template_files():
@@ -21,8 +26,10 @@ def _list_template_files():
 async def list_strategy_templates():
     templates = []
     for f in _list_template_files():
-        with open(f, encoding="utf-8") as fh:
-            first_line = fh.readline().strip().strip('"')
+        def _read_first_line(path=f):
+            with open(path, encoding="utf-8") as fh:
+                return fh.readline().strip().strip('"')
+        first_line = await asyncio.to_thread(_read_first_line)
         templates.append({
             "name": f.stem,
             "description": first_line,
@@ -35,7 +42,8 @@ async def list_strategy_templates():
 async def get_strategy_template(name: str):
     for f in _list_template_files():
         if f.stem == name:
-            return {"name": name, "code": f.read_text(encoding="utf-8")}
+            code = await asyncio.to_thread(lambda p=f: p.read_text(encoding="utf-8"))
+            return {"name": name, "code": code}
     raise HTTPException(status_code=404, detail=f"Template '{name}' not found")
 
 

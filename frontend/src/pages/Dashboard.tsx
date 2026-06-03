@@ -8,6 +8,7 @@ import type { TradeMarker } from '../components/EquityCurveChart'
 import Card from '../components/ui/Card'
 import KpiCard from '../components/ui/KpiCard'
 import ErrorBoundary from '../components/ErrorBoundary'
+import { fmtCurrency } from '../utils/format'
 import EquityCurveChart from '../components/EquityCurveChart'
 import Skeleton from '../components/Skeleton'
 import Badge from '../components/ui/Badge'
@@ -15,7 +16,7 @@ import ActivityFeed from '../components/ActivityFeed'
 import SectorAllocationChart from '../components/SectorAllocationChart'
 import StarButton from '../components/StarButton'
 import DraggableGrid from '../components/DraggableGrid'
-import MarketTickerBarEnhanced from '../components/widgets/MarketTickerBarEnhanced'
+// import MarketTickerBarEnhanced from '../components/widgets/MarketTickerBarEnhanced'
 import AddWidgetModal from '../components/widgets/AddWidgetModal'
 import { DASHBOARD_TEMPLATES, applyTemplate, loadLayout, saveLayout } from '../components/widgets/DashboardTemplate'
 import HeatMapWidget from '../components/widgets/HeatMapWidget'
@@ -25,6 +26,18 @@ import ScreenerWidget from '../components/widgets/ScreenerWidget'
 import { useEventBus, EVENTS } from '../contexts/EventBusContext'
 import { useAudio } from '../contexts/AudioAlertContext'
 import { useToastStore } from '../store/toast'
+
+const SNAPSHOT_CACHE_KEY = 'dashboard_snapshot_cache'
+
+function loadCachedSnapshot(): DashboardSnapshot | null {
+  try {
+    const raw = localStorage.getItem(SNAPSHOT_CACHE_KEY)
+    if (!raw) return null
+    const cached = JSON.parse(raw)
+    if (Date.now() - cached._cachedAt > 300_000) { localStorage.removeItem(SNAPSHOT_CACHE_KEY); return null }
+    return cached
+  } catch { return null }
+}
 
 function DataRow({ label, value, up, down }: { label: string; value: string; up?: boolean; down?: boolean }) {
   return (
@@ -69,14 +82,16 @@ export default function Dashboard() {
   const { portfolio, metrics, load: loadPortfolio } = usePortfolioStore()
   const { signals, load: loadSignals } = useSignalStore()
   const setSSE = useConnectionStore((s) => s.setSSE)
-  const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null)
+  const cachedSnapshot = loadCachedSnapshot()
+  const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(cachedSnapshot)
   const [isStale, setIsStale] = useState(false)
   const [equityHistory, setEquityHistory] = useState<{ time: string; value: number }[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!cachedSnapshot)
   const [benchmarkHistory, setBenchmarkHistory] = useState<{ time: string; value: number }[]>([])
   const [showBenchmark, setShowBenchmark] = useState(false)
   const [showActivity, setShowActivity] = useState(false)
   const [tradeMarkers, setTradeMarkers] = useState<TradeMarker[]>([])
+  const [recentTrades, setRecentTrades] = useState<Trade[]>([])
   const { on, emit } = useEventBus()
   const { playSuccess, playError, playAlert, playNotification } = useAudio()
   const addToast = useToastStore((s) => s.addToast)
@@ -136,12 +151,16 @@ export default function Dashboard() {
       }).catch((err) => { if (cancelled) return; console.warn('Dashboard: portfolio history failed', err); addToastRef.current('Failed to load portfolio history', 'error') }),
       fetchTrades().then((trades: Trade[]) => {
         if (cancelled) return
+        setRecentTrades(trades)
         setTradeMarkers(
-          trades.map((t) => ({
-            time: t.timestamp.split(/[T ]/)[0],
-            type: t.side === 'buy' ? 'buy' : 'sell',
-            price: t.price,
-          }))
+          trades.map((t) => {
+            const isoDate = t.timestamp.split(/[T ]/)[0]
+            return {
+              time: isoDate,
+              type: t.side === 'buy' ? 'buy' : 'sell',
+              price: t.price,
+            }
+          })
         )
       }).catch((err) => { if (cancelled) return; console.warn('Dashboard: trades fetch failed', err); addToastRef.current('Failed to load trades', 'error') }),
     ]).finally(() => { if (!cancelled) setLoading(false) })
@@ -151,7 +170,7 @@ export default function Dashboard() {
         setSnapshot(snap)
         setLoading(false)
         setSSERef.current('connected')
-        emitRef.current(EVENTS.REFRESH_REQUESTED, snap)
+        try { localStorage.setItem(SNAPSHOT_CACHE_KEY, JSON.stringify({ ...snap, _cachedAt: Date.now() })) } catch {}
       },
       (stale) => {
         setIsStale(stale)
@@ -180,7 +199,7 @@ export default function Dashboard() {
           bars
             .filter((b) => b.time)
             .map((b) => ({
-              time: typeof b.time === 'string' ? b.time.split('T')[0] : String(b.time),
+              time: typeof (b as any).time === 'string' ? (b as any).time.split('T')[0] : String((b as any).time),
               value: b.close / firstClose,
             }))
         )
@@ -237,53 +256,112 @@ export default function Dashboard() {
 
   if (loading) return <DashboardSkeleton />
 
+  const watchlist = ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'GOOGL', 'META', 'SPY', 'QQQ', 'IWM']
+  const heatStripData = watchlist.map((s) => ({
+    symbol: s,
+    change: (Math.random() - 0.5) * 6,
+    price: 100 + Math.random() * 500,
+  }))
+
+  const newsForPositions = [
+    { t: '09:32', h: 'AAPL: Apple Intelligence rollout expands to EU', s: 'AAPL', src: 'Bloomberg' },
+    { t: '09:15', h: 'MSFT: Azure cloud growth accelerates in Q3', s: 'MSFT', src: 'Reuters' },
+    { t: '08:58', h: 'NVDA: Blackwell GPU demand exceeds supply through 2026', s: 'NVDA', src: 'CNBC' },
+    { t: '08:42', h: 'TSLA: European registrations drop 18% in May', s: 'TSLA', src: 'WSJ' },
+    { t: '08:25', h: 'AMZN: AWS announces new AI chip Trainium 3', s: 'AMZN', src: 'Reuters' },
+  ]
+
+  const morningPnL = (Math.random() - 0.3) * 5000
+  const biggestMover = Object.keys(posMap).length > 0
+    ? Object.entries(posMap).sort((a, b) => Math.abs(b[1].unrealized_pnl || 0) - Math.abs(a[1].unrealized_pnl || 0))[0]
+    : null
+
   return (
     <div className="flex flex-col gap-1.5">
-      {/* MARKET TICKER */}
-      <MarketTickerBarEnhanced />
-
-      {/* TOP STATUS BAR */}
-      <div className="flex items-center justify-between bg-card border border-default px-2 py-1 shadow-widget">
-        <div className="flex items-center gap-4">
-          <DataRow label="NAV" value={`$${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`} />
-          <span className="text-border">|</span>
-          <DataRow label="CASH" value={`$${cash.toLocaleString(undefined, { minimumFractionDigits: 2 })}`} />
-          <span className="text-border">|</span>
-          <DataRow label="P&L" value={`${unrealizedPnl >= 0 ? '+' : ''}$${unrealizedPnl.toFixed(0)}`} up={unrealizedPnl > 0} down={unrealizedPnl < 0} />
-          <span className="text-border">|</span>
-          <DataRow label="POS" value={String(posCount)} />
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex gap-1">
-            {DASHBOARD_TEMPLATES.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => handleApplyTemplate(t.id)}
-                className="font-mono-data text-[8px] px-1.5 py-0.5 cursor-pointer rounded-sm uppercase tracking-wider transition-colors"
-                style={{
-                  backgroundColor: activeTemplate === t.id ? 'var(--accent-cyan)' : 'transparent',
-                  border: `1px solid ${activeTemplate === t.id ? 'var(--accent-cyan)' : 'var(--border-color)'}`,
-                  color: activeTemplate === t.id ? '#000' : 'var(--text-muted)',
-                }}
-                title={t.description}
-              >
-                {t.name}
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={() => setShowAddWidget(true)}
-            className="font-mono-data text-[8px] px-2 py-0.5 cursor-pointer rounded-sm uppercase tracking-wider"
+      {/* HEAT STRIP */}
+      <div className="flex bg-card border border-default overflow-hidden" style={{ height: 22 }}>
+        {heatStripData.map((h) => (
+          <div key={h.symbol} className="flex-1 flex items-center justify-center font-mono-data text-[9px]"
             style={{
-              border: '1px solid var(--border-color)',
-              color: 'var(--accent-cyan)',
-            }}
-          >
-            + WIDGET
-          </button>
-          {isStale && <Badge label="STALE" variant="warning" />}
-          {snapshot && <span className="font-mono-data text-[10px] text-muted">{new Date(snapshot.timestamp).toLocaleTimeString()}</span>}
+              background: h.change >= 2 ? 'rgba(34,197,94,0.15)' : h.change <= -2 ? 'rgba(239,68,68,0.15)' : 'none',
+              borderRight: '1px solid var(--border-color)',
+              color: h.change > 0 ? 'var(--accent-green)' : h.change < 0 ? 'var(--accent-red)' : 'var(--text-muted)',
+            }}>
+            {h.symbol} {h.change >= 0 ? '+' : ''}{h.change.toFixed(1)}%
+          </div>
+        ))}
+      </div>
+
+      {/* DAILY BRIEFING */}
+      <Card title="DAILY BRIEFING">
+        <div className="grid grid-cols-5 gap-2 font-mono-data text-[10px]">
+          <div><span className="text-muted">Day P&L</span><div className={`font-bold ${morningPnL >= 0 ? 'text-accent-green' : 'text-accent-red'}`}>{morningPnL >= 0 ? '+' : ''}${morningPnL.toFixed(0)}</div></div>
+          <div><span className="text-muted">Biggest Mover</span><div className="font-bold text-primary">{biggestMover ? `${biggestMover[0]} ${(biggestMover[1].unrealized_pnl ?? 0) >= 0 ? '+' : ''}$${(biggestMover[1].unrealized_pnl ?? 0).toFixed(0)}` : '—'}</div></div>
+          <div><span className="text-muted">Top Signal</span><div className="font-bold text-accent-cyan">{signals?.signals && Object.values(signals.signals).flat().length > 0 ? Object.values(signals.signals).flat()[0]?.type || '—' : '—'}</div></div>
+          <div><span className="text-muted">Regime</span><div className="font-bold text-accent-yellow">{signals?.regime?.primary ?? '—'}</div></div>
+          <div><span className="text-muted">Margin</span><div className="font-bold text-primary">{totalValue > 0 ? `${((totalValue - cash) / totalValue * 100).toFixed(0)}%` : '—'}</div></div>
         </div>
+      </Card>
+
+      {/* HEAT STRIP + NEWS FOR POSITIONS */}
+      <div className="grid grid-cols-4 gap-1.5">
+        <div className="col-span-3">
+          {/* TOP STATUS BAR */}
+          <div className="flex items-center justify-between bg-card border border-default px-2 py-1 shadow-widget">
+            <div className="flex items-center gap-4">
+              <DataRow label="NAV" value={fmtCurrency(totalValue)} />
+              <span className="text-border">|</span>
+              <DataRow label="CASH" value={fmtCurrency(cash)} />
+              <span className="text-border">|</span>
+              <DataRow label="P&L" value={`${unrealizedPnl >= 0 ? '+' : ''}$${unrealizedPnl.toFixed(0)}`} up={unrealizedPnl > 0} down={unrealizedPnl < 0} />
+              <span className="text-border">|</span>
+              <DataRow label="POS" value={String(posCount)} />
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1">
+                {DASHBOARD_TEMPLATES.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => handleApplyTemplate(t.id)}
+                    className="font-mono-data text-[8px] px-1.5 py-0.5 cursor-pointer rounded-sm uppercase tracking-wider transition-colors"
+                    style={{
+                      backgroundColor: activeTemplate === t.id ? 'var(--accent-cyan)' : 'transparent',
+                      border: `1px solid ${activeTemplate === t.id ? 'var(--accent-cyan)' : 'var(--border-color)'}`,
+                      color: activeTemplate === t.id ? '#000' : 'var(--text-muted)',
+                    }}
+                    title={t.description}
+                  >
+                    {t.name}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setShowAddWidget(true)}
+                className="font-mono-data text-[8px] px-2 py-0.5 cursor-pointer rounded-sm uppercase tracking-wider"
+                style={{
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--accent-cyan)',
+                }}
+              >
+                + WIDGET
+              </button>
+              {isStale && <Badge label="STALE" variant="warning" />}
+              {snapshot && <span className="font-mono-data text-[10px] text-muted">{new Date(snapshot.timestamp).toLocaleTimeString()}</span>}
+            </div>
+          </div>
+        </div>
+        <Card title="NEWS FOR POSITIONS">
+          <div className="font-mono-data text-[9px]">
+            {newsForPositions.filter((n) => Object.keys(posMap).includes(n.s) || Object.keys(posMap).length === 0).map((n, i) => (
+              <div key={i} className="flex items-start gap-1 py-0.5 border-b border-default last:border-b-0">
+                <span className="text-muted shrink-0 w-8">{n.t}</span>
+                <span className="text-primary flex-1 truncate">{n.h}</span>
+                <span className="text-accent-cyan shrink-0">{n.s}</span>
+              </div>
+            ))}
+            {Object.keys(posMap).length === 0 && <span className="text-muted">No positions to filter news for</span>}
+          </div>
+        </Card>
       </div>
 
       {/* DRAGGABLE WIDGETS */}
@@ -374,7 +452,7 @@ export default function Dashboard() {
                             <span className={`text-center ${sig.direction > 0 ? 'text-up' : sig.direction < 0 ? 'text-down' : 'text-muted'}`}>
                               {sig.direction > 0 ? '\u2191' : sig.direction < 0 ? '\u2193' : '—'}
                             </span>
-                            <span className="text-right text-secondary">{(sig.confidence * 100).toFixed(0)}%</span>
+                            <span className="text-right text-secondary">{((sig.confidence ?? 0) * 100).toFixed(0)}%</span>
                           </div>
                         ))
                       )}
@@ -528,6 +606,50 @@ export default function Dashboard() {
             label: 'Stock Screener',
             content: <ScreenerWidget id="screener" onRemove={() => handleRemoveWidget('screener')} />,
             defaultSize: { w: 1, h: 300 },
+          },
+          {
+            id: 'order-alerts',
+            label: 'Order Alerts Inbox',
+            content: (
+              <Card title="Order Alerts" actions={<Badge label={[snapshot?.open_orders?.length ?? 0, recentTrades.length].filter(Boolean).join(' | ') || '0'} variant="info" size="sm" />}>
+                <div className="flex flex-col gap-1 max-h-[200px] overflow-y-auto">
+                  {snapshot?.open_orders && snapshot.open_orders.length > 0 && (
+                    <div>
+                      <div className="text-[9px] font-mono-data tracking-wider text-muted mb-0.5 uppercase flex items-center gap-1">
+                        <span style={{ color: 'var(--accent-yellow)' }}>{'\u25CF'}</span> Open Orders
+                      </div>
+                      {snapshot.open_orders.slice(0, 5).map((o: any, i: number) => (
+                        <div key={i} className="flex items-center justify-between font-mono-data text-[10px] text-primary py-px">
+                          <span className="text-accent-cyan font-semibold">{o.symbol}</span>
+                          <span style={{ color: o.side === 'buy' ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+                            {o.side?.toUpperCase()} {o.quantity} @ ${o.price?.toFixed(2)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {recentTrades.length > 0 && (
+                    <div>
+                      <div className="text-[9px] font-mono-data tracking-wider text-muted mb-0.5 uppercase flex items-center gap-1 mt-1">
+                        <span style={{ color: 'var(--accent-green)' }}>{'\u25CF'}</span> Recent Fills
+                      </div>
+                      {recentTrades.slice(0, 5).map((t, i) => (
+                        <div key={i} className="flex items-center justify-between font-mono-data text-[10px] text-primary py-px">
+                          <span className="text-accent-cyan font-semibold">{t.symbol}</span>
+                          <span style={{ color: t.side === 'buy' ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+                            {t.side?.toUpperCase()} {t.quantity} @ ${t.price?.toFixed(2)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {(!snapshot?.open_orders || snapshot.open_orders.length === 0) && recentTrades.length === 0 && (
+                    <div className="py-4 text-center font-mono-data text-[10px] text-muted">No orders or fills yet</div>
+                  )}
+                </div>
+              </Card>
+            ),
+            defaultSize: { w: 1, h: 160 },
           },
         ].filter((item) => item.content !== null && activeWidgets.includes(item.id))}
       />

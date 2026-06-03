@@ -32,7 +32,8 @@ async def optimize(req: OptimizeRequest):
     def objective(params):
         return OptunaOptimizer.run_sma_cross_backtest(req.symbol, params)
 
-    optimizer = OptunaOptimizer(n_trials=req.n_trials)
+    n_trials = min(req.n_trials, 1000)
+    optimizer = OptunaOptimizer(n_trials=n_trials)
     result = optimizer.optimize(space, objective)
     return {
         "symbol": req.symbol,
@@ -69,7 +70,8 @@ async def full_optimize(req: OptimizeRequest):
         mtf = OptunaOptimizer.run_multi_timeframe_backtest(req.symbol, params, timeframes)
         return OptunaOptimizer.compute_composite_score(mtf)
 
-    optimizer = OptunaOptimizer(n_trials=req.n_trials)
+    n_trials = min(req.n_trials, 1000)
+    optimizer = OptunaOptimizer(n_trials=n_trials)
     result = optimizer.optimize(space, objective)
     mtf_best = OptunaOptimizer.run_multi_timeframe_backtest(req.symbol, result["best_params"], timeframes)
     return {

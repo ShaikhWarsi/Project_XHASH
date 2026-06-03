@@ -94,6 +94,29 @@ def _validate_id_token(token: str, kind: str) -> None:
         raise RegistryError(f"invalid {kind} {token!r}: must match {_ID_RE.pattern}")
 
 
+_RCE_BANNED = {"exec", "eval", "__import__", "compile", "open", "breakpoint"}
+_RCE_BANNED_MODULES = {"os", "subprocess", "shutil", "socket", "ctypes", "multiprocessing", "pty", "signal", "sys"}
+
+
+def _ast_is_safe(tree: ast.AST) -> None:
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Name) and node.func.id in _RCE_BANNED:
+                raise RegistryError(f"RCE guard: banned call {node.func.id!r}")
+            if isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name):
+                if node.func.value.id in _RCE_BANNED_MODULES:
+                    raise RegistryError(f"RCE guard: banned module {node.func.value.id}")
+                if node.func.attr in _RCE_BANNED:
+                    raise RegistryError(f"RCE guard: banned method {node.func.attr}")
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name.split(".")[0] in _RCE_BANNED_MODULES:
+                    raise RegistryError(f"RCE guard: banned import {alias.name}")
+        if isinstance(node, ast.ImportFrom):
+            if node.module and node.module.split(".")[0] in _RCE_BANNED_MODULES:
+                raise RegistryError(f"RCE guard: banned from-import {node.module}")
+
+
 def load_alpha_meta_from_py(path: Path) -> AlphaMeta:
     """AST-extract the ``__alpha_meta__`` dict literal from a zoo module.
 
@@ -106,6 +129,8 @@ def load_alpha_meta_from_py(path: Path) -> AlphaMeta:
 
     source = path.read_text(encoding="utf-8")
     tree = ast.parse(source, filename=str(path))
+
+    _ast_is_safe(tree)
 
     meta_node: ast.expr | None = None
     for stmt in tree.body:

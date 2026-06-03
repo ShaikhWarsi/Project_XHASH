@@ -3,18 +3,22 @@ import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import Skeleton from '../components/Skeleton'
 import ProtectionsPanel from '../components/ProtectionsPanel'
+import PairlistsPanel from '../components/PairlistsPanel'
+import RiskAnalyticsCharts from '../components/RiskAnalyticsCharts'
 import { fetchRiskMetrics } from '../api/client'
 import type { RiskMetrics } from '../api/types'
 import { useToastStore } from '../store/toast'
+import { fmtCurrency } from '../utils/format'
 
 const HEATMAP_GREEN_RGB = { r: 34, g: 197, b: 94 }
 const HEATMAP_RED_RGB = { r: 239, g: 68, b: 68 }
 const HEATMAP_OPACITY_BASE = 0.15
 const HEATMAP_OPACITY_VARY = 0.35
 
-function HeatmapCell({ sector, exposure, return: ret, maxExposure }: { sector: string; exposure: number; return: number; maxExposure: number }) {
+function HeatmapCell({ sector, exposure, return: ret, maxExposure }: { sector: string; exposure: number; return?: number; maxExposure: number }) {
   const intensity = maxExposure > 0 ? exposure / maxExposure : 0
-  const base = ret >= 0 ? HEATMAP_GREEN_RGB : HEATMAP_RED_RGB
+  const retVal = ret ?? 0
+  const base = retVal >= 0 ? HEATMAP_GREEN_RGB : HEATMAP_RED_RGB
   const r = Math.round(base.r * intensity)
   const g = Math.round(base.g * intensity)
   const b = Math.round(base.b * intensity)
@@ -22,10 +26,10 @@ function HeatmapCell({ sector, exposure, return: ret, maxExposure }: { sector: s
   return (
     <div style={{ background: bg }} className="border border-default px-2 py-1">
       <div className="font-mono-data tracking-wider text-[9px] text-muted">{sector}</div>
-      <div className="font-mono-data text-[11px] font-bold" style={{ color: ret >= 0 ? 'var(--accent-green)' : 'var(--accent-red)' }}>
-        {ret >= 0 ? '+' : ''}{ret.toFixed(2)}%
+      <div className="font-mono-data text-[11px] font-bold" style={{ color: retVal >= 0 ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+        {retVal >= 0 ? '+' : ''}{retVal.toFixed(2)}%
       </div>
-      <div className="font-mono-data text-[10px] text-muted">${exposure.toLocaleString()}</div>
+      <div className="font-mono-data text-[10px] text-muted">{fmtCurrency(exposure)}</div>
     </div>
   )
 }
@@ -37,7 +41,7 @@ function ExposureBar({ label, value, maxValue, color }: { label: string; value: 
       <div className="flex justify-between font-mono-data text-[10px] mb-0.5">
         <span className="text-secondary">{label}</span>
         <span className="text-primary font-semibold">
-          ${Math.abs(value).toLocaleString()} {value < 0 ? '(SHORT)' : ''}
+          {fmtCurrency(Math.abs(value))} {value < 0 ? '(SHORT)' : ''}
         </span>
       </div>
       <div style={{ background: 'var(--border-color)', height: 6 }}>
@@ -50,7 +54,7 @@ function ExposureBar({ label, value, maxValue, color }: { label: string; value: 
 export default function RiskDashboard() {
   const [riskMetrics, setRiskMetrics] = useState<RiskMetrics | null>(null)
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<'metrics' | 'protections'>('metrics')
+  const [tab, setTab] = useState<'metrics' | 'analytics' | 'protections' | 'pairlists'>('metrics')
   const addToast = useToastStore((s) => s.addToast)
 
   useEffect(() => {
@@ -81,7 +85,7 @@ export default function RiskDashboard() {
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2 bg-card border border-default px-2 py-1">
         <Badge label="RISK" variant="info" />
-        {(['metrics', 'protections'] as const).map((t) => (
+        {(['metrics', 'analytics', 'protections', 'pairlists'] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -92,13 +96,17 @@ export default function RiskDashboard() {
               color: tab === t ? 'var(--accent-blue)' : 'var(--text-muted)',
             }}
           >
-            {t === 'metrics' ? 'METRICS' : 'PROTECTIONS'}
+            {t === 'metrics' ? 'METRICS' : t === 'analytics' ? 'ANALYTICS' : t === 'protections' ? 'PROTECTIONS' : 'PAIRLISTS'}
           </button>
         ))}
       </div>
 
-      {tab === 'protections' ? (
+      {tab === 'analytics' ? (
+        <RiskAnalyticsCharts metrics={riskMetrics} />
+      ) : tab === 'protections' ? (
         <ProtectionsPanel />
+      ) : tab === 'pairlists' ? (
+        <PairlistsPanel />
       ) : (
         <>
           <div className="grid grid-cols-4 gap-1.5">
@@ -106,9 +114,9 @@ export default function RiskDashboard() {
               <div className="grid grid-cols-2 gap-1">
                 {riskMetrics && [
                   { label: 'TOTAL', value: `${riskMetrics.totalExposurePercent.toFixed(1)}%` },
-                  { label: 'NET', value: `${riskMetrics.netExposure >= 0 ? 'LONG' : 'SHORT'} $${Math.abs(riskMetrics.netExposure).toLocaleString()}` },
-                  { label: 'BUY POWER', value: `$${riskMetrics.buyingPower.toLocaleString()}` },
-                  { label: 'MARGIN', value: `$${riskMetrics.marginUsed.toLocaleString()}` },
+                  { label: 'NET', value: `${riskMetrics.netExposure >= 0 ? 'LONG' : 'SHORT'} ${fmtCurrency(Math.abs(riskMetrics.netExposure))}` },
+                  { label: 'BUY POWER', value: fmtCurrency(riskMetrics.buyingPower) },
+                  { label: 'MARGIN', value: fmtCurrency(riskMetrics.marginUsed) },
                 ].map(m => (
                   <div key={m.label}>
                     <div className="font-mono-data tracking-wider text-[9px] text-muted">{m.label}</div>
@@ -139,8 +147,8 @@ export default function RiskDashboard() {
                 {riskMetrics && [
                   { label: 'MAX DD', value: `${(riskMetrics.maxDrawdown * 100).toFixed(1)}%` },
                   { label: 'BETA', value: riskMetrics.beta.toFixed(2) },
-                  { label: 'LONG', value: `$${riskMetrics.longExposure.toLocaleString()}` },
-                  { label: 'SHORT', value: `$${riskMetrics.shortExposure.toLocaleString()}` },
+                  { label: 'LONG', value: fmtCurrency(riskMetrics.longExposure) },
+                  { label: 'SHORT', value: fmtCurrency(riskMetrics.shortExposure) },
                 ].map(m => (
                   <div key={m.label}>
                     <div className="font-mono-data tracking-wider text-[9px] text-muted">{m.label}</div>
@@ -153,7 +161,7 @@ export default function RiskDashboard() {
             <Card title="CONCENTRATION">
               <div className="grid grid-cols-2 gap-1">
                 {riskMetrics && [
-                  { label: 'GROSS', value: `$${riskMetrics.grossExposure.toLocaleString()}` },
+                  { label: 'GROSS', value: fmtCurrency(riskMetrics.grossExposure) },
                   { label: 'HEDGE', value: riskMetrics.shortExposure > 0 ? `${((riskMetrics.shortExposure / riskMetrics.grossExposure) * 100).toFixed(0)}%` : '—' },
                   { label: 'TOP SECTOR', value: riskMetrics.portfolioHeatmap?.sort((a, b) => b.exposure - a.exposure)[0]?.sector ?? '—' },
                   { label: 'SECTORS', value: `${riskMetrics.portfolioHeatmap?.length ?? 0}` },

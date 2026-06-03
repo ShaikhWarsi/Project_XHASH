@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from core.enums import OrderSide, OrderType
@@ -47,7 +47,12 @@ class IBKRBroker(ExecutionProvider):
 
         thread = threading.Thread(target=self._app.run, daemon=True)
         thread.start()
-        time.sleep(1.5)
+        timeout = 10.0
+        interval = 0.1
+        elapsed = 0.0
+        while elapsed < timeout and not wrapper.connected:
+            time.sleep(interval)
+            elapsed += interval
 
         self._connected = wrapper.connected
         return self._connected
@@ -86,7 +91,7 @@ class IBKRBroker(ExecutionProvider):
 
             order_id = int(time.time() * 1000) % 1000000
             self._app.placeOrder(order_id, contract, ib_order)
-            return Fill(order_id=str(order_id), symbol=order.symbol, quantity=abs(order.quantity), price=order.price or 0.0, timestamp=datetime.utcnow())
+            return Fill(order_id=str(order_id), symbol=order.symbol, quantity=abs(order.quantity), price=order.price or 0.0, timestamp=datetime.now(timezone.utc))
         except Exception as e:
             log.error("IBKR submit_order failed: %s", e)
             return None

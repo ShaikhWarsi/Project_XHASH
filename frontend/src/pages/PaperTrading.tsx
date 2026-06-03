@@ -5,6 +5,7 @@ import VirtualList from '../components/VirtualList'
 import { startPaperSimulation, stopPaperSimulation, resetPaperAccount } from '../api/client'
 import { useToastStore } from '../store/toast'
 import { useLivePrices } from '../contexts/LivePricesContext'
+import { fmtCurrency } from '../utils/format'
 
 const ROW_HEIGHT = 22
 
@@ -101,9 +102,9 @@ export default function PaperTrading() {
       {/* ACCOUNT METRICS */}
       <div className="grid grid-cols-4 gap-1.5">
         {[
-          { label: 'BALANCE', value: `$${account.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}` },
-          { label: 'EQUITY', value: `$${account.equity.toLocaleString(undefined, { minimumFractionDigits: 2 })}` },
-          { label: 'BUY POWER', value: `$${account.buyingPower.toLocaleString()}` },
+          { label: 'BALANCE', value: fmtCurrency(account.balance) },
+          { label: 'EQUITY', value: fmtCurrency(account.equity) },
+          { label: 'BUY POWER', value: fmtCurrency(account.buyingPower) },
           { label: 'OPEN P&L', value: `${account.openPnl >= 0 ? '+' : ''}$${account.openPnl.toFixed(2)}`, col: account.openPnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)' },
         ].map(m => (
           <div key={m.label} className="bg-card border border-default px-2.5 py-1.5">

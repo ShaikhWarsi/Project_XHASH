@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Dict, List
 
 import pandas as pd
@@ -11,6 +12,19 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/rl-training", tags=["rl_training"])
 _trainers: Dict[str, object] = {}
+
+_ALLOWED_MODEL_DIR = Path.home() / ".trading-engine" / "rl_models"
+_ALLOWED_MODEL_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _validate_model_path(model_path: str) -> Path:
+    p = Path(model_path)
+    if not p.is_absolute():
+        p = _ALLOWED_MODEL_DIR / p
+    p = p.resolve()
+    if not str(p).startswith(str(_ALLOWED_MODEL_DIR.resolve())):
+        raise HTTPException(400, "Model path outside allowed directory")
+    return p
 
 
 class TrainRequest(BaseModel):
@@ -40,8 +54,9 @@ async def train_rl(req: TrainRequest):
             raise HTTPException(503, "stable-baselines3 not installed")
         df = pd.DataFrame({"close": req.prices}, index=pd.DatetimeIndex(req.timestamps))
         env = TradingEnv(df=df, window_size=req.window_size, initial_balance=req.initial_balance)
+        total_timesteps = min(req.total_timesteps, 1_000_000)
         trainer = RLTrainer(env, algo=req.algo)
-        result = trainer.train(total_timesteps=req.total_timesteps)
+        result = trainer.train(total_timesteps=total_timesteps)
         _trainers[result["model_path"]] = trainer
         return result
     except HTTPException:
@@ -58,10 +73,11 @@ async def evaluate_model(req: EvalRequest):
         from signals.rl.trainer import RLTrainer, HAS_SB3
         if not HAS_RL or not HAS_SB3:
             raise HTTPException(503, "RL dependencies not installed")
+        model_path = _validate_model_path(req.model_path)
         df = pd.DataFrame({"close": req.prices}, index=pd.DatetimeIndex(req.timestamps))
         env = TradingEnv(df=df)
         trainer = RLTrainer(env)
-        trainer.load(req.model_path)
+        trainer.load(str(model_path))
         results = trainer.evaluate(env, episodes=req.episodes)
         return results
     except HTTPException:

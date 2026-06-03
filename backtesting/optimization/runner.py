@@ -4,7 +4,7 @@ import copy
 import json
 import logging
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from typing import Any, Callable, Dict, List, Optional
 
 from backtesting.optimization.scoring import StrategyScoringService
@@ -52,7 +52,7 @@ class ExperimentRunnerService:
                 return None
 
             tf = Timeframe(timeframe) if hasattr(Timeframe, timeframe) else Timeframe("1d")
-            end = datetime.utcnow()
+            end = datetime.now(timezone.utc)
             start = end - timedelta(days=180)
             bars = provider.fetch_bars(symbol=symbol, timeframe=tf, start=start, end=end)
 
@@ -123,7 +123,7 @@ class ExperimentRunnerService:
         indicator_params = extract_indicator_params(indicator_code)
 
         start_date = base.get("start_date")
-        end_date = base.get("end_date") or datetime.utcnow().isoformat()
+        end_date = base.get("end_date") or datetime.now(timezone.utc).isoformat()
 
         oos_enabled_input = payload.get("oosValidation", True)
         oos_window = self._compute_oos_window(start_date, end_date) if oos_enabled_input and start_date else None
@@ -208,7 +208,7 @@ class ExperimentRunnerService:
                     provider = ProviderRegistry.get("yfinance")
                     tf = Timeframe(base.get("timeframe", "1d"))
                     start = datetime.fromisoformat(train_start) if train_start else datetime(2020, 1, 1)
-                    end = datetime.fromisoformat(train_end) if train_end else datetime.utcnow()
+                    end = datetime.fromisoformat(train_end) if train_end else datetime.now(timezone.utc)
                     sym = cand_snapshot.get("symbol", "SPY")
                     bars = provider.fetch_bars(symbol=sym, timeframe=tf, start=start, end=end)
 

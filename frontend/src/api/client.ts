@@ -26,26 +26,39 @@ const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
 
 export const api = axios.create({
   baseURL: API_BASE,
-  timeout: 30000,
+  timeout: 8000,
+  transitional: { clarifyTimeoutError: true },
 })
+
+const NO_RETRY_PATTERNS = [/\/market\/(news|quotes)/, /\/signals\//]
 
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const config = error.config
-    if (!config || config._retryCount >= 3) return Promise.reject(error)
+    if (!config || config._retryCount >= 1) return Promise.reject(error)
     if (!error.response || error.response.status < 500) return Promise.reject(error)
+    if (NO_RETRY_PATTERNS.some((p) => p.test(config.url))) return Promise.reject(error)
     config._retryCount = (config._retryCount || 0) + 1
-    const delay = Math.min(500 * Math.pow(2, config._retryCount - 1), 10000)
+    const delay = 1000
     await new Promise((resolve) => setTimeout(resolve, delay))
     return api(config)
   },
 )
 
 const DEDUP_MAP = new Map<string, Promise<any>>()
+const DEDUP_MAX = 100
+
+function dedupKey(url: string): string {
+  if (DEDUP_MAP.size >= DEDUP_MAX) {
+    const oldest = DEDUP_MAP.keys().next().value
+    if (oldest) DEDUP_MAP.delete(oldest)
+  }
+  return url
+}
 
 export function dedupGet<T = any>(url: string, params?: Record<string, any>): Promise<T> {
-  const key = url + '?' + JSON.stringify(params ?? {})
+  const key = dedupKey(url) + '?' + JSON.stringify(params ?? {})
   if (!DEDUP_MAP.has(key)) {
     DEDUP_MAP.set(key, api.get(url, { params }).then((res) => {
       DEDUP_MAP.delete(key)
@@ -60,18 +73,63 @@ export function dedupGet<T = any>(url: string, params?: Record<string, any>): Pr
 
 let _apiKey: string | null = null
 
-export function setApiKey(key: string) {
-  if (key) {
-    _apiKey = key
-    api.defaults.headers.common['Authorization'] = `Bearer ${key}`
-  } else {
-    _apiKey = null
-    delete api.defaults.headers.common['Authorization']
+const API_KEY_PATHS = ['/orders', '/portfolio', '/backtest', '/signals', '/hypotheses', '/config', '/strategies', '/swarm', '/agents']
+
+api.interceptors.request.use((config) => {
+  if (_apiKey && config.url) {
+    const needsAuth = API_KEY_PATHS.some((p) => config.url!.startsWith(p))
+    if (needsAuth) {
+      config.headers.Authorization = `Bearer ${_apiKey}`
+    }
   }
+  config.headers['X-Requested-With'] = 'XMLHttpRequest'
+  return config
+})
+
+const RATE_LIMIT_MAP = new Map<string, number>()
+const RATE_LIMIT_DEFAULTS: Record<string, number> = {
+  backtest: 5000,
+  order: 500,
+}
+
+export function checkRateLimit(action: string): boolean {
+  const now = Date.now()
+  const lastCall = RATE_LIMIT_MAP.get(action) || 0
+  const cooldown = RATE_LIMIT_DEFAULTS[action] || 1000
+  if (now - lastCall < cooldown) return false
+  RATE_LIMIT_MAP.set(action, now)
+  return true
+}
+
+export function clearAuthState() {
+  _apiKey = null
+  delete api.defaults.headers.common['Authorization']
+}
+
+export function setApiKey(key: string | null) {
+  if (!key) {
+    clearAuthState()
+    return
+  }
+  _apiKey = key
 }
 
 export function getApiKey(): string | null {
   return _apiKey
+}
+
+export async function rotateApiKey(): Promise<string | null> {
+  try {
+    const { data } = await api.post('/auth/rotate-key')
+    const newKey = data.api_key || data.key
+    if (newKey) {
+      setApiKey(newKey)
+    }
+    return newKey
+  } catch {
+    clearAuthState()
+    return null
+  }
 }
 
 export function getAuthHeaders(): Record<string, string> {
@@ -93,7 +151,7 @@ export async function fetchPortfolioHistory(): Promise<{ timestamp: string; tota
 }
 
 export async function fetchSignals(): Promise<SignalMatrix> {
-  const { data } = await api.get('/signals/latest')
+  const { data } = await api.get('/signals/')
   return data
 }
 
@@ -112,6 +170,9 @@ export async function runBacktest(config: {
   leverage?: number
   agents?: string[]
 }): Promise<BacktestResult> {
+  if (!checkRateLimit('backtest')) {
+    throw new Error('Please wait before running another backtest')
+  }
   const { data } = await api.post('/backtest/run', config)
   return data
 }
@@ -126,15 +187,29 @@ export async function fetchTrades(): Promise<Trade[]> {
   return data
 }
 
-export async function fetchOHLCV(symbol: string, interval = '1d', range = '1mo'): Promise<BarData[]> {
-  const { data } = await api.get(`/bars/${symbol}`, { params: { interval, range } })
+const OHLCV_CACHE = new Map<string, { data: BarData[]; timestamp: number }>()
+const OHLCV_CACHE_TTL = 120_000
+const OHLCV_CACHE_MAX = 50
+
+export async function fetchOHLCV(symbol: string, interval = '1d', range = '1mo', signal?: AbortSignal): Promise<BarData[]> {
+  const key = `${symbol}_${interval}_${range}`
+  const cached = OHLCV_CACHE.get(key)
+  if (cached && Date.now() - cached.timestamp < OHLCV_CACHE_TTL) {
+    return cached.data
+  }
+  const { data } = await api.get(`/bars/${symbol}`, { params: { interval, range }, timeout: 30000, signal })
+  if (OHLCV_CACHE.size >= OHLCV_CACHE_MAX) {
+    const oldest = OHLCV_CACHE.keys().next().value
+    if (oldest) OHLCV_CACHE.delete(oldest)
+  }
+  OHLCV_CACHE.set(key, { data, timestamp: Date.now() })
   return data
 }
 
 export function connectDashboardSSE(
   onUpdate: (snapshot: DashboardSnapshot) => void,
   onStale?: (isStale: boolean) => void,
-): EventSource {
+): { close: () => void } {
   let retryCount = 0
   const maxRetries = 10
   const baseDelay = 1000
@@ -142,12 +217,15 @@ export function connectDashboardSSE(
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
   let recoveryTimer: ReturnType<typeof setTimeout> | null = null
   let gaveUp = false
+  let connecting = false
+  let currentEs: EventSource | null = null
+  let recoveryGuard = false
 
   function createConnection(): EventSource {
-    const es = new EventSource('/api/stream/live')
+    const source = new EventSource('/api/stream/live')
     let hasEverConnected = false
 
-    es.onmessage = (event) => {
+    source.onmessage = (event) => {
       try {
         const snapshot: DashboardSnapshot = JSON.parse(event.data)
         onUpdate(snapshot)
@@ -162,47 +240,58 @@ export function connectDashboardSSE(
       }
     }
 
-    es.onopen = () => {
+    source.onopen = () => {
       hasEverConnected = true
       retryCount = 0
       gaveUp = false
+      connecting = false
       onStale?.(false)
     }
 
-    es.onerror = () => {
+    source.onerror = () => {
       console.debug('SSE connection lost — data may be stale')
       onStale?.(true)
-      es.close()
+      source.close()
 
-      if (!disconnected && retryCount < maxRetries) {
+      if (disconnected || connecting) return
+      connecting = true
+
+      if (retryCount < maxRetries) {
         retryCount++
         const delay = Math.min(baseDelay * Math.pow(2, retryCount - 1), 30000)
         const jitter = delay * (0.5 + Math.random() * 0.5)
         console.debug(`SSE reconnecting in ${Math.round(jitter)}ms (attempt ${retryCount}/${maxRetries})`)
         reconnectTimer = setTimeout(() => {
           if (!disconnected) {
-            esRef.current = createConnection()
+            if (currentEs) currentEs.close()
+            currentEs = createConnection()
           }
+          connecting = false
         }, jitter)
       } else if (!disconnected) {
         console.debug('SSE max retries reached, giving up')
         gaveUp = true
+        connecting = false
         onStale?.(true)
         scheduleRecovery()
       }
     }
 
-    return es
+    return source
   }
 
   function scheduleRecovery() {
-    clearTimeout(recoveryTimer)
+    if (recoveryGuard || disconnected) return
+    recoveryGuard = true
+    clearTimeout(recoveryTimer ?? undefined)
     recoveryTimer = setTimeout(() => {
+      recoveryGuard = false
       if (!disconnected && gaveUp) {
         console.debug('SSE recovery check — attempting reconnect')
         retryCount = 0
         gaveUp = false
-        esRef.current = createConnection()
+        if (currentEs) currentEs.close()
+        currentEs = createConnection()
       }
     }, 30000)
   }
@@ -214,8 +303,9 @@ export function connectDashboardSSE(
       if (recoveryTimer) clearTimeout(recoveryTimer)
       retryCount = 0
       gaveUp = false
-      esRef.current.close()
-      esRef.current = createConnection()
+      connecting = false
+      if (currentEs) currentEs.close()
+      currentEs = createConnection()
     }
   }
 
@@ -223,19 +313,20 @@ export function connectDashboardSSE(
     window.addEventListener('online', onNetworkOnline)
   }
 
-  const esRef: { current: EventSource } = { current: createConnection() }
-  const result = {
+  currentEs = createConnection()
+  return {
     close() {
       disconnected = true
+      recoveryGuard = true
       if (reconnectTimer) clearTimeout(reconnectTimer)
       if (recoveryTimer) clearTimeout(recoveryTimer)
       if (typeof window !== 'undefined') {
         window.removeEventListener('online', onNetworkOnline)
       }
-      esRef.current.close()
+      if (currentEs) currentEs.close()
+      currentEs = null
     },
-  } as EventSource
-  return result
+  }
 }
 
 export async function searchStocks(query: string): Promise<{ symbol: string; description: string; type: string }[]> {
@@ -249,8 +340,8 @@ export async function fetchQuote(symbol: string): Promise<FinnhubQuote> {
   return data
 }
 
-export async function fetchQuotes(symbols: string[]): Promise<Record<string, FinnhubQuote | null>> {
-  const { data } = await api.get('/market/quotes', { params: { symbols: symbols.join(',') } })
+export async function fetchQuotes(symbols: string[], signal?: AbortSignal): Promise<Record<string, FinnhubQuote | null>> {
+  const { data } = await api.get('/market/quotes', { params: { symbols: symbols.join(',') }, signal })
   return data
 }
 

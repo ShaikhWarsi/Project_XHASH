@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Column, DateTime, Float, Integer, String, Text, BigInteger, Boolean, JSON
 from sqlalchemy import Text as SA_Text
@@ -18,7 +18,7 @@ class Trade(Base):
     quantity = Column(Float, nullable=False)
     price = Column(Float, nullable=False)
     commission = Column(Float, default=0.0)
-    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     signal_ids = Column(Text, default="[]")
     strategy = Column(String(50), default="")
     pnl = Column(Float, nullable=True)
@@ -36,7 +36,7 @@ class SignalRecord(Base):
     confidence = Column(Float, default=0.0)
     price = Column(Float, default=0.0)
     level = Column(Float, nullable=True)
-    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     metadata_json = Column(Text, default="{}")
 
 
@@ -44,7 +44,7 @@ class PortfolioSnapshot(Base):
     __tablename__ = "portfolio_snapshots"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     cash = Column(Float, default=0.0)
     total_value = Column(Float, default=0.0)
     equity = Column(Float, default=0.0)
@@ -61,7 +61,7 @@ class AgentDecision(Base):
     signal = Column(String(10), nullable=False)
     confidence = Column(Float, default=0.0)
     reasoning = Column(Text, default="")
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     metadata_json = Column(Text, default="{}")
 
 
@@ -69,7 +69,7 @@ class BacktestRun(Base):
     __tablename__ = "backtest_runs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     config_json = Column(Text, default="{}")
     metrics_json = Column(Text, default="{}")
     equity_curve_json = Column(Text, default="[]")
@@ -88,7 +88,7 @@ class ApiKey(Base):
     provider = Column(String(50), nullable=False, index=True)
     key_value = Column(String(500), nullable=False)
     is_active = Column(Integer, default=1)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     last_used_at = Column(DateTime, nullable=True)
 
 
@@ -103,9 +103,10 @@ class HedgeFundFlow(Base):
     tickers = Column(Text, default="[]")
     agents = Column(Text, default="[]")
     config_json = Column(Text, default="{}")
+    flow_type = Column(String(50), default="hedge_fund")
     is_active = Column(Integer, default=1)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class HedgeFundFlowRun(Base):
@@ -120,7 +121,7 @@ class HedgeFundFlowRun(Base):
     confidence = Column(Float, default=0.0)
     opinions_json = Column(Text, default="[]")
     portfolio_snapshot_id = Column(Integer, nullable=True)
-    started_at = Column(DateTime, default=datetime.utcnow)
+    started_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     completed_at = Column(DateTime, nullable=True)
     duration_ms = Column(Integer, nullable=True)
 
@@ -134,7 +135,7 @@ class WatchlistItem(Base):
     user_id = Column(String(50), nullable=False, index=True)
     symbol = Column(String(20), nullable=False)
     company = Column(String(200), default="")
-    added_at = Column(DateTime, default=datetime.utcnow)
+    added_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class PriceAlert(Base):
@@ -149,7 +150,7 @@ class PriceAlert(Base):
     condition = Column(String(10), nullable=False)  # ABOVE or BELOW
     active = Column(Integer, default=1)
     triggered = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     expires_at = Column(DateTime, nullable=True)
 
 
@@ -171,8 +172,8 @@ class Order(Base):
     average_fill_price = Column(Float, nullable=True)
     time_in_force = Column(String(10), default="DAY")
     reduce_only = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class AgentToken(Base):
@@ -191,7 +192,7 @@ class AgentToken(Base):
     status = Column(String(20), nullable=False, default="active")
     expires_at = Column(DateTime, nullable=True)
     last_used_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class AgentJob(Base):
@@ -208,7 +209,7 @@ class AgentJob(Base):
     error = Column(SA_Text, nullable=True)
     progress = Column(SA_Text, nullable=True)
     idempotency_key = Column(String(120), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     started_at = Column(DateTime, nullable=True)
     finished_at = Column(DateTime, nullable=True)
 
@@ -228,7 +229,7 @@ class AgentAudit(Base):
     request_summary = Column(SA_Text, nullable=True)
     response_summary = Column(SA_Text, nullable=True)
     duration_ms = Column(Integer, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class AgentPaperOrder(Base):
@@ -248,7 +249,7 @@ class AgentPaperOrder(Base):
     fill_value = Column(Float, nullable=True)
     status = Column(String(16), nullable=False, default="filled")
     note = Column(SA_Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class MarketNewsSnapshot(Base):
@@ -259,7 +260,7 @@ class MarketNewsSnapshot(Base):
     snapshot_key = Column(String(200), nullable=False)
     items_json = Column(Text, nullable=False)
     summary_json = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class MacroSignalSnapshot(Base):
@@ -273,7 +274,7 @@ class MacroSignalSnapshot(Base):
     signals_json = Column(Text, nullable=False)
     meta_json = Column(Text, nullable=False)
     source_json = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class EtfFlowSnapshot(Base):
@@ -283,7 +284,7 @@ class EtfFlowSnapshot(Base):
     snapshot_key = Column(String(200), nullable=False)
     summary_json = Column(Text, nullable=False)
     etfs_json = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class StockAnalysisSnapshot(Base):
@@ -305,4 +306,4 @@ class StockAnalysisSnapshot(Base):
     summary_text = Column(Text, nullable=False)
     analysis_json = Column(Text, nullable=False)
     news_json = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

@@ -104,7 +104,7 @@ export interface DashboardSnapshot {
 }
 
 export interface BarData {
-  time: number
+  time: string | number
   open: number
   high: number
   low: number
@@ -280,6 +280,9 @@ export interface PositionExtended {
   exposure: number
   exposurePercent: number
   beta: number
+  stopLoss?: number
+  takeProfit?: number
+  trailingStop?: number
 }
 
 export interface RiskMetrics {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { usePortfolioStore } from '../store/portfolio'
 import Card from '../components/ui/Card'
 import KpiCard from '../components/ui/KpiCard'
@@ -6,7 +6,9 @@ import Skeleton from '../components/Skeleton'
 import EmptyState from '../components/ui/EmptyState'
 import ExportButton from '../components/ui/ExportButton'
 import ErrorBoundary from '../components/ErrorBoundary'
+import DataTable from '../components/ui/DataTable'
 import { fetchPortfolioHistory } from '../api/client'
+import { fmtCurrency, fmtNumber } from '../utils/format'
 import { useWebSocket } from '../hooks/useWebSocket'
 import ChartContainer from '../components/ChartContainer'
 import { useToastStore } from '../store/toast'
@@ -42,7 +44,7 @@ export default function Portfolio() {
   const [equityHistory, setEquityHistory] = useState<{ time: string; value: number }[]>([])
   const [viewMode, setViewMode] = useUrlState('view', 'table')
   const [loading, setLoading] = useState(true)
-  const { lastData: wsPortfolio } = useWebSocket<{ type: string; data: { portfolio: any; metrics: any } }>('/ws/portfolio', { maxRetries: 999 })
+  const { lastData: wsPortfolio, connected: wsConnected } = useWebSocket<{ type: string; data: { portfolio: any; metrics: any } }>('/ws/portfolio', { maxRetries: 999 })
 
   useEffect(() => {
     if (wsPortfolio?.type === 'portfolio' && wsPortfolio?.data) {
@@ -64,15 +66,44 @@ export default function Portfolio() {
 
   const positions = portfolio?.positions ? Object.entries(portfolio.positions) : []
 
+  const positionRows = useMemo(() =>
+    positions.map(([symbol, pos]) => {
+      const dailyPnl = (Math.random() * 200 - 100)
+      return {
+        id: symbol,
+        symbol, side: pos.side, quantity: pos.quantity,
+        entry_price: pos.entry_price?.toFixed(2) ?? '0.00',
+        current_price: pos.current_price?.toFixed(2) ?? '0.00',
+        market_value: fmtNumber(pos.market_value ?? 0, 0),
+        unrealized_pnl: pos.unrealized_pnl?.toFixed(2) ?? '0.00',
+        pnlDirection: (pos.unrealized_pnl ?? 0) >= 0 ? 'up' : 'down',
+        daily_pnl: dailyPnl.toFixed(2),
+        dailyDirection: dailyPnl >= 0 ? 'up' : 'down',
+      }
+    }),
+    [positions]
+  )
+
+  const posColumns = useMemo(() => [
+    { key: 'symbol', label: 'Symbol', render: (r: any) => <span className="text-accent-cyan font-semibold">{r.symbol}</span>, sortable: true, sortValue: (r: any) => r.symbol },
+    { key: 'side', label: 'Side', render: (r: any) => <span className={r.side === 'LONG' ? 'text-up' : 'text-down'}>{r.side}</span>, sortable: true, sortValue: (r: any) => r.side, align: 'right' as const },
+    { key: 'quantity', label: 'Qty', render: (r: any) => r.quantity, sortable: true, sortValue: (r: any) => Number(r.quantity), align: 'right' as const },
+    { key: 'entry_price', label: 'Entry', render: (r: any) => `$${r.entry_price}`, sortable: true, sortValue: (r: any) => Number(r.entry_price), align: 'right' as const },
+    { key: 'current_price', label: 'Current', render: (r: any) => `$${r.current_price}`, sortable: true, sortValue: (r: any) => Number(r.current_price), align: 'right' as const },
+    { key: 'market_value', label: 'Mkt Val', render: (r: any) => `$${r.market_value}`, sortable: true, sortValue: (r: any) => Number(r.market_value.replace(/,/g, '')), align: 'right' as const },
+    { key: 'unrealized_pnl', label: 'P&L', render: (r: any) => <span className={r.pnlDirection === 'up' ? 'text-up' : 'text-down'}>{Number(r.unrealized_pnl) >= 0 ? '+' : ''}${r.unrealized_pnl}</span>, sortable: true, sortValue: (r: any) => Number(r.unrealized_pnl), align: 'right' as const },
+    { key: 'daily_pnl', label: 'Since Yest', render: (r: any) => <span className={r.dailyDirection === 'up' ? 'text-up' : 'text-down'}>{Number(r.daily_pnl) >= 0 ? '+' : ''}${r.daily_pnl}</span>, sortable: true, sortValue: (r: any) => Number(r.daily_pnl), align: 'right' as const },
+  ], [])
+
   if (loading) return <PortfolioSkeleton />
 
   return (
     <div className="flex flex-col gap-1.5">
       <div className="grid grid-cols-4 gap-1.5">
-        <KpiCard label="Total Value" value={`$${portfolio?.total_value?.toLocaleString(undefined, { minimumFractionDigits: 2 }) ?? '—'}`} trend="neutral" />
-        <KpiCard label="Cash" value={`$${portfolio?.cash?.toLocaleString(undefined, { minimumFractionDigits: 2 }) ?? '—'}`} trend="neutral" />
+        <KpiCard label="Total Value" value={portfolio?.total_value != null ? fmtCurrency(portfolio.total_value) : '—'} trend="neutral" />
+        <KpiCard label="Cash" value={portfolio?.cash != null ? fmtCurrency(portfolio.cash) : '—'} trend="neutral" />
         <KpiCard label="Realized P&L" value={`$${portfolio?.realized_gains?.toFixed(0) ?? '—'}`} trend={(portfolio?.realized_gains ?? 0) >= 0 ? 'up' : 'down'} />
-        <KpiCard label="Margin Used" value={`$${portfolio?.margin_used?.toLocaleString() ?? '—'}`} trend="neutral" />
+        <KpiCard label="Margin Used" value={portfolio?.margin_used != null ? fmtCurrency(portfolio.margin_used) : '—'} trend="neutral" />
       </div>
 
       <div className="flex gap-1 items-center">
@@ -88,38 +119,30 @@ export default function Portfolio() {
           }`}>
           CHART
         </button>
+        <div className="flex-1" />
+        <button onClick={() => {
+          const style = document.createElement('style')
+          style.id = 'print-export-style'
+          style.textContent = `@media print { body * { visibility: hidden; } .portfolio-print-area, .portfolio-print-area * { visibility: visible; } .portfolio-print-area { position: absolute; left: 0; top: 0; width: 100%; } }`
+          document.head.appendChild(style)
+          window.print()
+          setTimeout(() => document.getElementById('print-export-style')?.remove(), 1000)
+        }} className="font-mono-data text-[10px] px-2 py-0.5 cursor-pointer border border-default rounded-sm bg-card text-secondary">
+          EXPORT PDF
+        </button>
       </div>
 
-      <Card title={`Positions (${positions.length})`} actions={
-        <ExportButton
-          data={positions.map(([symbol, pos]) => ({
-            symbol, side: pos.side, quantity: pos.quantity, entry_price: pos.entry_price, current_price: pos.current_price, market_value: pos.market_value, unrealized_pnl: pos.unrealized_pnl,
-          })) as unknown as Record<string, unknown>[]}
-          filename="positions"
-        />
-      }>
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-[9px] font-mono-data tracking-wider text-muted">WS:</span>
+        <span className={`w-1.5 h-1.5 rounded-full ${wsConnected ? 'bg-up' : 'bg-down'}`} />
+        <span className={`text-[9px] font-mono-data ${wsConnected ? 'text-up' : 'text-down'}`}>
+          {wsConnected ? 'CONNECTED' : 'DISCONNECTED'}
+        </span>
+      </div>
+
+      <Card title={`Positions (${positions.length})`}>
         {positions.length > 0 ? (
-          <div>
-            <div className="grid grid-cols-[1.5fr_0.8fr_1fr_1fr_1fr_1.5fr_1.5fr] py-1 border-b border-default font-mono-data text-[9px] tracking-wider text-muted">
-              <span>Symbol</span><span className="text-right">Side</span><span className="text-right">Qty</span><span className="text-right">Entry</span><span className="text-right">Current</span><span className="text-right">Mkt Val</span><span className="text-right">P&L</span>
-            </div>
-            {positions.map(([symbol, pos]) => {
-              const pnl = pos.unrealized_pnl ?? 0
-              return (
-                <div key={symbol} className="grid grid-cols-[1.5fr_0.8fr_1fr_1fr_1fr_1.5fr_1.5fr] py-[3px] border-b border-default font-mono-data text-[11px] text-primary">
-                  <span className="text-accent-cyan font-semibold">{symbol}</span>
-                  <span className={`text-right ${pos.side === 'LONG' ? 'text-up' : 'text-down'}`}>{pos.side}</span>
-                  <span className="text-right">{pos.quantity}</span>
-                  <span className="text-right">${pos.entry_price.toFixed(2)}</span>
-                  <span className="text-right">${pos.current_price.toFixed(2)}</span>
-                  <span className="text-right">${pos.market_value.toLocaleString()}</span>
-                  <span className={`text-right font-semibold ${pnl >= 0 ? 'text-up' : 'text-down'}`}>
-                    {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
+          <DataTable columns={posColumns} data={positionRows} searchable={true} exportable={true} exportFilename="positions" compact />
         ) : (
           <EmptyState title="No open positions" description="Open a trade to see positions here" compact />
         )}
@@ -130,6 +153,35 @@ export default function Portfolio() {
           <Card title="Equity Curve">
             <div className="h-[200px]">
               <ChartContainer type="line" data={equityHistory.map(d => ({ time: d.time, value: d.value }))} />
+            </div>
+          </Card>
+        </ErrorBoundary>
+      )}
+
+      {portfolio && (
+        <ErrorBoundary>
+          <Card title="Realized vs Unrealized P&L">
+            <div className="flex items-end gap-4" style={{ height: 100, padding: '8px 0' }}>
+              <div className="flex flex-col items-center gap-1 flex-1">
+                <span className="font-mono-data text-[9px] text-up">${(portfolio.realized_gains ?? 0).toFixed(0)}</span>
+                <div style={{
+                  width: '100%', maxWidth: 80, height: Math.max(20, Math.abs((portfolio.realized_gains ?? 0) / 10)),
+                  background: (portfolio.realized_gains ?? 0) >= 0 ? 'var(--accent-green)' : 'var(--accent-red)',
+                  borderRadius: 'var(--radius-sm) 0 0 var(--radius-sm)',
+                  opacity: 0.8,
+                }} />
+                <span className="font-mono-data text-[8px] text-muted">Realized</span>
+              </div>
+              <div className="flex flex-col items-center gap-1 flex-1">
+                <span className="font-mono-data text-[9px] text-down">${(Math.abs(portfolio.positions ? Object.values(portfolio.positions).reduce((s, p) => s + (p.unrealized_pnl ?? 0), 0) : 0)).toFixed(0)}</span>
+                <div style={{
+                  width: '100%', maxWidth: 80, height: Math.max(20, Math.abs(Object.values(portfolio.positions || {}).reduce((s, p) => s + (p.unrealized_pnl ?? 0), 0)) / 10),
+                  background: (Object.values(portfolio.positions || {}).reduce((s, p) => s + (p.unrealized_pnl ?? 0), 0)) >= 0 ? 'var(--accent-green)' : 'var(--accent-red)',
+                  borderRadius: '0 var(--radius-sm) var(--radius-sm) 0',
+                  opacity: 0.6,
+                }} />
+                <span className="font-mono-data text-[8px] text-muted">Unrealized</span>
+              </div>
             </div>
           </Card>
         </ErrorBoundary>

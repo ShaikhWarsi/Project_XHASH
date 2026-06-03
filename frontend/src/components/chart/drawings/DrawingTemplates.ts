@@ -76,3 +76,35 @@ export function renameDrawingTemplate(oldName: string, newName: string): boolean
 export function templateExists(name: string): boolean {
   return name in loadTemplates()
 }
+
+// #88 — API sync
+const API_BASE = '/api/workspace/drawings'
+
+export async function syncDrawingsToApi(): Promise<boolean> {
+  try {
+    const templates = loadTemplates()
+    const payload = Object.values(templates).map((t) => ({
+      name: t.name, description: t.description, drawings: t.drawings, created_at: t.createdAt,
+    }))
+    const res = await fetch(API_BASE, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ templates: payload }),
+    })
+    return res.ok
+  } catch { return false }
+}
+
+export async function fetchDrawingsFromApi(): Promise<boolean> {
+  try {
+    const res = await fetch(API_BASE)
+    if (!res.ok) return false
+    const data = await res.json()
+    const templates = data.templates ?? data ?? []
+    const obj: Record<string, DrawingTemplate> = {}
+    for (const t of templates) {
+      obj[t.name] = { name: t.name, description: t.description ?? '', drawings: t.drawings ?? [], createdAt: t.created_at ?? new Date().toISOString() }
+    }
+    if (Object.keys(obj).length > 0) saveTemplates(obj)
+    return true
+  } catch { return false }
+}

@@ -35,7 +35,7 @@ class PositionLimits:
         if leverage > self.limits.max_leverage:
             return False, f"Leverage {leverage:.2f}x > limit {self.limits.max_leverage:.2f}x"
 
-        active_positions = len([p for p in portfolio.positions.values() if p.quantity > 0])
+        active_positions = len([p for p in portfolio.positions.values() if p.quantity != 0])
         if active_positions >= self.limits.max_positions and order.symbol not in portfolio.positions:
             return False, f"Active positions {active_positions} >= limit {self.limits.max_positions}"
 

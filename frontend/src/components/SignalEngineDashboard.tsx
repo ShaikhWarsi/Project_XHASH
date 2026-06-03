@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import Card from './ui/Card'
 import Badge from './ui/Badge'
 import { api } from '../api/client'
+import { useToastStore } from '../store/toast'
 
 const FONT_DATA = { fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }
 const FONT_SM = { fontFamily: "'JetBrains Mono', monospace", fontSize: 10 }
@@ -18,6 +19,20 @@ const INPUT_STYLE: React.CSSProperties = {
   outline: 'none',
   width: '100%',
 }
+
+interface EngineState {
+  id: string
+  enabled: boolean
+  weight: number
+  lastFire: string | null
+  accuracy: number
+}
+
+const INITIAL_ENGINES: EngineState[] = [
+  { id: 'spectre', enabled: true, weight: 80, lastFire: '2 min ago', accuracy: 87 },
+  { id: 'tsfresh', enabled: true, weight: 60, lastFire: '15 min ago', accuracy: 73 },
+  { id: 'rl', enabled: false, weight: 40, lastFire: '1h ago', accuracy: 65 },
+]
 
 function ConfidenceGauge({ label, value, maxValue, color }: { label: string; value: number; maxValue: number; color: string }) {
   const pct = maxValue > 0 ? Math.min(value / maxValue, 1) : 0
@@ -72,6 +87,30 @@ export default function SignalEngineDashboard() {
   const [symbol, setSymbol] = useState('AAPL')
   const [result, setResult] = useState<ResultValue | null>(null)
   const [loading, setLoading] = useState(false)
+  const [engines, setEngines] = useState<EngineState[]>(INITIAL_ENGINES)
+  const addToast = useToastStore((s) => s.addToast)
+
+  const toggleEngine = (id: string) => {
+    setEngines((prev) => prev.map((e) => e.id === id ? { ...e, enabled: !e.enabled } : e))
+  }
+
+  const setWeight = (id: string, weight: number) => {
+    setEngines((prev) => prev.map((e) => e.id === id ? { ...e, weight } : e))
+  }
+
+  const testOnAAPL = async (engineId: string) => {
+    const start = Date.now()
+    addToast(`Testing ${engineId} on AAPL...`, 'info')
+    try {
+      await api.post('/signal/test', { engine: engineId, symbol: 'AAPL' })
+      const elapsed = (Date.now() - start) / 1000
+      setEngines((prev) => prev.map((e) => e.id === engineId ? { ...e, lastFire: 'Just now', enabled: true } : e))
+      addToast(`${engineId} test passed (${elapsed.toFixed(1)}s)`, 'success')
+    } catch (err: any) {
+      const elapsed = (Date.now() - start) / 1000
+      addToast(`${engineId} test failed after ${elapsed.toFixed(1)}s: ${err.message}`, 'error')
+    }
+  }
 
   const runEngine = async () => {
     setLoading(true)
@@ -89,6 +128,7 @@ export default function SignalEngineDashboard() {
       }
       const { data } = await api.post(endpoints[tab], payloads[tab])
       setResult(data)
+      setEngines((prev) => prev.map((e) => e.id === tab ? { ...e, lastFire: 'Just now' } : e))
     } catch (err: any) {
       setResult({ error: err.message })
     }
@@ -152,6 +192,43 @@ export default function SignalEngineDashboard() {
         </div>
       </Card>
 
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div className="font-mono-data text-[10px] font-bold text-up mb-1">ENGINE STATUS</div>
+        {engines.map((engine) => (
+          <div key={engine.id} className="bg-card border border-default rounded px-2.5 py-1.5 font-mono-data text-[10px] flex items-center gap-2">
+            <button onClick={() => toggleEngine(engine.id)}
+              style={{
+                width: 28, height: 14, borderRadius: 7, border: 'none', cursor: 'pointer', position: 'relative',
+                background: engine.enabled ? 'var(--accent-green)' : 'var(--bg-app)',
+                transition: 'background 0.2s',
+              }}>
+              <div style={{
+                width: 10, height: 10, borderRadius: '50%', background: '#fff', position: 'absolute', top: 2,
+                left: engine.enabled ? 16 : 2, transition: 'left 0.2s',
+              }} />
+            </button>
+            <span className="font-semibold text-primary w-[60px]">{engine.id}</span>
+            <div className="flex items-center gap-1 flex-1">
+              <span className="text-muted text-[9px]">Wt:</span>
+              <input type="range" min={0} max={100} value={engine.weight}
+                onChange={(e) => setWeight(engine.id, Number(e.target.value))}
+                className="flex-1 h-1 accent-accent-cyan" style={{ maxWidth: 80 }} />
+              <span className="text-primary w-[28px] text-right">{engine.weight}%</span>
+            </div>
+            <span className="text-muted text-[9px]">Last: {engine.lastFire || 'Never'}</span>
+            <span className="text-muted text-[9px]">Acc: </span>
+            <span className="text-primary font-semibold">{engine.accuracy}%</span>
+            <button onClick={() => testOnAAPL(engine.id)}
+              style={{
+                background: 'var(--accent-cyan)', color: '#000', border: 'none',
+                padding: '2px 8px', cursor: 'pointer', ...FONT_SM, fontSize: 9, fontWeight: 600, borderRadius: 2,
+              }}>
+              TEST ON AAPL
+            </button>
+          </div>
+        ))}
+      </div>
+
       <Card title="RESULTS">
         {!result && !loading && (
           <div style={{ padding: 12, textAlign: 'center', ...FONT_SM, color: 'var(--text-muted)' }}>
@@ -212,7 +289,7 @@ export default function SignalEngineDashboard() {
                   {metrics.entries.map(([k, v]) => (
                     isNumeric(v) ? (
                       <div key={k} style={{ textAlign: 'center', padding: '6px 4px', background: 'var(--bg-hover)', borderRadius: 'var(--radius-sm)' }}>
-                        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', ...FONT_DATA }}>{v.toFixed(2)}</div>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace" }}>{v.toFixed(2)}</div>
                         <div style={{ ...FONT_LABEL, color: 'var(--text-muted)', marginTop: 2 }}>{k.replace(/_/g, ' ')}</div>
                       </div>
                     ) : null

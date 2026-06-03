@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, Plus, X, FlaskConical, TrendingUp, TrendingDown, Activity } from 'lucide-react'
+import { Search, Plus, X, FlaskConical } from 'lucide-react'
 
 interface Hypothesis {
   id: string

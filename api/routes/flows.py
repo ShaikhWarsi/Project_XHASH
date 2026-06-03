@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -35,9 +35,11 @@ router = APIRouter(prefix="/flows", tags=["flows"])
 @router.post("/", response_model=FlowResponse, responses={400: {"model": ErrorResponse}})
 async def create_flow(request: FlowCreateRequest, db: AsyncSession = Depends(get_session)):
     try:
+        flow_type = request.flow_type or "hedge_fund"
         flow = HedgeFundFlow(
             name=request.name,
             description=request.description or "",
+            flow_type=flow_type,
             tickers=json.dumps([_validate_node_data(n.data).get("ticker") for n in request.nodes if _validate_node_data(n.data).get("ticker")]),
             agents=json.dumps([_validate_node_data(n.data).get("agent_key") for n in request.nodes if _validate_node_data(n.data).get("agent_key")]),
             config_json=json.dumps({
@@ -46,10 +48,10 @@ async def create_flow(request: FlowCreateRequest, db: AsyncSession = Depends(get
                 "viewport": request.viewport,
                 "data": request.data,
                 "tags": request.tags or [],
-            }),
+            }, default=str),
             is_active=1,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
         db.add(flow)
         await db.commit()
@@ -65,31 +67,42 @@ async def get_flows(
     db: AsyncSession = Depends(get_session),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    flow_type: str | None = Query(None, description="Filter by flow type: hedge_fund or workflow_lab"),
 ):
-    result = await db.execute(
-        select(HedgeFundFlow).order_by(HedgeFundFlow.updated_at.desc()).offset(offset).limit(limit)
-    )
-    flows = result.scalars().all()
-    return [
-        FlowSummaryResponse(
-            id=f.id,
-            name=f.name,
-            description=f.description,
-            is_template=False,
-            created_at=f.created_at,
-            updated_at=f.updated_at,
-        )
-        for f in flows
-    ]
+    try:
+        query = select(HedgeFundFlow)
+        if flow_type:
+            query = query.where(HedgeFundFlow.flow_type == flow_type)
+        query = query.order_by(HedgeFundFlow.updated_at.desc()).offset(offset).limit(limit)
+        result = await db.execute(query)
+        flows = result.scalars().all()
+        return [
+            FlowSummaryResponse(
+                id=f.id,
+                name=f.name,
+                description=f.description,
+                is_template=False,
+                created_at=f.created_at,
+                updated_at=f.updated_at,
+            )
+            for f in flows
+        ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/{flow_id}", response_model=FlowResponse)
 async def get_flow(flow_id: int, db: AsyncSession = Depends(get_session)):
-    result = await db.execute(select(HedgeFundFlow).where(HedgeFundFlow.id == flow_id))
-    flow = result.scalar_one_or_none()
-    if not flow:
-        raise HTTPException(status_code=404, detail="Flow not found")
-    return _flow_to_response(flow)
+    try:
+        result = await db.execute(select(HedgeFundFlow).where(HedgeFundFlow.id == flow_id))
+        flow = result.scalar_one_or_none()
+        if not flow:
+            raise HTTPException(status_code=404, detail="Flow not found")
+        return _flow_to_response(flow)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.put("/{flow_id}", response_model=FlowResponse)
@@ -104,6 +117,8 @@ async def update_flow(flow_id: int, request: FlowUpdateRequest, db: AsyncSession
             flow.name = request.name
         if request.description is not None:
             flow.description = request.description
+        if request.flow_type is not None:
+            flow.flow_type = request.flow_type
         if request.nodes is not None:
             flow.tickers = json.dumps([_validate_node_data(n.data).get("ticker") for n in request.nodes if _validate_node_data(n.data).get("ticker")])
             flow.agents = json.dumps([_validate_node_data(n.data).get("agent_key") for n in request.nodes if _validate_node_data(n.data).get("agent_key")])
@@ -118,7 +133,7 @@ async def update_flow(flow_id: int, request: FlowUpdateRequest, db: AsyncSession
             if request.data is not None:
                 config["data"] = request.data
             flow.config_json = json.dumps(config)
-        flow.updated_at = datetime.utcnow()
+        flow.updated_at = datetime.now(timezone.utc)
         await db.commit()
         await db.refresh(flow)
         return _flow_to_response(flow)
@@ -129,13 +144,19 @@ async def update_flow(flow_id: int, request: FlowUpdateRequest, db: AsyncSession
 
 @router.delete("/{flow_id}")
 async def delete_flow(flow_id: int, db: AsyncSession = Depends(get_session)):
-    result = await db.execute(select(HedgeFundFlow).where(HedgeFundFlow.id == flow_id))
-    flow = result.scalar_one_or_none()
-    if not flow:
-        raise HTTPException(status_code=404, detail="Flow not found")
-    await db.delete(flow)
-    await db.commit()
-    return {"message": "Flow deleted"}
+    try:
+        result = await db.execute(select(HedgeFundFlow).where(HedgeFundFlow.id == flow_id))
+        flow = result.scalar_one_or_none()
+        if not flow:
+            raise HTTPException(status_code=404, detail="Flow not found")
+        await db.delete(flow)
+        await db.commit()
+        return {"message": "Flow deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 def _safe_json(val):
@@ -153,6 +174,7 @@ def _flow_to_response(flow: HedgeFundFlow) -> FlowResponse:
         id=flow.id,
         name=flow.name,
         description=flow.description,
+        flow_type=flow.flow_type or "hedge_fund",
         nodes=config.get("nodes", []),
         edges=config.get("edges", []),
         viewport=config.get("viewport"),

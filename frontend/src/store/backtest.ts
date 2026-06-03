@@ -80,6 +80,11 @@ export const useBacktestStore = create<BacktestStore>()(
           const result = await runBacktest(body as any)
           set({ result, running: false })
           eventBus.emit(EVENTS.BACKTEST_COMPLETE, result)
+          try {
+            const channel = new BroadcastChannel('te-sync')
+            channel.postMessage({ type: 'BACKTEST_COMPLETE', payload: { total_return: result.total_return, sharpe: result.sharpe_ratio }, tabId: 'backtest', timestamp: Date.now() })
+            channel.close()
+          } catch {}
         } catch (err) {
           set({ error: String(err), running: false })
         }

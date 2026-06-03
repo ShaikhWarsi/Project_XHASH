@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Download, Trash2, Search, Share2, Upload, Star } from 'lucide-react'
-import Badge from '../components/ui/Badge'
+// import Badge from '../components/ui/Badge'
 import { useToastStore } from '../store/toast'
 
 interface Plugin {
@@ -117,11 +117,20 @@ export default function Plugins() {
   const importFromClipboard = useCallback(async () => {
     try {
       const text = await navigator.clipboard.readText()
-      const data = JSON.parse(text) as SharedStrategy
+      const raw = JSON.parse(text)
+      if (!raw || typeof raw !== 'object' || typeof raw.name !== 'string' || typeof raw.type !== 'string') throw new Error()
+      const data: Partial<SharedStrategy> = {
+        name: raw.name.slice(0, 100),
+        type: raw.type.slice(0, 50),
+        description: typeof raw.description === 'string' ? raw.description.slice(0, 500) : '',
+        author: typeof raw.author === 'string' ? raw.author.slice(0, 50) : '',
+        config: raw.config && typeof raw.config === 'object' ? raw.config : {},
+      }
       if (data.name && data.type) {
         setCommunity((prev) => {
           if (prev.find((s) => s.name === data.name && s.author === data.author)) return prev
-          return [{ ...data, id: Date.now().toString(36), stars: 0, sharedAt: new Date().toISOString() }, ...prev]
+          const newStrategy: SharedStrategy = { id: Date.now().toString(36), name: data.name ?? '', author: data.author ?? '', type: data.type ?? '', description: data.description ?? '', config: data.config ?? '', stars: 0, sharedAt: new Date().toISOString() }
+          return [newStrategy, ...prev]
         })
         addToast(`Imported "${data.name}" from clipboard`, 'success')
       }
@@ -146,6 +155,10 @@ export default function Plugins() {
     (s) => s.name.toLowerCase().includes(search.toLowerCase()) || s.description.toLowerCase().includes(search.toLowerCase())
   ).sort((a, b) => (b.stars || 0) - (a.stars || 0))
 
+  const totalPlugins = installed.length
+  const enabledCount = installed.filter((p) => p.enabled).length
+  const disabledCount = totalPlugins - enabledCount
+
   return (
     <div className="flex flex-col h-full gap-1.5">
       <div className="flex items-center gap-2 py-1">
@@ -168,6 +181,26 @@ export default function Plugins() {
             className={`font-mono-data text-[10px] px-2 py-0.5 cursor-pointer border border-default rounded-sm ${activeTab === 'community' ? 'bg-accent-cyan text-black' : 'bg-card text-primary'}`}>
             COMMUNITY ({community.length})
           </button>
+        </div>
+      </div>
+
+      <div className="bg-card border border-default rounded p-2 font-mono-data text-[10px]">
+        <div className="font-bold text-up mb-1 text-[10px]">PLUGIN STATS</div>
+        <div className="flex gap-4">
+          <div className="flex items-center gap-1">
+            <span className="text-muted">Total:</span>
+            <span className="font-bold text-primary">{totalPlugins}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded-full bg-accent-green" />
+            <span className="text-muted">Enabled:</span>
+            <span className="font-bold text-up">{enabledCount}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded-full" style={{ background: 'var(--text-muted)' }} />
+            <span className="text-muted">Disabled:</span>
+            <span className="font-bold text-muted">{disabledCount}</span>
+          </div>
         </div>
       </div>
 

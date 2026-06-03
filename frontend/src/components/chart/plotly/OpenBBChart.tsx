@@ -1,146 +1,59 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 
 interface OpenBBChartProps {
-  figureJSON: { data: any[]; layout: any; config?: any } | null
+  figureJSON: any
   style?: React.CSSProperties
 }
 
 export default function OpenBBChart({ figureJSON, style }: OpenBBChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const plotlyRef = useRef<any>(null)
-  const [plotlyError, setPlotlyError] = useState(false)
 
   useEffect(() => {
     if (!containerRef.current || !figureJSON) return
-
     let cancelled = false
-    let plotlyImport: any = null
-
-    async function render() {
+    const render = async () => {
       try {
-        // @ts-ignore
-        plotlyImport = await import('plotly.js-dist-min')
-      } catch {
-        setPlotlyError(true)
-        return
-      }
-      setPlotlyError(false)
-      if (cancelled || !containerRef.current) return
-      const Plotly = plotlyImport
-      const fig = figureJSON!
-
-      const layout = {
-        ...fig.layout,
-        dragmode: 'zoom',
-        hovermode: 'x unified',
-        hoverdistance: 100,
-        spikedistance: 100,
-        hoverlabel: {
-          bgcolor: '#0d1117',
-          bordercolor: '#1a2332',
-          font: { color: '#e6edf3', family: 'JetBrains Mono, monospace', size: 10 },
-        },
-        paper_bgcolor: '#0a0e14',
-        plot_bgcolor: '#0a0e14',
-        font: { color: '#8b95a5', family: 'JetBrains Mono, monospace' },
-        margin: { l: 50, r: 10, b: 30, t: 30 },
-        modebar: {
-          orientation: 'h',
-          bgcolor: 'rgba(10,14,20,0.9)',
-          color: '#5d6b7e',
-          activecolor: 'var(--accent-blue)',
-        },
-      }
-
-      if (fig.layout?.xaxis) {
-        layout.xaxis = {
-          ...fig.layout.xaxis,
-          rangeselector: undefined,
-          rangeslider: undefined,
-        }
-      }
-
-      for (const key of Object.keys(fig.layout || {})) {
-        if (key.startsWith('xaxis') && key !== 'xaxis') {
-          layout[key] = {
-            ...fig.layout[key],
-            rangeselector: undefined,
-            rangeslider: undefined,
-          }
-        }
-      }
-
-      const config = {
-        scrollZoom: true,
-        displayModeBar: true,
-        displaylogo: false,
-        responsive: true,
-        modeBarButtonsToRemove: ['sendDataToCloud', 'lasso2d', 'select2d'],
-        modeBarButtons: [
-          ['zoom2d', 'pan2d'],
-          ['zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
-          ['hoverClosestCartesian', 'hoverCompareCartesian'],
-          ['toggleSpikelines'],
-        ],
-      }
-
-      if (plotlyRef.current) {
-        await Plotly.react(containerRef.current, fig.data, layout, config)
-      } else {
-        plotlyRef.current = await Plotly.newPlot(containerRef.current, fig.data, layout, config)
-      }
+        const mod = await import('plotly.js-dist-min')
+        const Plotly = (mod as any).default || mod
+        if (cancelled) return
+        plotlyRef.current = Plotly
+        const frames = figureJSON.frames || figureJSON.data?.frames
+        const data = figureJSON.data || []
+        const layout = figureJSON.layout || {}
+        await Plotly.newPlot(containerRef.current, data, layout, {
+          responsive: true, displayModeBar: false,
+        })
+      } catch { console.debug('[OpenBBChart] render failed') }
     }
-
     render()
+    return () => { cancelled = true }
+  }, [figureJSON])
 
+  useEffect(() => {
     const handleResize = async () => {
       if (!plotlyRef.current || !containerRef.current) return
       try {
-        const Plotly = plotlyImport || await import('plotly.js-dist-min')
-        // @ts-ignore
+        const mod = plotlyRef.current || (await import('plotly.js-dist-min'))
+        const Plotly = (mod as any).default || mod
         Plotly.Plots.resize(containerRef.current)
       } catch { console.debug('[OpenBBChart] resize failed') }
     }
     window.addEventListener('resize', handleResize)
-
     return () => {
-      cancelled = true
       window.removeEventListener('resize', handleResize)
-      if (plotlyRef.current) {
+      if (containerRef.current) {
         try {
-          // @ts-ignore
-          import('plotly.js-dist-min').then((Plotly) => {
+          import('plotly.js-dist-min').then((mod: any) => {
+            const Plotly = mod.default || mod
             Plotly.purge(containerRef.current)
           })
-        } catch { console.debug('[OpenBBChart] purge failed') }
-        plotlyRef.current = null
+        } catch { /* silent */ }
       }
     }
-  }, [figureJSON])
-
-  if (plotlyError) {
-    return (
-      <div style={{
-        width: '100%', height: '100%', minHeight: 400, ...style,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'var(--bg-secondary, #0a0e14)',
-        color: 'var(--text-muted, #5d6b7e)',
-        fontFamily: 'JetBrains Mono, monospace', fontSize: 11,
-      }}>
-        <span>Failed to load chart library (Plotly)</span>
-      </div>
-    )
-  }
+  }, [])
 
   return (
-    <div
-      ref={containerRef}
-      style={{
-        width: '100%',
-        height: '100%',
-        minHeight: 400,
-        ...style,
-      }}
-    />
+    <div ref={containerRef} style={{ width: '100%', height: '100%', ...style }} />
   )
 }

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 try:
@@ -200,7 +200,7 @@ if MCP_AVAILABLE:
                     import pandas as pd
                     from data.registry import ProviderRegistry
                     from core.enums import Timeframe
-                    from datetime import datetime, timedelta
+                    from datetime import datetime, timezone, timedelta
 
                     symbol = arguments.get("symbol", "SPY")
                     market = arguments.get("market", "USStock")
@@ -208,7 +208,7 @@ if MCP_AVAILABLE:
 
                     provider = ProviderRegistry.get("yfinance")
                     tf = Timeframe(timeframe) if hasattr(Timeframe, timeframe) else Timeframe("1d")
-                    bars = provider.fetch_bars(symbol=symbol, timeframe=tf, start=datetime.utcnow() - timedelta(days=180), end=datetime.utcnow())
+                    bars = provider.fetch_bars(symbol=symbol, timeframe=tf, start=datetime.now(timezone.utc) - timedelta(days=180), end=datetime.now(timezone.utc))
 
                     if bars is not None and not bars.empty:
                         service = MarketRegimeService()

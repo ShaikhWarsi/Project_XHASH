@@ -318,9 +318,14 @@ class WalkForwardMetaLabeler:
         n = len(trades)
         trade_signals = np.zeros(n, dtype=int)
         trade_probs = np.zeros(n, dtype=float)
+        if n == 0:
+            return trade_signals, trade_probs
 
         entry_order = np.argsort(entry_i)
         sorted_entry = entry_i[entry_order]
+        # Validate temporal ordering — future entry_i must not appear before past
+        if not np.all(np.diff(sorted_entry) >= 0):
+            raise ValueError("entry_i is not monotonically increasing; time-based split is unsafe")
         sorted_X = X[entry_order]
         sorted_y = y[entry_order]
 

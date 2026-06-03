@@ -2,7 +2,7 @@ import { INDICATOR_COMPUTE } from '../compute'
 import type { SingleLineOutput, MultiLineOutput, IndicatorInput } from '../compute/types'
 import { indicator } from '../IndicatorPlugin'
 
-const { rsi: computeRSI, macd: computeMACD, stochastic: computeStochastic, psar: computePSAR } = INDICATOR_COMPUTE
+const { rsi: computeRSI, macd: computeMACD, stochastic: computeStochastic, psar: computePSAR, elliottWave: computeElliottWave, mfi: computeMFI, twap: computeTWAP, squeeze: computeSqueeze, rangeFilter: computeRangeFilter, volumeOscillator: computeVolumeOscillator, priceOscillator: computePriceOscillator, adOscillator: computeADOscillator, wildersSmoothing: computeWildersSmoothing } = INDICATOR_COMPUTE
 
 indicator({
   id: 'rsi',
@@ -46,9 +46,9 @@ indicator({
   outputType: 'multi_line',
   paneType: 'separate',
   color: '#3b82f6',
-  computeFn: (data: IndicatorInput[], params) => computeMACD(data, params.fastPeriod as number, params.slowPeriod as number, params.signalPeriod as number) as MultiLineOutput[],
+  computeFn: (data: IndicatorInput[], params) => computeMACD(data, params.fastPeriod as number, params.slowPeriod as number, params.signalPeriod as number) as unknown as MultiLineOutput[],
   signals: (_data, output, _params) => {
-    const results = output as MultiLineOutput[]
+    const results = output as unknown as MultiLineOutput[]
     if (results.length < 3) return []
     const curr = results[results.length - 1]
     const prev = results[results.length - 2]
@@ -78,7 +78,7 @@ indicator({
   outputType: 'multi_line',
   paneType: 'separate',
   color: '#8b5cf6',
-  computeFn: (data: IndicatorInput[], params) => computeStochastic(data, params.kPeriod as number, params.dPeriod as number) as MultiLineOutput[],
+  computeFn: (data: IndicatorInput[], params) => computeStochastic(data, params.kPeriod as number, params.dPeriod as number) as unknown as MultiLineOutput[],
 })
 
 indicator({
@@ -95,4 +95,140 @@ indicator({
   paneType: 'overlay',
   color: '#10b981',
   computeFn: (data: IndicatorInput[], params) => computePSAR(data, params.step as number, params.maxStep as number) as SingleLineOutput[],
+})
+
+indicator({
+  id: 'elliottWave',
+  name: 'Elliott Wave',
+  description: 'Elliott Wave Pattern Detection',
+  category: 'volatility',
+  defaultParams: {},
+  paramsMeta: {},
+  outputType: 'line',
+  paneType: 'overlay',
+  color: '#f43f5e',
+  computeFn: (data: IndicatorInput[], _params) => computeElliottWave(data) as unknown as SingleLineOutput[],
+})
+
+indicator({
+  id: 'mfi',
+  name: 'MFI',
+  description: 'Money Flow Index',
+  category: 'momentum',
+  defaultParams: { period: 14 },
+  paramsMeta: {
+    period: { label: 'Period', type: 'int', min: 1, max: 100, default: 14 },
+  },
+  outputType: 'line',
+  paneType: 'separate',
+  color: '#14b8a6',
+  computeFn: (data: IndicatorInput[], params) => computeMFI(data, params.period as number) as SingleLineOutput[],
+})
+
+indicator({
+  id: 'twap',
+  name: 'TWAP',
+  description: 'Time-Weighted Average Price',
+  category: 'overlap',
+  defaultParams: {},
+  paramsMeta: {},
+  outputType: 'line',
+  paneType: 'overlay',
+  color: '#f43f5e',
+  computeFn: (data: IndicatorInput[], _params) => computeTWAP(data) as SingleLineOutput[],
+})
+
+indicator({
+  id: 'squeeze',
+  name: 'Squeeze',
+  description: 'Squeeze Momentum Indicator',
+  category: 'volatility',
+  defaultParams: { period: 20, bbStd: 2, kcMult: 1.5 },
+  paramsMeta: {
+    period: { label: 'Period', type: 'int', min: 5, max: 100, default: 20 },
+    bbStd: { label: 'BB Std', type: 'float', min: 1, max: 4, default: 2 },
+    kcMult: { label: 'KC Mult', type: 'float', min: 0.5, max: 3, default: 1.5 },
+  },
+  outputType: 'multi_line',
+  paneType: 'separate',
+  color: '#8b5cf6',
+  computeFn: (data: IndicatorInput[], params) => computeSqueeze(data, params.period as number, params.bbStd as number, params.kcMult as number) as unknown as MultiLineOutput[],
+})
+
+indicator({
+  id: 'rangeFilter',
+  name: 'Range Filter',
+  description: 'Range Filter Indicator',
+  category: 'overlap',
+  defaultParams: { period: 14, mult: 2 },
+  paramsMeta: {
+    period: { label: 'Period', type: 'int', min: 3, max: 100, default: 14 },
+    mult: { label: 'Multiplier', type: 'float', min: 0.5, max: 5, default: 2 },
+  },
+  outputType: 'line',
+  paneType: 'overlay',
+  color: '#06b6d4',
+  computeFn: (data: IndicatorInput[], params) => computeRangeFilter(data, params.period as number, params.mult as number) as SingleLineOutput[],
+})
+
+indicator({
+  id: 'volumeOscillator',
+  name: 'Volume Osc',
+  description: 'Volume Oscillator',
+  category: 'volume',
+  defaultParams: { fastPeriod: 5, slowPeriod: 13 },
+  paramsMeta: {
+    fastPeriod: { label: 'Fast', type: 'int', min: 2, max: 50, default: 5 },
+    slowPeriod: { label: 'Slow', type: 'int', min: 5, max: 100, default: 13 },
+  },
+  outputType: 'line',
+  paneType: 'separate',
+  color: '#22c55e',
+  computeFn: (data: IndicatorInput[], params) => computeVolumeOscillator(data, params.fastPeriod as number, params.slowPeriod as number) as SingleLineOutput[],
+})
+
+indicator({
+  id: 'priceOscillator',
+  name: 'Price Osc',
+  description: 'Price Oscillator',
+  category: 'momentum',
+  defaultParams: { fastPeriod: 12, slowPeriod: 26 },
+  paramsMeta: {
+    fastPeriod: { label: 'Fast', type: 'int', min: 2, max: 50, default: 12 },
+    slowPeriod: { label: 'Slow', type: 'int', min: 5, max: 100, default: 26 },
+  },
+  outputType: 'line',
+  paneType: 'separate',
+  color: '#f97316',
+  computeFn: (data: IndicatorInput[], params) => computePriceOscillator(data, params.fastPeriod as number, params.slowPeriod as number) as SingleLineOutput[],
+})
+
+indicator({
+  id: 'adOscillator',
+  name: 'A/D Osc',
+  description: 'Accumulation/Distribution Oscillator',
+  category: 'volume',
+  defaultParams: { period: 14 },
+  paramsMeta: {
+    period: { label: 'Period', type: 'int', min: 3, max: 100, default: 14 },
+  },
+  outputType: 'line',
+  paneType: 'separate',
+  color: '#a855f7',
+  computeFn: (data: IndicatorInput[], params) => computeADOscillator(data, params.period as number) as SingleLineOutput[],
+})
+
+indicator({
+  id: 'wildersSmoothing',
+  name: 'Wilders Smooth',
+  description: "Wilder's Smoothing",
+  category: 'overlap',
+  defaultParams: { period: 14 },
+  paramsMeta: {
+    period: { label: 'Period', type: 'int', min: 2, max: 100, default: 14 },
+  },
+  outputType: 'line',
+  paneType: 'overlay',
+  color: '#ec4899',
+  computeFn: (data: IndicatorInput[], params) => computeWildersSmoothing(data, params.period as number) as SingleLineOutput[],
 })

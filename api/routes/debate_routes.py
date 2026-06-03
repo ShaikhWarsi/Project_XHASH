@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from api.services.debate import DebateService, DebateConfig
 
@@ -11,19 +11,26 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/debate", tags=["debate"])
 
+_VALID_AGENTS = {"momentum", "technicals", "sentiment", "value", "risk", "fundamentals", "growth", "macro"}
+
 
 @router.post("/run")
 async def run_debate(
     symbol: str,
-    max_rounds: int = 3,
-    bull_agents: str = "momentum,technicals,sentiment",
-    bear_agents: str = "value,risk,fundamentals",
+    max_rounds: int = Query(default=3, ge=1, le=10),
+    bull_agents: str = Query(default="momentum,technicals,sentiment"),
+    bear_agents: str = Query(default="value,risk,fundamentals"),
 ):
+    bull = [a.strip() for a in bull_agents.split(",") if a.strip()]
+    bear = [a.strip() for a in bear_agents.split(",") if a.strip()]
+    for a in bull + bear:
+        if a not in _VALID_AGENTS:
+            raise HTTPException(400, f"Unknown agent '{a}'. Valid: {sorted(_VALID_AGENTS)}")
     config = DebateConfig(
         symbol=symbol,
         max_rounds=max_rounds,
-        bull_agents=[a.strip() for a in bull_agents.split(",") if a.strip()],
-        bear_agents=[a.strip() for a in bear_agents.split(",") if a.strip()],
+        bull_agents=bull,
+        bear_agents=bear,
     )
     service = DebateService(config)
     final_round = await service.run_debate()
@@ -51,15 +58,20 @@ async def run_debate(
 @router.post("/multi-round")
 async def multi_round_debate(
     symbol: str,
-    rounds: int = 3,
-    bull_agents: str = "momentum,technicals,sentiment",
-    bear_agents: str = "value,risk,fundamentals",
+    rounds: int = Query(default=3, ge=1, le=10),
+    bull_agents: str = Query(default="momentum,technicals,sentiment"),
+    bear_agents: str = Query(default="value,risk,fundamentals"),
 ):
+    bull = [a.strip() for a in bull_agents.split(",") if a.strip()]
+    bear = [a.strip() for a in bear_agents.split(",") if a.strip()]
+    for a in bull + bear:
+        if a not in _VALID_AGENTS:
+            raise HTTPException(400, f"Unknown agent '{a}'. Valid: {sorted(_VALID_AGENTS)}")
     config = DebateConfig(
         symbol=symbol,
         max_rounds=rounds,
-        bull_agents=[a.strip() for a in bull_agents.split(",") if a.strip()],
-        bear_agents=[a.strip() for a in bear_agents.split(",") if a.strip()],
+        bull_agents=bull,
+        bear_agents=bear,
     )
     service = DebateService(config)
     prev_round = await service.run_debate()

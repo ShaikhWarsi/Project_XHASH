@@ -19,9 +19,9 @@ class StopLossTracker:
         stop = self._stop_levels.get(order.symbol)
         if stop is None:
             return True, ""
-        if order.side in (OrderSide.BUY, OrderSide.COVER) and price >= stop:
+        if order.side in (OrderSide.BUY, OrderSide.COVER) and price <= stop:
             return True, ""
-        if order.side in (OrderSide.SELL, OrderSide.SHORT) and price <= stop:
+        if order.side in (OrderSide.SELL, OrderSide.SHORT) and price >= stop:
             return True, ""
         return False, f"Stop loss {stop:.2f} hit for {order.symbol}"
 

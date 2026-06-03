@@ -35,7 +35,7 @@ export async function fetchWorkflow(id: string): Promise<WorkflowDefinition> {
   return res.json()
 }
 
-export async function runWorkflow(id: string, params?: Record<string, any>): Promise<WorkflowRun> {
+export async function runWorkflow(_id: string, params?: Record<string, any>): Promise<WorkflowRun> {
   const symbol = params?.symbol || 'AAPL'
   const res = await fetch(`/api/workflows/run?symbol=${encodeURIComponent(symbol)}`, {
     method: 'POST',
@@ -47,7 +47,7 @@ export async function runWorkflow(id: string, params?: Record<string, any>): Pro
 
 export async function fetchWorkflowRuns(id: string): Promise<{ runs: WorkflowRun[] }> {
   const workflow = await fetchWorkflow(id)
-  return { runs: workflow ? [{ id, workflow_id: id, status: workflow.status || 'completed', started_at: workflow.created_at || new Date().toISOString() }] : [] }
+  return { runs: workflow ? [{ id, workflow_id: id, status: (workflow as any).status || 'completed', started_at: workflow.created_at || new Date().toISOString() }] : [] }
 }
 
 export async function fetchProviders(): Promise<{ providers: { name: string; type: string; enabled: boolean; status: string }[] }> {

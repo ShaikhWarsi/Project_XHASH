@@ -1,71 +1,56 @@
 import { useEffect, useRef, useState } from 'react'
+import { useWebSocket } from '../../hooks/useWebSocket'
 
 interface Trade {
-  id: number
   time: string
   price: number
   size: number
-  exchange: string
   side: 'buy' | 'sell' | 'neutral'
-}
-
-const EXCHANGES = ['NYSE', 'NASDAQ', 'CME', 'BATS', 'ARCA']
-const MAX_TRADES = 50
-
-function randomElement<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)]
-}
-
-function generateTrade(basePrice: number, id: number): Trade {
-  const now = new Date()
-  const time = now.toLocaleTimeString('en-US', { hour12: false })
-  const price = basePrice * (1 + (Math.random() - 0.5) * 0.002)
-  const size = Math.round(Math.random() * 1000 + 100)
-  const exchange = randomElement(EXCHANGES)
-  const side = price > basePrice ? 'buy' : price < basePrice ? 'sell' : 'neutral'
-  return { id, time, price: Math.round(price * 100) / 100, size, exchange, side }
 }
 
 interface TimeAndSalesProps {
   basePrice: number
+  symbol?: string
   onClose: () => void
 }
 
-export default function TimeAndSales({ basePrice, onClose }: TimeAndSalesProps) {
+export default function TimeAndSales({ basePrice, symbol, onClose }: TimeAndSalesProps) {
   const [trades, setTrades] = useState<Trade[]>([])
-  const idRef = useRef(0)
+  const [filter, setFilter] = useState<'all' | 'buy' | 'sell' | 'neutral'>('all')
   const listRef = useRef<HTMLDivElement>(null)
-  const isOpen = true
+  const pendingTradesRef = useRef<Trade[]>([])
+  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const wsUrl = symbol ? `/ws/trades/${symbol.toUpperCase()}` : ''
+  const { lastData } = useWebSocket<{ type: string; data: { price: number; size: number; time: string; side: string }[] }>(wsUrl, { maxRetries: 3, retryDelay: 5000 })
 
   useEffect(() => {
-
-    const schedule = () => {
-      const delay = 500 + Math.random() * 1500
-      return setTimeout(() => {
-        const newTrade = generateTrade(basePrice, idRef.current++)
-        setTrades((prev) => [newTrade, ...prev].slice(0, MAX_TRADES))
-        scheduleRef = schedule()
-      }, delay)
+    if (lastData?.type === 'trades' && lastData?.data && Array.isArray(lastData.data)) {
+      const newTrades: Trade[] = lastData.data.map(t => ({
+        price: t.price,
+        size: t.size,
+        time: t.time || new Date().toLocaleTimeString(),
+        side: (t.side === 'buy' || t.side === 'sell') ? t.side : 'neutral',
+      }))
+      pendingTradesRef.current = [...newTrades, ...pendingTradesRef.current].slice(0, 200)
+      if (!flushTimerRef.current) {
+        flushTimerRef.current = setTimeout(() => {
+          setTrades(pendingTradesRef.current)
+          pendingTradesRef.current = []
+          flushTimerRef.current = null
+        }, 200)
+      }
     }
-
-    let scheduleRef = schedule()
-    return () => clearTimeout(scheduleRef)
-  }, [basePrice])
-
-  useEffect(() => {
-    if (listRef.current) {
-      listRef.current.scrollTop = 0
-    }
-  }, [trades.length])
+  }, [lastData])
 
   return (
     <div
       style={{
-        width: isOpen ? '220px' : '0px',
-        minWidth: isOpen ? '220px' : '0px',
+        width: '220px',
+        minWidth: '220px',
         overflow: 'hidden',
         background: '#0a0f1a',
-        borderLeft: isOpen ? '1px solid #1a2744' : 'none',
+        borderLeft: '1px solid #1a2744',
         display: 'flex',
         flexDirection: 'column',
         transition: 'width 0.2s ease, min-width 0.2s ease',
@@ -104,6 +89,21 @@ export default function TimeAndSales({ basePrice, onClose }: TimeAndSalesProps) 
           &#x2715;
         </button>
       </div>
+      <div style={{
+        display: 'flex', gap: 2, padding: '2px 6px', borderBottom: '1px solid #1a2744', flexShrink: 0,
+      }}>
+        {(['all', 'buy', 'sell'] as const).map((f) => (
+          <button key={f} onClick={() => setFilter(f)}
+            style={{
+              flex: 1, fontSize: 8, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px',
+              background: filter === f ? (f === 'buy' ? '#22c55e30' : f === 'sell' ? '#ef444430' : '#8892a630') : 'transparent',
+              color: filter === f ? (f === 'buy' ? '#22c55e' : f === 'sell' ? '#ef4444' : '#e2e8f0') : '#8892a6',
+              border: `1px solid ${filter === f ? (f === 'buy' ? '#22c55e' : f === 'sell' ? '#ef4444' : '#8892a6') : '#1a2744'}`,
+              cursor: 'pointer', padding: '2px 4px', borderRadius: 2,
+            }}
+          >{f === 'all' ? 'ALL' : f === 'buy' ? 'BUY' : 'SELL'}</button>
+        ))}
+      </div>
       <div
         style={{
           display: 'flex',
@@ -120,7 +120,7 @@ export default function TimeAndSales({ basePrice, onClose }: TimeAndSalesProps) 
         <span style={{ width: '55px', flexShrink: 0 }}>Time</span>
         <span style={{ width: '55px', flexShrink: 0, textAlign: 'right' }}>Price</span>
         <span style={{ width: '50px', flexShrink: 0, textAlign: 'right' }}>Size</span>
-        <span style={{ flex: 1, textAlign: 'right' }}>Exch</span>
+        <span style={{ flex: 1, textAlign: 'right' }}>Side</span>
       </div>
       <div
         ref={listRef}
@@ -130,13 +130,13 @@ export default function TimeAndSales({ basePrice, onClose }: TimeAndSalesProps) 
           overflowX: 'hidden',
         }}
       >
-        {trades.map((trade, i) => {
+        {trades.filter((t) => filter === 'all' || t.side === filter).map((trade, i) => {
           const sideColor = trade.side === 'buy' ? '#22c55e' : trade.side === 'sell' ? '#ef4444' : '#8892a6'
           const isNew = i < 3
 
           return (
             <div
-              key={trade.id}
+              key={i}
               style={{
                 display: 'flex',
                 padding: '2px 8px',
@@ -164,7 +164,7 @@ export default function TimeAndSales({ basePrice, onClose }: TimeAndSalesProps) 
                 {trade.size.toLocaleString()}
               </span>
               <span style={{ flex: 1, textAlign: 'right', color: '#8892a6', fontSize: '8px' }}>
-                {trade.exchange}
+                {trade.side === 'buy' ? 'B' : trade.side === 'sell' ? 'S' : '-'}
               </span>
             </div>
           )

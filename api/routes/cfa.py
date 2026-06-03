@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Optional, List
 
 from fastapi import APIRouter, Query, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from analytics.cfa.valuation import DCFModel, TradingComps, PrecedentTransactions, StartupValuation, FootballField
 from analytics.cfa.fixed_income import BondPricer, DurationCalculator, ConvexityCalculator, YieldCurveBuilder, SpreadAnalyzer
@@ -30,6 +30,56 @@ class WACCRequest(BaseModel):
     size_premium: float = 0.0
 
 
+class WACCResponse(BaseModel):
+    wacc: float
+    cost_of_equity: float
+    cost_of_debt_after_tax: float
+
+
+class DCFRequest(BaseModel):
+    wacc_inputs: dict
+    fcf_inputs: dict
+    growth_rates: List[float]
+    terminal_growth_rate: float
+    balance_sheet: dict
+    shares_outstanding: float
+
+
+class DCFResponse(BaseModel):
+    enterprise_value: float
+    equity_value: float
+    price_per_share: float
+    wacc: float
+
+
+class SensitivityResponse(BaseModel):
+    scenario: str
+    results: list
+
+
+class BondPriceResponse(BaseModel):
+    price: float
+    duration: float | None = None
+    convexity: float | None = None
+
+
+class BondYTMResponse(BaseModel):
+    ytm: float
+
+
+class OptionPriceResponse(BaseModel):
+    price: float
+    greeks: dict
+
+
+class GreeksResponse(BaseModel):
+    delta: float
+    gamma: float
+    theta: float
+    vega: float
+    rho: float
+
+
 class DCFRequest(BaseModel):
     wacc_inputs: dict
     fcf_inputs: dict
@@ -40,19 +90,19 @@ class DCFRequest(BaseModel):
 
 
 class BondPriceRequest(BaseModel):
-    ytm: float
-    face_value: float = 1000.0
-    coupon_rate: float = 0.05
-    years_to_maturity: float = 10.0
-    frequency: int = 2
+    ytm: float = Field(..., ge=0)
+    face_value: float = Field(default=1000.0, gt=0)
+    coupon_rate: float = Field(default=0.05, ge=0)
+    years_to_maturity: float = Field(default=10.0, gt=0)
+    frequency: int = Field(default=2, ge=1, le=12)
 
 
 class BondYTMRequest(BaseModel):
-    price: float
-    face_value: float = 1000.0
-    coupon_rate: float = 0.05
-    years_to_maturity: float = 10.0
-    frequency: int = 2
+    price: float = Field(..., gt=0)
+    face_value: float = Field(default=1000.0, gt=0)
+    coupon_rate: float = Field(default=0.05, ge=0)
+    years_to_maturity: float = Field(default=10.0, gt=0)
+    frequency: int = Field(default=2, ge=1, le=12)
 
 
 class OptionPriceRequest(BaseModel):
@@ -505,8 +555,8 @@ async def bond_one_pager(
 
     result["ytm"] = pricer.calculate_ytm(price, face_value, coupon_rate, years_to_maturity, frequency)
 
-    result["duration"] = dur.calculate_modified(face_value, coupon_rate, years_to_maturity, frequency, frequency=frequency)
+    result["duration"] = dur.calculate_modified(face_value, coupon_rate, years_to_maturity, ytm, frequency)
 
-    result["convexity"] = conv.calculate_convexity(face_value, coupon_rate, years_to_maturity, frequency, frequency=frequency)
+    result["convexity"] = conv.calculate_convexity(face_value, coupon_rate, years_to_maturity, frequency)
 
     return result

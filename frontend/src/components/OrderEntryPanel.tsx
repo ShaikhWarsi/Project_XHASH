@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useLivePrices } from '../contexts/LivePricesContext'
 import { placeOrder } from '../api/client'
 import { useToastStore } from '../store/toast'
@@ -34,6 +34,20 @@ export default function OrderEntryPanel({ symbol: initialSymbol = '', currentPri
   const [bracketTakeProfit, setBracketTakeProfit] = useState('')
   const [bracketStopLoss, setBracketStopLoss] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (initialSymbol) {
+      setSymbol(initialSymbol)
+      setQuantity('')
+      setSide('BUY')
+      setOrderType('MARKET')
+      setReduceOnly(false)
+    }
+  }, [initialSymbol])
+
+  useEffect(() => {
+    if (currentPrice) setPrice(currentPrice.toString())
+  }, [currentPrice])
 
   const livePrice = symbol ? getPrice(symbol.toUpperCase()) : null
   const displayPrice = currentPrice || livePrice?.price || 0

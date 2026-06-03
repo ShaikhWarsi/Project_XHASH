@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from core.enums import RegimeType, SignalDir, SignalType
 from core.types import QuantSignal, RegimeState
@@ -22,7 +22,7 @@ def _sig(
         confidence=confidence,
         symbol="TEST",
         timeframe="1h",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         level=level,
         metadata=metadata or {},
     )
@@ -30,7 +30,7 @@ def _sig(
 
 class TestStructureState:
     def test_defaults(self):
-        state = StructureState(symbol="TEST", timeframe="1h", timestamp=datetime.utcnow())
+        state = StructureState(symbol="TEST", timeframe="1h", timestamp=datetime.now(timezone.utc))
         assert state.trend_direction == SignalDir.NEUTRAL
         assert state.regime == RegimeType.RANGE_BOUND
         assert state.composite_bias == SignalDir.NEUTRAL

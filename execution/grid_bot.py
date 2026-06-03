@@ -103,6 +103,8 @@ class GridBot:
     def waterfall_protection(self, fill_price: float, side: str) -> Optional[float]:
         if not self.grid_levels:
             return None
+        if side not in ("buy", "sell"):
+            return fill_price
 
         idx = None
         for i, level in enumerate(self.grid_levels):

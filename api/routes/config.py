@@ -34,15 +34,22 @@ class ApiKeyRequest(BaseModel):
     key: str
 
 
+_SENSITIVE_PATTERNS = ("SECRET", "KEY", "PASSWORD", "TOKEN")
+
+
+def _filter_sensitive(cfg: dict) -> dict:
+    return {k: v for k, v in cfg.items() if not any(p in k.upper() for p in _SENSITIVE_PATTERNS)}
+
+
 @router.get("")
 async def get_config():
-    return _DEFAULT_CONFIG
+    return _filter_sensitive(_DEFAULT_CONFIG.copy())
 
 
 @router.put("")
 async def update_config(updates: dict):
     _DEFAULT_CONFIG.update(updates)
-    return {"status": "ok", "config": _DEFAULT_CONFIG}
+    return {"status": "ok", "config": _filter_sensitive(_DEFAULT_CONFIG)}
 
 
 @router.post("/api-key")

@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ class BlackLittermanRequest(BaseModel):
 class FrontierRequest(BaseModel):
     prices: List[float]
     symbols: List[str]
-    n_points: int = 30
+    n_points: int = Field(default=30, ge=10, le=1000)
 
 
 @router.post("/optimize")
@@ -43,7 +43,11 @@ async def optimize_portfolio(req: OptimizationRequest):
         from analytics.optimizers.skfolio_optimizer import SkfolioOptimizer, HAS_SKFOLIO
         if not HAS_SKFOLIO:
             raise HTTPException(503, "skfolio not installed")
-        n = len(req.prices) // len(req.symbols)
+        n_syms = len(req.symbols)
+        n_prices = len(req.prices)
+        if n_prices % n_syms != 0:
+            raise HTTPException(400, f"Price count ({n_prices}) must be divisible by symbol count ({n_syms})")
+        n = n_prices // n_syms
         data = {sym: req.prices[i * n : (i + 1) * n] for i, sym in enumerate(req.symbols)}
         df = pd.DataFrame(data)
         opt = SkfolioOptimizer(model=req.model, risk_measure=req.risk_measure)
@@ -64,7 +68,11 @@ async def hrp_optimization(req: HrpRequest):
         from analytics.optimizers.skfolio_optimizer import SkfolioOptimizer, HAS_SKFOLIO
         if not HAS_SKFOLIO:
             raise HTTPException(503, "skfolio not installed")
-        n = len(req.prices) // len(req.symbols)
+        n_syms = len(req.symbols)
+        n_prices = len(req.prices)
+        if n_prices % n_syms != 0:
+            raise HTTPException(400, f"Price count ({n_prices}) must be divisible by symbol count ({n_syms})")
+        n = n_prices // n_syms
         data = {sym: req.prices[i * n : (i + 1) * n] for i, sym in enumerate(req.symbols)}
         df = pd.DataFrame(data)
         opt = SkfolioOptimizer(model="hrp")
@@ -83,7 +91,11 @@ async def black_litterman(req: BlackLittermanRequest):
         from analytics.optimizers.skfolio_optimizer import SkfolioOptimizer, HAS_SKFOLIO
         if not HAS_SKFOLIO:
             raise HTTPException(503, "skfolio not installed")
-        n = len(req.prices) // len(req.symbols)
+        n_syms = len(req.symbols)
+        n_prices = len(req.prices)
+        if n_prices % n_syms != 0:
+            raise HTTPException(400, f"Price count ({n_prices}) must be divisible by symbol count ({n_syms})")
+        n = n_prices // n_syms
         data = {sym: req.prices[i * n : (i + 1) * n] for i, sym in enumerate(req.symbols)}
         df = pd.DataFrame(data)
         opt = SkfolioOptimizer()
@@ -102,7 +114,11 @@ async def efficient_frontier(req: FrontierRequest):
         from analytics.optimizers.skfolio_optimizer import SkfolioOptimizer, HAS_SKFOLIO
         if not HAS_SKFOLIO:
             raise HTTPException(503, "skfolio not installed")
-        n = len(req.prices) // len(req.symbols)
+        n_syms = len(req.symbols)
+        n_prices = len(req.prices)
+        if n_prices % n_syms != 0:
+            raise HTTPException(400, f"Price count ({n_prices}) must be divisible by symbol count ({n_syms})")
+        n = n_prices // n_syms
         data = {sym: req.prices[i * n : (i + 1) * n] for i, sym in enumerate(req.symbols)}
         df = pd.DataFrame(data)
         opt = SkfolioOptimizer()

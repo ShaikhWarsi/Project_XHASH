@@ -20,6 +20,7 @@ export default function SwarmDashboard() {
   const [selectedRun, setSelectedRun] = useState<string | null>(null)
   const [runDetails, setRunDetails] = useState<any>(null)
   const [health, setHealth] = useState<any>(null)
+  const [tab, setTab] = useState<'details' | 'messages'>('details')
 
   const fetchRuns = async () => {
     try {
@@ -129,57 +130,107 @@ export default function SwarmDashboard() {
         </div>
 
         <div className="flex-1 overflow-auto p-2">
-          {selectedRun && runDetails ? (
-            <div>
-              <div className="flex gap-1.5 mb-2 flex-wrap">
-                <div className="bg-card border border-default px-2.5 py-1.5 rounded">
-                  <div className="text-[9px] text-muted">STATUS</div>
-                  <div className="text-sm font-bold" style={{ color: statusColor(runDetails.status) }}>{runDetails.status.toUpperCase()}</div>
+          <div className="flex gap-4 mb-2 border-b border-default">
+            <button onClick={() => setTab('details')} className={`text-[10px] pb-1 ${tab === 'details' ? 'text-accent-blue border-b border-accent-blue' : 'text-muted'}`}>DETAILS</button>
+            <button onClick={() => setTab('messages')} className={`text-[10px] pb-1 ${tab === 'messages' ? 'text-accent-blue border-b border-accent-blue' : 'text-muted'}`}>MESSAGES</button>
+          </div>
+          {tab === 'details' ? (
+            selectedRun && runDetails ? (
+              <div>
+                <div className="flex gap-1.5 mb-2 flex-wrap">
+                  <div className="bg-card border border-default px-2.5 py-1.5 rounded">
+                    <div className="text-[9px] text-muted">STATUS</div>
+                    <div className="text-sm font-bold" style={{ color: statusColor(runDetails.status) }}>{runDetails.status.toUpperCase()}</div>
+                  </div>
+                  {runDetails.error && (
+                    <div className="bg-card border border-down px-2.5 py-1.5 rounded">
+                      <div className="text-[9px] text-down">ERROR</div>
+                      <div className="text-[10px] text-down">{runDetails.error}</div>
+                    </div>
+                  )}
                 </div>
-                {runDetails.error && (
-                  <div className="bg-card border border-down px-2.5 py-1.5 rounded">
-                    <div className="text-[9px] text-down">ERROR</div>
-                    <div className="text-[10px] text-down">{runDetails.error}</div>
+
+                {runDetails.tasks && runDetails.tasks.length > 0 && (
+                  <div>
+                    <div className="text-[10px] font-semibold text-muted mb-1">TASKS ({runDetails.tasks.length})</div>
+                    <table className="w-full border-collapse text-[10px]">
+                      <thead>
+                        <tr className="text-muted border-b border-default">
+                          <th className="px-1.5 py-0.5 text-left">ID</th>
+                          <th className="px-1.5 py-0.5 text-left">Status</th>
+                          <th className="px-1.5 py-0.5 text-left">Agent</th>
+                          <th className="px-1.5 py-0.5 text-left">Depends On</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {runDetails.tasks.map((t: any) => (
+                          <tr key={t.id} className="border-b border-[rgba(26,35,50,0.3)]">
+                            <td className="px-1.5 py-0.5 text-accent-blue">{t.id}</td>
+                            <td className="px-1.5 py-0.5">
+                              <span className="inline-block w-1.5 h-1.5 rounded-full mr-1" style={{ background: statusColor(t.status) }} />
+                              {t.status}
+                            </td>
+                            <td className="px-1.5 py-0.5">{t.agent_id || '-'}</td>
+                            <td className="px-1.5 py-0.5 text-muted">{(t.depends_on || []).join(', ') || '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>
-
-              {runDetails.tasks && runDetails.tasks.length > 0 && (
-                <div>
-                  <div className="text-[10px] font-semibold text-muted mb-1">TASKS ({runDetails.tasks.length})</div>
-                  <table className="w-full border-collapse text-[10px]">
-                    <thead>
-                      <tr className="text-muted border-b border-default">
-                        <th className="px-1.5 py-0.5 text-left">ID</th>
-                        <th className="px-1.5 py-0.5 text-left">Status</th>
-                        <th className="px-1.5 py-0.5 text-left">Agent</th>
-                        <th className="px-1.5 py-0.5 text-left">Depends On</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {runDetails.tasks.map((t: any) => (
-                        <tr key={t.id} className="border-b border-[rgba(26,35,50,0.3)]">
-                          <td className="px-1.5 py-0.5 text-accent-blue">{t.id}</td>
-                          <td className="px-1.5 py-0.5">
-                            <span className="inline-block w-1.5 h-1.5 rounded-full mr-1" style={{ background: statusColor(t.status) }} />
-                            {t.status}
-                          </td>
-                          <td className="px-1.5 py-0.5">{t.agent_id || '-'}</td>
-                          <td className="px-1.5 py-0.5 text-muted">{(t.depends_on || []).join(', ') || '-'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted text-[10px]">
+                Select a run to view details
+              </div>
+            )
           ) : (
-            <div className="flex items-center justify-center h-full text-muted text-[10px]">
-              Select a run to view details
-            </div>
+            <MessagesPanel />
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+function MessagesPanel() {
+  const [messages, setMessages] = useState<Array<{ timestamp: string; from: string; to: string; content: string }>>([])
+  const mockMessages = [
+    { from: 'Analyst-1', to: 'Coordinator', content: 'Analyzing market data for Q2 trends...' },
+    { from: 'Analyst-2', to: 'Coordinator', content: 'Sentiment analysis indicates bullish divergence on tech sector' },
+    { from: 'Coordinator', to: 'Trader-1', content: 'Execute buy order for AAPL at market price' },
+    { from: 'Trader-1', to: 'Coordinator', content: 'Order filled: 100 shares AAPL @ $178.32' },
+    { from: 'Analyst-3', to: 'Coordinator', content: 'Risk assessment: portfolio beta within acceptable range' },
+    { from: 'Coordinator', to: 'Analyst-1', content: 'Requesting updated projection for Q3 earnings' },
+    { from: 'Analyst-1', to: 'Coordinator', content: 'Q3 EPS estimated at $1.45, +12% YoY' },
+    { from: 'Trader-2', to: 'Coordinator', content: 'Monitoring position: AAPL up 2.3% on session' },
+    { from: 'Analyst-2', to: 'Coordinator', content: 'Sector rotation detected — capital flowing to semiconductors' },
+    { from: 'Coordinator', to: 'All Agents', content: 'Status check — report current positions' },
+  ]
+
+  useEffect(() => {
+    if (messages.length >= mockMessages.length) return
+    const t = setTimeout(() => {
+      setMessages(prev => [...prev, { ...mockMessages[prev.length], timestamp: new Date().toLocaleTimeString() }])
+    }, 800 + Math.random() * 1200)
+    return () => clearTimeout(t)
+  }, [messages])
+
+  return (
+    <div className="space-y-1 font-mono text-[10px]">
+      {messages.length === 0 ? (
+        <div className="text-muted text-[10px] p-2">Waiting for agent messages...</div>
+      ) : (
+        messages.map((m, i) => (
+          <div key={i} className="flex items-start gap-2 border-b border-[rgba(26,35,50,0.3)] py-1.5">
+            <span className="text-muted shrink-0 w-14">{m.timestamp}</span>
+            <span className="text-accent-blue shrink-0 w-16">{m.from}</span>
+            <span className="text-muted shrink-0">→</span>
+            <span className="text-accent-green shrink-0 w-16">{m.to}</span>
+            <span className="text-primary">{m.content}</span>
+          </div>
+        ))
+      )}
     </div>
   )
 }

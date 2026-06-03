@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pandas as pd
 
@@ -49,7 +49,7 @@ class AlphaZooBridgeEngine(SignalEngine):
                 type=self._signal_type, direction=direction,
                 strength=norm, confidence=norm,
                 symbol=symbol, timeframe=self._timeframe,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 price=float(panel.get("close", pd.DataFrame()).iloc[-1].get(symbol, 0)) if "close" in panel else None,
             ))
         return signals

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 from typing import Any, Optional
 
 from .capabilities import get_capabilities
@@ -11,6 +12,20 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 DEFAULT_OLLAMA_HOST = "http://localhost:11434"
+
+
+class _RateLimiter:
+    def __init__(self, max_per_minute: int = 60):
+        self._max_per_minute = max_per_minute
+        self._tokens: list[float] = []
+
+    def acquire(self) -> float | None:
+        now = time.monotonic()
+        self._tokens = [t for t in self._tokens if now - t < 60.0]
+        if len(self._tokens) >= self._max_per_minute:
+            return self._tokens[0] + 60.0 - now
+        self._tokens.append(now)
+        return None
 
 
 class LLMClient:
@@ -42,6 +57,8 @@ class LLMClient:
         model: str = "gpt-4",
         api_key: Optional[str] = None,
         tier: str = "deep",
+        rate_limit_per_min: int = 60,
+        max_retries: int = 3,
     ):
         if provider not in self.SUPPORTED_PROVIDERS:
             raise ValueError(
@@ -52,16 +69,22 @@ class LLMClient:
         self.api_key = api_key
         self.tier = tier
         self.capabilities = get_capabilities(model)
+        self._rate_limiter = _RateLimiter(max_per_minute=rate_limit_per_min)
+        self._max_retries = max_retries
 
     @classmethod
     def quick(cls, provider: str = "openai", api_key: Optional[str] = None) -> LLMClient:
         """Create a cheap/fast LLM client for analysts."""
-        return cls(provider=provider, model="gpt-4o-mini", api_key=api_key, tier="quick")
+        import os
+        model = os.environ.get("LLM_QUICK_MODEL", "gpt-4o-mini")
+        return cls(provider=provider, model=model, api_key=api_key, tier="quick")
 
     @classmethod
     def deep(cls, provider: str = "openai", api_key: Optional[str] = None) -> LLMClient:
         """Create a powerful LLM client for managers."""
-        return cls(provider=provider, model="gpt-4", api_key=api_key, tier="deep")
+        import os
+        model = os.environ.get("LLM_DEEP_MODEL", "gpt-4o")
+        return cls(provider=provider, model=model, api_key=api_key, tier="deep")
 
     async def generate(
         self,
@@ -70,6 +93,26 @@ class LLMClient:
         temperature: float = 0.7,
         max_tokens: int = 1024,
     ) -> str:
+        wait = self._rate_limiter.acquire()
+        if wait is not None:
+            logger.info("Rate limited, waiting %.1fs", wait)
+            await asyncio.sleep(wait)
+        generator = self._get_generator()
+        if generator is None:
+            return json.dumps({"signal": "neutral", "confidence": 0.0, "reasoning": f"Unsupported provider: {self.provider}"})
+        for attempt in range(self._max_retries):
+            try:
+                return await generator(prompt, system, temperature, max_tokens)
+            except Exception as e:
+                if attempt < self._max_retries - 1:
+                    delay = 2 ** attempt
+                    logger.warning("LLM attempt %d failed, retrying in %ds: %s", attempt + 1, delay, e)
+                    await asyncio.sleep(delay)
+                else:
+                    raise
+        return json.dumps({"signal": "neutral", "confidence": 0.0, "reasoning": "LLM call failed after retries"})
+
+    def _get_generator(self):
         dispatch = {
             self.PROVIDER_OPENAI: self._generate_openai,
             self.PROVIDER_ANTHROPIC: self._generate_anthropic,
@@ -84,10 +127,7 @@ class LLMClient:
             self.PROVIDER_MINIMAX: self._generate_minimax,
             self.PROVIDER_AZURE: self._generate_azure,
         }
-        generator = dispatch.get(self.provider)
-        if generator is None:
-            return json.dumps({"signal": "neutral", "confidence": 0.0, "reasoning": f"Unsupported provider: {self.provider}"})
-        return await generator(prompt, system, temperature, max_tokens)
+        return dispatch.get(self.provider)
 
     async def generate_structured(
         self,
@@ -132,7 +172,7 @@ class LLMClient:
             logger.warning("OpenAI package not installed. Install with: pip install openai")
             return json.dumps({"signal": "neutral", "confidence": 0.5, "reasoning": "OpenAI unavailable"})
         except Exception as e:
-            logger.error(f"OpenAI generation error: {e}")
+            logger.error(f"OpenAI generation error (key redacted)")
             return json.dumps({"signal": "neutral", "confidence": 0.0, "reasoning": f"Error: {e}"})
 
     async def _generate_anthropic(self, prompt: str, system: str, temperature: float, max_tokens: int) -> str:
@@ -152,7 +192,7 @@ class LLMClient:
             logger.warning("Anthropic package not installed. Install with: pip install anthropic")
             return json.dumps({"signal": "neutral", "confidence": 0.5, "reasoning": "Anthropic unavailable"})
         except Exception as e:
-            logger.error(f"Anthropic generation error: {e}")
+            logger.error(f"Anthropic generation error (key redacted)")
             return json.dumps({"signal": "neutral", "confidence": 0.0, "reasoning": f"Error: {e}"})
 
     async def _generate_ollama(self, prompt: str, system: str, temperature: float, max_tokens: int) -> str:
@@ -169,7 +209,7 @@ class LLMClient:
                     data = await resp.json()
                     return data.get("response", "")
         except Exception as e:
-            logger.error(f"Ollama generation error: {e}")
+            logger.error(f"Ollama generation error")
             return json.dumps({"signal": "neutral", "confidence": 0.0, "reasoning": f"Ollama error: {e}"})
 
     async def _generate_groq(self, prompt: str, system: str, temperature: float, max_tokens: int) -> str:
@@ -214,7 +254,7 @@ class LLMClient:
             logger.warning("OpenAI package required for Azure. Install with: pip install openai")
             return json.dumps({"signal": "neutral", "confidence": 0.5, "reasoning": "Azure unavailable"})
         except Exception as e:
-            logger.error(f"Azure generation error: {e}")
+            logger.error(f"Azure generation error (key redacted)")
             return json.dumps({"signal": "neutral", "confidence": 0.0, "reasoning": f"Error: {e}"})
 
     async def _generate_via_openai_compat(self, prompt: str, system: str, temperature: float, max_tokens: int, base_url: str) -> str:
@@ -234,5 +274,5 @@ class LLMClient:
             logger.warning(f"OpenAI package required for OpenAI-compat. Install with: pip install openai")
             return json.dumps({"signal": "neutral", "confidence": 0.5, "reasoning": "Provider unavailable"})
         except Exception as e:
-            logger.error(f"OpenAI-compat generation error: {e}")
+            logger.error(f"OpenAI-compat generation error (key redacted)")
             return json.dumps({"signal": "neutral", "confidence": 0.0, "reasoning": f"Error: {e}"})

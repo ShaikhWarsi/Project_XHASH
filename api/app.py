@@ -16,6 +16,10 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from .routes import backtest_routes, bars_routes, cfa, chart_routes, config, flows, hedge_fund, market_data, metrics, mmc, portfolio, signals, stream, structure, trades, global_market
 from .routes.ws import router as ws_router
+from .routes.motd import router as motd_router
+from .routes.news_sidebar import router as news_sidebar_router
+from .routes.calendar_sidebar import router as calendar_sidebar_router
+from .routes.chat_ws import router as chat_ws_router
 from .websocket_manager import manager as ws_manager
 from .state import seed_demo_data
 from .routes.orders import router as orders_router
@@ -28,6 +32,8 @@ from .routes.factor_analysis import router as factor_analysis_router
 from .routes.rl_training import router as rl_training_router
 from .routes.research.sql_research import router as sql_research_router
 from .routes.finscript import router as finscript_router
+from data.providers import global_provider_registry
+from data.yfinance_provider import YFinanceProvider
 from .routes.ta_routes import router as ta_router
 from .routes.correlation_routes import router as correlation_router
 from .routes.workspace_routes import router as workspace_router
@@ -56,6 +62,13 @@ from .routes.risk_live import router as risk_live_router
 from .routes.portfolio_whatif import router as portfolio_whatif_router
 from .routes.strategy_clone import router as strategy_clone_router
 from .routes.llm import router as llm_router
+from .routes.briefing import router as briefing_router
+from .routes.network_co_movement import router as co_movement_router
+from .routes.earnings_summary import router as earnings_summary_router
+from .routes.ai_strategy import router as ai_strategy_router
+from .routes.ai_indicator import router as ai_indicator_router
+from .routes.ai_inspector import router as ai_inspector_router
+from .routes.llm_query import router as llm_query_router
 from .routes.screener_routes import router as screener_router
 from .routes.renaissance import router as renaissance_router
 from .routes.integrations_routes import router as integrations_router
@@ -64,6 +77,9 @@ from .routes.audit_routes import router as audit_router
 from .routes.providers_v2 import router as providers_v2_router
 from .routes.hypotheses_v2 import router as hypotheses_v2_router
 from .routes.market_intel import router as market_intel_router
+from .routes.broker_routes import router as broker_router
+from .routes.options_routes import router as options_router
+from .routes.calendar_routes import router as calendar_router
 from persistence import init_db, close_db
 from persistence.database import _engine as db_engine
 
@@ -181,12 +197,51 @@ def start_background_tasks():
 async def lifespan(app: FastAPI):
     await init_db()
     await seed_demo_data()
+
+    # Load active credentials and seed back into provider registries
+    try:
+        import json
+        from sqlalchemy import select
+        from persistence.database import _session_factory
+        from persistence.models import ApiKey
+        from data.registry import registry
+        from data.providers import global_provider_registry
+
+        async with _session_factory() as session:
+            stmt = select(ApiKey).where(ApiKey.is_active == 1)
+            result = await session.execute(stmt)
+            keys = result.scalars().all()
+            for key in keys:
+                try:
+                    config = json.loads(key.key_value)
+                    # Update registry
+                    if key.provider in registry._providers:
+                        registry._providers[key.provider].credentials.update(config)
+                        logger.info("Restored credentials for registry provider: %s", key.provider)
+
+                    # Update global_provider_registry
+                    p = global_provider_registry.get(key.provider)
+                    if p and hasattr(p, "credentials") and isinstance(p.credentials, dict):
+                        p.credentials.update(config)
+                        logger.info("Restored credentials for global_provider_registry provider: %s", key.provider)
+                except Exception as ex:
+                    logger.warning("Failed to restore credentials for %s: %s", key.provider, ex)
+    except Exception as e:
+        logger.warning("Failed to load and seed API keys on startup: %s", e)
+
+    try:
+        yfinance_provider = YFinanceProvider()
+        global_provider_registry.register(yfinance_provider, enabled=True)
+        logger.info("Registered YFinance provider")
+    except Exception as e:
+        logger.warning("Failed to register YFinance provider: %s", e)
     if _env_bool("TRADING_ENGINE_MARKET_INTEL_ENABLED", True):
         start_background_tasks()
     yield
     for task in _background_tasks:
         task.cancel()
     await close_db()
+
 
 
 def _check_db():
@@ -213,20 +268,58 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
 
     raw_origins = os.environ.get("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000")
     cors_origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
+    allow_all = "*" in cors_origins
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=cors_origins,
-        allow_credentials=True,
+        allow_origins=["*"] if allow_all else cors_origins,
+        allow_credentials=not allow_all,
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    if allow_all:
+        logger.info("CORS: allowing all origins (credentials disabled)")
 
     limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     app.add_middleware(SlowAPIMiddleware)
 
-    logger.info("No authentication — all routes open")
+    auth_key = os.getenv("TRADING_ENGINE_API_KEY") or os.getenv("API_KEY")
+    is_prod = os.getenv("ENV", "development").lower() == "production" or _env_bool("PRODUCTION", False)
+
+    if auth_key or is_prod:
+        actual_key = auth_key or "admin-default-key"
+        if is_prod and not auth_key:
+            logger.warning("WARNING: Running in production mode without TRADING_ENGINE_API_KEY! Defaulting key to 'admin-default-key'.")
+        
+        from fastapi import Request
+        from fastapi.responses import JSONResponse
+
+        @app.middleware("http")
+        async def api_key_auth_middleware(request: Request, call_next):
+            path = request.url.path
+            # Allow Swagger docs, root redirect, and health endpoints without authentication
+            if path in ("/", "/docs", "/redoc", "/openapi.json", "/health", "/api/health") or path.startswith("/ws"):
+                return await call_next(request)
+            
+            auth_header = request.headers.get("Authorization")
+            if not auth_header or not auth_header.startswith("Bearer "):
+                return JSONResponse(
+                    status_code=401,
+                    content={"detail": "Missing or invalid Authorization header. Expected 'Bearer <key>'"}
+                )
+            
+            token = auth_header.split(" ", 1)[1]
+            if token != actual_key:
+                return JSONResponse(
+                    status_code=403,
+                    content={"detail": "Unauthorized: Invalid API key"}
+                )
+                
+            return await call_next(request)
+        logger.info(f"API key bearer validation enabled (required token: '{actual_key[:4]}***')")
+    else:
+        logger.info("No authentication — all routes open")
 
     app.include_router(signals.router)
     app.include_router(portfolio.router)
@@ -277,6 +370,13 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
     app.include_router(portfolio_whatif_router)
     app.include_router(strategy_clone_router)
     app.include_router(llm_router)
+    app.include_router(briefing_router)
+    app.include_router(co_movement_router)
+    app.include_router(earnings_summary_router)
+    app.include_router(ai_strategy_router)
+    app.include_router(ai_indicator_router)
+    app.include_router(ai_inspector_router)
+    app.include_router(llm_query_router)
     app.include_router(screener_router)
     app.include_router(renaissance_router)
     app.include_router(integrations_router)
@@ -285,6 +385,13 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
     app.include_router(providers_v2_router)
     app.include_router(hypotheses_v2_router)
     app.include_router(market_intel_router)
+    app.include_router(broker_router)
+    app.include_router(options_router)
+    app.include_router(calendar_router)
+    app.include_router(motd_router)
+    app.include_router(news_sidebar_router)
+    app.include_router(calendar_sidebar_router)
+    app.include_router(chat_ws_router)
 
     @app.get("/")
     async def root():
@@ -300,6 +407,10 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
                 "ccxt": _check_ccxt(),
             },
         }
+
+    @app.get("/api/health")
+    async def api_health():
+        return await health()
 
     return app
 

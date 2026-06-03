@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from core.enums import OrderSide, OrderType
@@ -18,12 +18,17 @@ class AlpacaExecutor(ExecutionProvider):
     Uses environment variables: APCA_API_KEY_ID, APCA_API_SECRET_KEY
     """
 
+    VALID_PAPER_URL = "https://paper-api.alpaca.markets"
+    VALID_LIVE_URL = "https://api.alpaca.markets"
+
     def __init__(self, api_key: str = "", secret_key: str = "", paper: bool = True):
         self._api_key = api_key
         self._secret_key = secret_key
         self._paper = paper
         self._connected = False
         self._client = None
+        if not api_key or not secret_key:
+            logger.warning("AlpacaExecutor: missing API credentials")
 
     def connect(self) -> bool:
         try:
@@ -71,7 +76,7 @@ class AlpacaExecutor(ExecutionProvider):
                 side=order.side,
                 quantity=int(resp.qty),
                 price=float(resp.filled_avg_price or resp.limit_price or 0.0),
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
             )
         except Exception as e:
             logger.warning("Alpaca submit_order failed: %s", e)

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { fetchQuotes } from '../api/client'
+import { useToastStore } from '../store/toast'
 
 interface TickerItem {
   symbol: string
@@ -49,11 +50,42 @@ export default function MarketTickerBar() {
   const [tickers, setTickers] = useState<TickerItem[]>(SYMBOLS.map((s) => ({ symbol: s, price: '—', change: '', up: true, sparkline: [] })))
   const [error, setError] = useState(false)
   const [pulseItems, setPulseItems] = useState<Set<string>>(new Set())
+  const addToast = useToastStore((s) => s.addToast)
+  const [hoverSymbol, setHoverSymbol] = useState<string | null>(null)
+  const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 })
+  const tooltipRef = useRef<HTMLDivElement>(null)
+
+  const addToWatchlist = (symbol: string) => {
+    try {
+      const raw = localStorage.getItem('watchlist_symbols') || ''
+      const list = raw ? raw.split(',').map((s) => s.trim()).filter(Boolean) : []
+      if (list.includes(symbol)) {
+        addToast(`${symbol} already in watchlist`, 'info')
+        return
+      }
+      const next = [...list, symbol].slice(0, 50)
+      localStorage.setItem('watchlist_symbols', next.join(','))
+      addToast(`Added ${symbol} to watchlist`, 'success')
+    } catch {}
+  }
+
+  const genSparkline = (): number[] => {
+    let v = Math.random() * 100
+    return Array.from({ length: 10 }, () => {
+      v += (Math.random() - 0.5) * 10
+      return Math.max(v, 0)
+    })
+  }
 
   useEffect(() => {
+    const abortController = new AbortController()
+    let interval: ReturnType<typeof setInterval> | null = null
+    let hidden = false
+
     const load = async () => {
+      if (hidden) return
       try {
-        const quotes = await fetchQuotes(SYMBOLS)
+        const quotes = await fetchQuotes(SYMBOLS, abortController.signal)
         const updated: TickerItem[] = []
         const newFlash = new Map<string, 'green' | 'red'>()
         let anySuccess = false
@@ -78,7 +110,7 @@ export default function MarketTickerBar() {
               change: q.dp >= 0 ? `+${q.dp.toFixed(2)}%` : `${q.dp.toFixed(2)}%`,
               up: q.dp >= 0,
               sparkline: [...hist],
-              volume: q.v,
+              volume: (q as any).v,
             })
           }
         }
@@ -89,12 +121,29 @@ export default function MarketTickerBar() {
         if (anySuccess) setTickers(updated)
         setError(!anySuccess)
       } catch {
-        setError(true)
+        if (!abortController.signal.aborted) setError(true)
       }
     }
     load()
-    const interval = setInterval(load, 5000)
-    return () => clearInterval(interval)
+    interval = setInterval(load, 30000)
+
+    const onVisibility = () => {
+      hidden = document.hidden
+      if (interval) {
+        clearInterval(interval)
+        interval = null
+      }
+      if (!document.hidden) {
+        load()
+        interval = setInterval(load, 30000)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      clearInterval(interval!)
+      abortController.abort()
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [])
 
   const items = [...tickers, ...tickers]
@@ -137,8 +186,15 @@ export default function MarketTickerBar() {
           <div
             key={`${t.symbol}-${i}`}
             className="flex items-center shrink-0"
-            style={{ padding: '0 10px', borderRight: '1px solid var(--border-color)', height: 24, position: 'relative' }}
+            style={{ padding: '0 10px', borderRight: '1px solid var(--border-color)', height: 24, position: 'relative', cursor: 'pointer' }}
             aria-label={`${t.symbol}: ${t.price} ${t.change}`}
+            onClick={() => addToWatchlist(t.symbol)}
+            onMouseEnter={(e) => {
+              setHoverSymbol(t.symbol)
+              const rect = e.currentTarget.getBoundingClientRect()
+              setHoverPos({ x: rect.left, y: rect.top - 60 })
+            }}
+            onMouseLeave={() => setHoverSymbol(null)}
           >
             {pulseItems.has(t.symbol) && (
               <span style={{ position: 'absolute', inset: -2, borderRadius: 2, border: `1px solid ${t.up ? 'var(--accent-green)' : 'var(--accent-red)'}`, opacity: 0.6, animation: 'pulse-glow 0.3s ease-out', pointerEvents: 'none' }} />
@@ -168,6 +224,41 @@ export default function MarketTickerBar() {
           pointerEvents: 'none',
         }}
       />
+      {hoverSymbol && (
+        <div
+          ref={tooltipRef}
+          style={{
+            position: 'fixed',
+            left: hoverPos.x,
+            top: hoverPos.y,
+            zIndex: 100,
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border-color)',
+            borderRadius: 4,
+            padding: '4px 8px',
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 9,
+            pointerEvents: 'none',
+            boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
+          }}
+        >
+          <div style={{ color: 'var(--text-secondary)', marginBottom: 2, fontWeight: 600 }}>{hoverSymbol} News</div>
+          <svg width="60" height="20" viewBox="0 0 60 20">
+            {(() => {
+              const pts = genSparkline()
+              const min = Math.min(...pts)
+              const max = Math.max(...pts)
+              const r = max - min || 1
+              const path = pts.map((v, j) => {
+                const x = (j / (pts.length - 1)) * 58
+                const y = 18 - ((v - min) / r) * 16
+                return `${x},${y}`
+              }).join(' ')
+              return <polyline points={path} fill="none" stroke="var(--accent-cyan)" strokeWidth={1} />
+            })()}
+          </svg>
+        </div>
+      )}
     </div>
   )
 }

@@ -17,9 +17,11 @@ export const eventBus = {
 export const EVENTS = {
   SIGNAL_SELECTED: 'signal:selected',
   SYMBOL_CHANGED: 'symbol:changed',
+  PORTFOLIO_UPDATED: 'portfolio:updated',
   REGIME_CHANGED: 'regime:changed',
   BACKTEST_COMPLETE: 'backtest:complete',
   ORDER_PLACED: 'order:placed',
   THEME_CHANGED: 'theme:changed',
+  TAB_CHANGED: 'tab:changed',
   REFRESH_REQUESTED: 'refresh:requested',
 } as const

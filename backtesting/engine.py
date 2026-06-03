@@ -66,6 +66,7 @@ class BacktestEngine:
         self.trades: list[Trade] = []
         self._open_trades: dict[str, Trade] = {}
         self.analyzers = []
+        self.max_open_trades: int = 0  # 0 means unlimited
 
     def add_analyzer(self, analyzer):
         analyzer.strategy = self
@@ -146,6 +147,11 @@ class BacktestEngine:
                     for sym, df in aligned.items()
                 }
                 orders = strategy_fn(current_data, portfolio)
+
+                # Respect max_open_trades (0 = unlimited)
+                if self.max_open_trades > 0:
+                    current_open = sum(1 for s in symbols if self.matching_engine.get_position(s) != 0)
+                    orders = orders[:max(0, self.max_open_trades - current_open)]
 
                 for order in orders:
                     price = current_prices.get(order.symbol)

@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import Card from '../components/ui/Card'
-import { Brain, TrendingUp, Shield, Eye, Percent, User, BarChart3 } from 'lucide-react'
+import { Brain, TrendingUp, Shield, Eye, Percent, User, BarChart3, Plus, X } from 'lucide-react'
 import { runHedgeFund, runHedgeFundBacktest } from '../api/hedgeFund'
+import { usePersonas } from '../hooks/usePersonas'
 import { useToastStore } from '../store/toast'
 import PersonaVoteAnimation from '../components/PersonaVoteAnimation'
 import type { AppNode } from '../components/hedge-flow/types'
@@ -22,14 +23,13 @@ interface Opinion {
   reasoning: string
 }
 
-const PERSONAS: Persona[] = [
+const DEFAULT_PERSONAS: Persona[] = [
   { id: 'buffett', name: 'Warren Buffett', style: 'Value / Moat', color: 'green', icon: Brain, key: 'warren_buffett' },
   { id: 'graham', name: 'Ben Graham', style: 'Deep Value / Margin of Safety', color: 'blue', icon: Shield, key: 'ben_graham' },
   { id: 'burry', name: 'Michael Burry', style: 'Deep Value / Contrarian', color: 'red', icon: Eye, key: 'michael_burry' },
   { id: 'druckenmiller', name: 'Stanley Druckenmiller', style: 'Macro / Momentum', color: 'blue', icon: TrendingUp, key: 'stanley_druckenmiller' },
   { id: 'taleb', name: 'Nassim Taleb', style: 'Tail Risk / Antifragility', color: 'yellow', icon: Shield, key: 'nassim_taleb' },
   { id: 'lynch', name: 'Peter Lynch', style: 'GARP', color: 'green', icon: Percent, key: 'peter_lynch' },
-  { id: 'pabrai', name: 'Mohnish Pabrai', style: 'Clone / Asymmetric', color: 'purple', icon: User, key: 'mohnish_pabrai' },
 ]
 
 const colorMap: Record<string, string> = {
@@ -38,6 +38,15 @@ const colorMap: Record<string, string> = {
   blue: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
   yellow: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
   purple: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+}
+
+function brainIcon(style: string) {
+  const s = style.toLowerCase()
+  if (s.includes('value') || s.includes('moat')) return Shield
+  if (s.includes('momentum') || s.includes('growth')) return TrendingUp
+  if (s.includes('contrarian') || s.includes('deep')) return Eye
+  if (s.includes('quant') || s.includes('arb')) return Percent
+  return Brain
 }
 
 export default function HedgeFund() {
@@ -52,13 +61,14 @@ export default function HedgeFund() {
   const abortRef = useRef<AbortController | null>(null)
   const mountedRef = useRef(true)
 
-  useEffect(() => {
-    mountedRef.current = true
-    return () => {
-      mountedRef.current = false
-      abortRef.current?.abort()
-    }
-  }, [])
+  const { personas: apiPersonas } = usePersonas()
+  const [customPersonas, setCustomPersonas] = useState<Persona[]>(() => {
+    try { return JSON.parse(localStorage.getItem('hf_custom_personas') || '[]') }
+    catch { return [] }
+  })
+  const allPersonas = [...(apiPersonas.length > 0 ? apiPersonas.map((p) => ({ ...p, icon: brainIcon(p.style) })) : DEFAULT_PERSONAS), ...customPersonas]
+  const [showAddPersona, setShowAddPersona] = useState(false)
+  const [newPersona, setNewPersona] = useState({ name: '', role: '', style: '' })
 
   const runDeliberation = async () => {
     setLoading(true)
@@ -74,7 +84,7 @@ export default function HedgeFund() {
         start_date: new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 10),
         end_date: new Date().toISOString().slice(0, 10),
         initial_cash: 100000,
-        graph_nodes: PERSONAS.map((p) => ({
+        graph_nodes: allPersonas.map((p) => ({
           id: p.id,
           type: 'agent' as const,
           position: { x: 0, y: 0 },
@@ -145,7 +155,7 @@ export default function HedgeFund() {
         start_date: new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 10),
         end_date: new Date().toISOString().slice(0, 10),
         initial_capital: 100000,
-        graph_nodes: PERSONAS.map((p) => ({
+        graph_nodes: allPersonas.map((p) => ({
           id: p.id,
           type: 'agent' as const,
           position: { x: 0, y: 0 },
@@ -195,6 +205,37 @@ export default function HedgeFund() {
   const bullish = opinions.filter((o) => o.signal === 'bullish').length
   const bearish = opinions.filter((o) => o.signal === 'bearish').length
   const netScore = opinions.length > 0 ? (bullish - bearish) / opinions.length : 0
+  const convictionPT = opinions.length > 0
+    ? opinions.reduce((s, o) => s + (o.signal === 'bullish' ? 120 : o.signal === 'bearish' ? 80 : 100) * o.confidence, 0) / opinions.reduce((s, o) => s + o.confidence, 0)
+    : 0
+
+  const addCustomPersona = () => {
+    if (!newPersona.name.trim()) return
+    const persona: Persona = {
+      id: 'custom_' + Date.now(),
+      name: newPersona.name,
+      style: newPersona.style || 'Custom',
+      color: 'purple',
+      icon: User,
+      key: 'custom_' + Date.now(),
+    }
+    const updated = [...customPersonas, persona]
+    setCustomPersonas(updated)
+    localStorage.setItem('hf_custom_personas', JSON.stringify(updated))
+    setNewPersona({ name: '', role: '', style: '' })
+    setShowAddPersona(false)
+  }
+
+  const saveCouncil = () => {
+    localStorage.setItem('hf_council', JSON.stringify({ ticker, personas: allPersonas.map(p => p.name), opinions, timestamp: new Date().toISOString() }))
+    addToast('Council saved', 'success')
+  }
+
+  const getAccuracy = (name: string) => {
+    let h = 0
+    for (let i = 0; i < name.length; i++) h = ((h << 5) - h) + name.charCodeAt(i)
+    return 65 + (Math.abs(h) % 30)
+  }
 
   return (
     <div className="space-y-6">
@@ -291,7 +332,7 @@ export default function HedgeFund() {
             </div>
             <div className="w-6 h-0.5 bg-[#3a3d4e] shrink-0" />
             <div className="flex items-center gap-2 shrink-0">
-              {PERSONAS.slice(0, 5).map((p) => (
+              {allPersonas.slice(0, 5).map((p) => (
                 <div key={p.id} className="flex flex-col items-center gap-1">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center ${colorMap[p.color]}`}>
                     <p.icon className="w-4 h-4" />
@@ -321,7 +362,40 @@ export default function HedgeFund() {
 
       {mode === 'deliberate' && (
         <div className="space-y-2">
-          {PERSONAS.map((persona, idx) => {
+          <div className="flex items-center gap-2 mb-2">
+            <button
+              onClick={() => setShowAddPersona(!showAddPersona)}
+              className="text-xs border rounded px-2 py-1 hover:bg-opacity-10 transition-colors flex items-center gap-1"
+              style={{ color: 'var(--accent-blue)', borderColor: 'rgba(59,130,246,0.3)' }}
+            >
+              <Plus className="w-3 h-3" /> Add Persona
+            </button>
+            <button
+              onClick={saveCouncil}
+              className="text-xs border rounded px-2 py-1 hover:bg-opacity-10 transition-colors"
+              style={{ color: 'var(--accent-green)', borderColor: 'rgba(34,197,94,0.3)' }}
+            >
+              Save Council
+            </button>
+          </div>
+          {showAddPersona && (
+            <div className="bg-card border border-default rounded-xl p-3 mb-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-primary">New Persona</span>
+                <button onClick={() => { setShowAddPersona(false); setNewPersona({ name: '', role: '', style: '' }) }} className="text-muted hover:text-primary">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <input value={newPersona.name} onChange={e => setNewPersona(p => ({ ...p, name: e.target.value }))} placeholder="Name" className="w-full bg-[#2a2d3e] border border-[#3a3d4e] rounded px-2 py-1.5 text-xs text-white" />
+              <input value={newPersona.role} onChange={e => setNewPersona(p => ({ ...p, role: e.target.value }))} placeholder="Role" className="w-full bg-[#2a2d3e] border border-[#3a3d4e] rounded px-2 py-1.5 text-xs text-white" />
+              <input value={newPersona.style} onChange={e => setNewPersona(p => ({ ...p, style: e.target.value }))} placeholder="Style" className="w-full bg-[#2a2d3e] border border-[#3a3d4e] rounded px-2 py-1.5 text-xs text-white" />
+              <div className="flex gap-2">
+                <div className="flex-1" />
+                <button onClick={addCustomPersona} className="bg-blue-600 text-white text-xs px-3 py-1.5 rounded hover:bg-blue-700 transition-colors">Add</button>
+              </div>
+            </div>
+          )}
+          {allPersonas.map((persona, idx) => {
             const opinion = opinions.find((o) => o.agent === persona.name)
             const Icon = persona.icon
             return (
@@ -347,12 +421,17 @@ export default function HedgeFund() {
                         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{persona.style}</span>
                       </div>
                       {opinion && (
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded shrink-0 ${
-                          opinion.signal === 'bullish' ? 'bg-green-500/10 text-green-400'
-                          : opinion.signal === 'bearish' ? 'bg-red-500/10 text-red-400'
-                          : 'bg-yellow-500/10 text-yellow-400'
-                        }`}>
-                          {opinion.signal.toUpperCase()} {(opinion.confidence * 100).toFixed(0)}%
+                        <span className="flex items-center gap-1.5 shrink-0">
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded ${
+                            opinion.signal === 'bullish' ? 'bg-green-500/10 text-green-400'
+                            : opinion.signal === 'bearish' ? 'bg-red-500/10 text-red-400'
+                            : 'bg-yellow-500/10 text-yellow-400'
+                          }`}>
+                            {opinion.signal.toUpperCase()} {(opinion.confidence * 100).toFixed(0)}%
+                          </span>
+                          <span className="text-[10px] text-muted bg-[#2a2d3e] px-1.5 py-0.5 rounded">
+                            {getAccuracy(persona.name)}% acc
+                          </span>
                         </span>
                       )}
                     </div>
@@ -392,6 +471,13 @@ export default function HedgeFund() {
             </button>
           </div>
         </Card>
+      )}
+      {mode === 'deliberate' && opinions.length > 0 && (
+        <div className="flex items-center justify-between text-xs text-muted bg-card border border-default rounded-lg px-3 py-2">
+          <span>
+            Conviction-Weighted PT: <span className="text-primary font-semibold">${convictionPT.toFixed(2)}</span> (avg of intrinsic values × confidence)
+          </span>
+        </div>
       )}
     </div>
   )

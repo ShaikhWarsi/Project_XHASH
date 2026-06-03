@@ -1,12 +1,30 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Callable, Optional
 
 import numpy as np
 import pandas as pd
 
 from .engine import BacktestEngine, BacktestResult
+
+_DEFAULT_SCENARIOS = {
+    "crash_2008": {"type": "crash", "params": {"crash_pct": -0.3}},
+    "high_vol": {"type": "high_vol", "params": {"vol_mult": 2.0}},
+    "bull_run": {"type": "bull_run", "params": {"gain_pct": 0.5}},
+    "low_liquidity": {"type": "low_liquidity", "params": {"spread_mult": 3.0}},
+}
+
+
+def _load_scenarios(path: str | None = None) -> dict:
+    if path:
+        p = Path(path)
+        if p.exists():
+            with open(p) as f:
+                return json.load(f)
+    return dict(_DEFAULT_SCENARIOS)
 
 
 @dataclass
@@ -19,8 +37,9 @@ class ScenarioResult:
 class ScenarioEngine:
     """Scenario analysis: stress-test strategy under different market conditions."""
 
-    def __init__(self):
+    def __init__(self, scenarios_path: str | None = None):
         self.engine = BacktestEngine()
+        self._scenario_configs = _load_scenarios(scenarios_path)
 
     def run(
         self,
@@ -36,12 +55,18 @@ class ScenarioEngine:
         scenarios: dict[str, BacktestResult] = {}
         impacts: dict[str, float] = {}
 
-        scenario_modifiers = {
-            "crash_2008": lambda df: self._apply_crash(df),
-            "high_vol": lambda df: self._apply_high_vol(df),
-            "bull_run": lambda df: self._apply_bull_run(df),
-            "low_liquidity": lambda df: self._apply_low_liquidity(df),
-        }
+        scenario_modifiers = {}
+        for name, cfg in self._scenario_configs.items():
+            t = cfg.get("type")
+            p = cfg.get("params", {})
+            if t == "crash":
+                scenario_modifiers[name] = lambda df, cp=p.get("crash_pct", -0.3): self._apply_crash(df, cp)
+            elif t == "high_vol":
+                scenario_modifiers[name] = lambda df, vm=p.get("vol_mult", 2.0): self._apply_high_vol(df, vm)
+            elif t == "bull_run":
+                scenario_modifiers[name] = lambda df, gp=p.get("gain_pct", 0.5): self._apply_bull_run(df, gp)
+            elif t == "low_liquidity":
+                scenario_modifiers[name] = lambda df, sm=p.get("spread_mult", 3.0): self._apply_low_liquidity(df, sm)
 
         for name, modifier in scenario_modifiers.items():
             modified = {sym: modifier(df.copy()) for sym, df in base_data.items()}

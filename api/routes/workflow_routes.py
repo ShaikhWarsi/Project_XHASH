@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from api.services.workflow import WorkflowGraph, WorkflowState, build_default_workflow
+from api.services.workflow.graph import researcher_bull, researcher_bear, risk_debater, reflection_layer
 
 logger = logging.getLogger(__name__)
 
@@ -40,10 +41,10 @@ async def run_workflow(symbol: str):
 @router.post("/custom")
 async def run_custom_workflow(symbol: str, nodes: list[str]):
     available = {
-        "bull_researcher": __import__("api.services.workflow.graph", fromlist=["researcher_bull"]).researcher_bull,
-        "bear_researcher": __import__("api.services.workflow.graph", fromlist=["researcher_bear"]).researcher_bear,
-        "risk_debater": __import__("api.services.workflow.graph", fromlist=["risk_debater"]).risk_debater,
-        "reflector": __import__("api.services.workflow.graph", fromlist=["reflection_layer"]).reflection_layer,
+        "bull_researcher": researcher_bull,
+        "bear_researcher": researcher_bear,
+        "risk_debater": risk_debater,
+        "reflector": reflection_layer,
     }
     wf = WorkflowGraph()
     for name in nodes:

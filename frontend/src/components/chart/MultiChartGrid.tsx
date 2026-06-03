@@ -111,8 +111,9 @@ export const MultiChartGrid = forwardRef<MultiChartGridHandle, MultiChartGridPro
     }))
     for (const [, engine] of engineMap.current) {
       engine.setMainSeries(bars)
+      engine.setChartInterval(interval)
     }
-  }, [data, symbol])
+  }, [data, symbol, interval])
 
   useEffect(() => {
     for (const [, engine] of engineMap.current) {

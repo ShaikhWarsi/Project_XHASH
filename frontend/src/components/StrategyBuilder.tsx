@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Plus, Save, Play, FolderOpen, FileCode, Settings2, Copy } from 'lucide-react'
+import { Plus, Save, Play, FolderOpen, FileCode, Settings2, Copy, Terminal } from 'lucide-react'
 import StrategyCondition from './StrategyCondition'
 import { useToastStore } from '../store/toast'
+import { api } from '../api/client'
 
 interface Condition {
   id: string
@@ -151,6 +152,33 @@ export default function StrategyBuilder({ onRunBacktest }: StrategyBuilderProps)
     addToast('Strategy deleted', 'info')
   }
 
+  const [evalResult, setEvalResult] = useState<string | null>(null)
+  const [evalLoading, setEvalLoading] = useState(false)
+
+  const evaluateConditions = async () => {
+    if (entryConditions.length === 0) {
+      addToast('Add at least one entry condition', 'warning')
+      return
+    }
+    setEvalLoading(true)
+    setEvalResult(null)
+    try {
+      const conds = [...entryConditions, ...exitConditions]
+      const code = conds.map((c) => `${c.source}.${c.indicator} ${c.operator} ${c.value}`).join('\n')
+      const { data } = await api.post('/api/finscript/evaluate', {
+        code,
+        symbol: tickers.split(',')[0]?.trim() || 'SPY',
+        start: new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10),
+        end: new Date().toISOString().slice(0, 10),
+      })
+      setEvalResult(JSON.stringify(data, null, 2))
+      addToast('Conditions evaluated successfully', 'success')
+    } catch (e: unknown) {
+      addToast(`Evaluation failed: ${(e as Error).message}`, 'error')
+    }
+    setEvalLoading(false)
+  }
+
   const runStrategy = () => {
     if (!name.trim() || entryConditions.length === 0) {
       addToast('Set up strategy conditions first', 'warning')
@@ -283,6 +311,14 @@ export default function StrategyBuilder({ onRunBacktest }: StrategyBuilderProps)
 
         <div className="flex gap-2">
           <button
+            onClick={evaluateConditions}
+            disabled={evalLoading}
+            className="flex items-center gap-1.5 rounded-sm px-4 py-2 text-xs font-semibold cursor-pointer text-white border-none"
+            style={{ background: 'var(--accent-purple)', opacity: evalLoading ? 0.6 : 1 }}
+          >
+            <Terminal className="w-4 h-4" /> {evalLoading ? 'Eval...' : 'Evaluate'}
+          </button>
+          <button
             onClick={saveStrategy}
             className="flex items-center gap-1.5 rounded-sm px-4 py-2 text-xs font-semibold cursor-pointer text-white border-none"
             style={{ background: 'var(--accent-blue)' }}
@@ -296,6 +332,11 @@ export default function StrategyBuilder({ onRunBacktest }: StrategyBuilderProps)
           >
             <Play className="w-4 h-4" /> Run Backtest
           </button>
+          {evalResult && (
+            <div style={{ marginTop: 8, padding: 8, background: 'var(--bg-hover)', border: '1px solid var(--border-color)', borderRadius: 4, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-primary)', maxHeight: 200, overflow: 'auto', whiteSpace: 'pre-wrap' }}>
+              {evalResult}
+            </div>
+          )}
         </div>
 
         {savedStrategies.length > 0 && (

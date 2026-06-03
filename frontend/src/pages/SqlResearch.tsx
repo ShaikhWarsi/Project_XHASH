@@ -25,7 +25,12 @@ export default function SqlResearch() {
     })
   }, [])
 
+  const DESTRUCTIVE_KEYWORDS = ['DROP ', 'DELETE ', 'TRUNCATE ', 'ALTER ', 'UPDATE ']
+
   const handleQuery = useCallback(async () => {
+    const upper = query.trim().toUpperCase()
+    const isDestructive = DESTRUCTIVE_KEYWORDS.some((kw) => upper.startsWith(kw))
+    if (isDestructive && !window.confirm(`Are you sure you want to run a destructive query?\n\n${query}`)) return
     setQuerying(true)
     setQueryError(null)
     setResult(null)

@@ -81,15 +81,12 @@ async def run_backtest(config: dict, session: AsyncSession = Depends(get_session
         from backtesting.engine_factory import get_engine_params, list_engines
         from core.enums import OrderSide, OrderType, Timeframe
         from core.types import Order, PortfolioState
-        from data.providers.yfinance import YFinanceDataSource
+        from data.yfinance_provider import YFinanceProvider
 
         engine_type = config.get("engine_type", "default")
-        overrides = {}
-        if "leverage" in config:
-            overrides["leverage"] = config["leverage"]
-        engine_params = get_engine_params(engine_type, overrides)
+        engine_params = get_engine_params(engine_type)
 
-        source = YFinanceDataSource()
+        source = YFinanceProvider()
         data = {}
 
         chunk_size = 5

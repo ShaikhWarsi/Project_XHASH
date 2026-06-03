@@ -1,16 +1,20 @@
 from __future__ import annotations
+import asyncio
 import json
+import logging
 import os
 import threading
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from api.state import app_state
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["orders"])
 
@@ -94,23 +98,31 @@ _load_orders()
 
 
 @router.get("/orders")
-async def list_orders():
+async def list_orders(user_id: str = Query(default="default")):
     with _orders_lock:
-        return list(_orders)
+        return [o for o in _orders if o.get("user_id", "default") == user_id]
 
 
 @router.post("/orders")
-async def create_order(order: OrderRequest):
+async def create_order(order: OrderRequest, user_id: str = Query(default="default")):
     order_id = str(uuid.uuid4())
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     entry = {
         "id": order_id,
+        "user_id": user_id,
         "symbol": order.symbol.upper(),
         "side": order.side.value,
         "quantity": order.quantity,
         "orderType": order.orderType.value,
         "price": order.price,
         "stopPrice": order.stopPrice,
+        "limitPrice": order.limitPrice,
+        "trailingStop": order.trailingStop,
+        "ocoSymbol": order.ocoSymbol,
+        "ocoPrice": order.ocoPrice,
+        "ocoStopPrice": order.ocoStopPrice,
+        "bracketTakeProfit": order.bracketTakeProfit,
+        "bracketStopLoss": order.bracketStopLoss,
         "status": "SUBMITTED",
         "filledQuantity": 0,
         "remainingQuantity": order.quantity,
@@ -122,26 +134,26 @@ async def create_order(order: OrderRequest):
     }
     with _orders_lock:
         _orders.insert(0, entry)
-        _save_orders()
+        await asyncio.to_thread(_save_orders)
     return entry
 
 
 @router.get("/orders/{order_id}")
-async def get_order(order_id: str):
+async def get_order(order_id: str, user_id: str = Query(default="default")):
     with _orders_lock:
         for o in _orders:
-            if o["id"] == order_id:
+            if o["id"] == order_id and o.get("user_id", "default") == user_id:
                 return o
     raise HTTPException(404, "Order not found")
 
 
 @router.delete("/orders/{order_id}")
-async def cancel_order(order_id: str):
+async def cancel_order(order_id: str, user_id: str = Query(default="default")):
     with _orders_lock:
         for o in _orders:
-            if o["id"] == order_id:
+            if o["id"] == order_id and o.get("user_id", "default") == user_id:
                 o["status"] = "CANCELED"
-                o["updatedAt"] = datetime.utcnow().isoformat()
-                _save_orders()
+                o["updatedAt"] = datetime.now(timezone.utc).isoformat()
+                await asyncio.to_thread(_save_orders)
                 return {"success": True}
     raise HTTPException(404, "Order not found")

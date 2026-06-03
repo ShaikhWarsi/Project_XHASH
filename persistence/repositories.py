@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import desc, func, select
@@ -22,7 +22,7 @@ class TradeRepository:
             quantity=fill.quantity,
             price=fill.price,
             commission=getattr(fill, "commission", 0.0),
-            timestamp=fill.timestamp if hasattr(fill, "timestamp") else datetime.utcnow(),
+            timestamp=fill.timestamp if hasattr(fill, "timestamp") else datetime.now(timezone.utc),
             strategy=strategy,
         )
         session.add(trade)
@@ -66,7 +66,7 @@ class SignalRepository:
             confidence=signal.confidence,
             price=signal.price,
             level=signal.level,
-            timestamp=signal.timestamp if hasattr(signal, "timestamp") else datetime.utcnow(),
+            timestamp=signal.timestamp if hasattr(signal, "timestamp") else datetime.now(timezone.utc),
             metadata_json=json.dumps(getattr(signal, "metadata", {}) or {}),
         )
         session.add(record)
@@ -172,7 +172,7 @@ class AlertRepository:
             symbol=symbol,
             target_price=target_price,
             condition=condition,
-            expires_at=_dt.datetime.utcnow() + timedelta(days=90),
+            expires_at=_dt.datetime.now(timezone.utc) + timedelta(days=90),
         )
         session.add(alert)
         await session.commit()

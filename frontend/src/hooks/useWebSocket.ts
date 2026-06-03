@@ -16,7 +16,10 @@ export function useWebSocket<T = unknown>(url: string, options: UseWebSocketOpti
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const mountedRef = useRef(true)
   const urlRef = useRef(url)
-  urlRef.current = url
+
+  useEffect(() => {
+    urlRef.current = url
+  }, [url])
 
   useEffect(() => {
     mountedRef.current = true
@@ -55,9 +58,10 @@ export function useWebSocket<T = unknown>(url: string, options: UseWebSocketOpti
       } catch { /* silent */ }
     }
 
-    ws.onerror = () => {
+    ws.onerror = (event) => {
       if (!mountedRef.current) return
       setConnected(false)
+      onError?.(event)
     }
 
     ws.onclose = () => {

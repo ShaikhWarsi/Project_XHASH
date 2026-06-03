@@ -13,6 +13,10 @@ class DiscordIntegration:
         self.webhook_url = webhook_url
         self.bot_token = bot_token
 
+    def __repr__(self):
+        wh = "set" if self.webhook_url else "unset"
+        return f"DiscordIntegration(webhook_url={wh})"
+
     async def send_trade_alert(self, symbol: str, action: str, quantity: int, price: float):
         message = f"**{action.upper()}** {quantity} {symbol} @ ${price:.2f}"
         if self.webhook_url:

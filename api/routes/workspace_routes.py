@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -13,7 +15,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/workspace", tags=["workspace"])
 
 _workspaces: dict[str, dict[str, Any]] = {}
-_WORKSPACE_FILE = "chart_workspaces.json"
+_WORKSPACE_FILE = Path(os.environ.get("WORKSPACE_FILE", str(Path.cwd() / ".data" / "chart_workspaces.json")))
 
 
 def _load_workspaces() -> dict[str, dict[str, Any]]:

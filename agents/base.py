@@ -25,6 +25,18 @@ class TradingAgent(ABC):
     ) -> dict[str, AnalystSignal]:
         """Run analysis for given tickers. Returns ticker -> AnalystSignal."""
 
+    async def analyze_async(
+        self,
+        tickers: list[str],
+        portfolio: PortfolioState,
+        signals: SignalMatrix,
+        risk_limits: RiskLimits,
+        **kwargs,
+    ) -> dict[str, AnalystSignal]:
+        """Async wrapper for analyze(). Override for native async support."""
+        import asyncio
+        return await asyncio.to_thread(self.analyze, tickers, portfolio, signals, risk_limits, **kwargs)
+
     def _make_signal(
         self,
         ticker: str,

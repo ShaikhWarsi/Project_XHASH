@@ -9,8 +9,12 @@ export type ToolType =
   | 'channel'
   | 'text_label' | 'arrow'
   | 'brush'
-  | 'gann_fan'
+  | 'gann_fan' | 'gann_box' | 'gann_square'
   | 'long_marker' | 'short_marker'
+  | 'anchored_vwap'
+  | 'ruler'
+  | 'auto_fib' | 'auto_pitchfork'
+  | 'speed_resistance_lines'
 
 export interface Point {
   x: number
@@ -72,6 +76,7 @@ export interface ChartState {
 export interface IndicatorConfig {
   id: string
   name: string
+  type: 'line' | 'area' | 'histogram' | 'multi_line'
   params: Record<string, number>
   paneId: string
   visible: boolean

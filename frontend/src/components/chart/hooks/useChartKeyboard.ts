@@ -24,6 +24,7 @@ interface ChartEngineActions {
   toggleDepthChart?: () => void
   toggleVolumeProfile?: () => void
   openSymbolSearch?: () => void
+  openOrderEntry?: (side: 'BUY' | 'SELL') => void
   deselectTool?: () => void
 }
 
@@ -31,7 +32,7 @@ export function useChartKeyboard(
   chartRef: React.RefObject<ChartEngineActions | null>,
   containerRef: React.RefObject<HTMLDivElement | null>,
 ): ChartKeyboardState {
-  const chartEngine = chartRef.current
+  const chartEngine = chartRef.current as ChartEngineActions
   const [locked, setLocked] = useState(false)
   const [crosshairIndex, setCrosshairIndex] = useState<number | null>(null)
   const lockedRef = useRef(false)
@@ -54,7 +55,7 @@ export function useChartKeyboard(
 
     const fromIdx = Math.max(0, next - 20)
     const toIdx = Math.min(data.length - 1, next + 20)
-    chartEngine.chart.timeScale().setVisibleRange({
+    chartEngine.chart?.timeScale().setVisibleRange({
       from: data[fromIdx].time,
       to: data[toIdx].time,
     } as any)
@@ -111,7 +112,7 @@ export function useChartKeyboard(
             })
             if (idx >= 0) {
               setCrosshairIndex(idx)
-              chartEngine.chart.timeScale().setVisibleRange({
+              chartEngine.chart?.timeScale().setVisibleRange({
                 from: chartEngine.data[Math.max(0, idx - 10)].time,
                 to: chartEngine.data[Math.min(chartEngine.data.length - 1, idx + 10)].time,
               } as any)
@@ -174,11 +175,11 @@ export function useChartKeyboard(
         case '+':
         case '=':
           e.preventDefault()
-          chartEngine.chart.timeScale().zoomIn()
+          ;(chartEngine.chart?.timeScale() as any).zoomIn?.()
           break
         case '-':
           e.preventDefault()
-          chartEngine.chart.timeScale().zoomOut()
+          ;(chartEngine.chart?.timeScale() as any).zoomOut?.()
           break
         case 'L':
           if (e.shiftKey && !ctrl) {
@@ -189,54 +190,66 @@ export function useChartKeyboard(
           break
         case 'Escape':
           e.preventDefault()
-          chartEngine.deselectTool?.()
+          chartEngine?.deselectTool?.()
           break
         case 'E':
           if (ctrl) {
             e.preventDefault()
-            chartEngine.exportChart?.()
+            chartEngine?.exportChart?.()
           }
           break
         case 'F':
           if (!ctrl && !e.shiftKey) {
             e.preventDefault()
-            chartEngine.toggleFullscreen?.()
+            chartEngine?.toggleFullscreen?.()
           }
           break
         case 'R':
           if (!ctrl && !e.shiftKey) {
             e.preventDefault()
-            chartEngine.toggleReplayMode?.()
+            chartEngine?.toggleReplayMode?.()
           }
           break
         case 'I':
           if (!ctrl && !e.shiftKey) {
             e.preventDefault()
-            chartEngine.focusIndicatorSearch?.()
+            chartEngine?.focusIndicatorSearch?.()
           }
           break
         case 'S':
           if (!ctrl && !e.shiftKey) {
             e.preventDefault()
-            chartEngine.toggleStructureOverlay?.()
+            chartEngine?.toggleStructureOverlay?.()
+          }
+          break
+        case 'B':
+          if (!ctrl && !e.shiftKey) {
+            e.preventDefault()
+            chartEngine?.openOrderEntry?.('BUY')
+          }
+          break
+        case 's':
+          if (!ctrl && !e.shiftKey) {
+            e.preventDefault()
+            chartEngine?.openOrderEntry?.('SELL')
           }
           break
         case 'D':
           if (!ctrl && !e.shiftKey) {
             e.preventDefault()
-            chartEngine.toggleDepthChart?.()
+            chartEngine?.toggleDepthChart?.()
           }
           break
         case 'V':
           if (!ctrl && !e.shiftKey) {
             e.preventDefault()
-            chartEngine.toggleVolumeProfile?.()
+            chartEngine?.toggleVolumeProfile?.()
           }
           break
         case ' ':
           if (ctrl) {
             e.preventDefault()
-            chartEngine.openSymbolSearch?.()
+            chartEngine?.openSymbolSearch?.()
           }
           break
       }

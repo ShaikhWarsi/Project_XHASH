@@ -3,15 +3,20 @@ import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import { useToastStore } from '../store/toast'
 import { runHedgeFund } from '../api/hedgeFund'
+import { usePersonas } from '../hooks/usePersonas'
 import type { AppNode } from '../components/hedge-flow/types'
 
-interface Persona {
-  id: string
-  name: string
-  style: string
-  color: string
-  emoji: string
-  key: string
+const EMOJI_MAP: Record<string, string> = {
+  buffett: '🦅', graham: '📘', burry: '👁️', druckenmiller: '📈',
+  taleb: '🛡️', lynch: '🔍', pabrai: '🎯', ackman: '⚡',
+  wood: '🚀', damodaran: '📊', soros: '🌍', dalio: '🔄',
+  simons: '🧮', marks: '📝', cohen: '🎮', loeb: '⚔️',
+}
+
+const COLOR_HEX_MAP: Record<string, string> = {
+  green: '#22c55e', red: '#ef4444', blue: '#3b82f6',
+  yellow: '#eab308', purple: '#a855f7', cyan: '#06b6d4',
+  orange: '#f97316', pink: '#ec4899',
 }
 
 interface Opinion {
@@ -21,20 +26,13 @@ interface Opinion {
   reasoning: string
 }
 
-const PERSONAS: Persona[] = [
-  { id: 'buffett', name: 'Warren Buffett', style: 'Value / Moat', color: '#22c55e', emoji: '🦅', key: 'warren_buffett' },
-  { id: 'graham', name: 'Ben Graham', style: 'Deep Value', color: '#3b82f6', emoji: '📘', key: 'ben_graham' },
-  { id: 'burry', name: 'Michael Burry', style: 'Contrarian Value', color: '#ef4444', emoji: '👁️', key: 'michael_burry' },
-  { id: 'druckenmiller', name: 'Stanley Druckenmiller', style: 'Macro Momentum', color: '#8b5cf6', emoji: '📈', key: 'stanley_druckenmiller' },
-  { id: 'taleb', name: 'Nassim Taleb', style: 'Tail Risk', color: '#eab308', emoji: '🛡️', key: 'nassim_taleb' },
-  { id: 'lynch', name: 'Peter Lynch', style: 'GARP', color: '#06b6d4', emoji: '🔍', key: 'peter_lynch' },
-  { id: 'pabrai', name: 'Mohnish Pabrai', style: 'Clone Strategy', color: '#a855f7', emoji: '🎯', key: 'mohnish_pabrai' },
-  { id: 'ackman', name: 'Bill Ackman', style: 'Activist', color: '#ec4899', emoji: '⚡', key: 'bill_ackman' },
-  { id: 'wood', name: 'Cathie Wood', style: 'Disruptive Growth', color: '#f97316', emoji: '🚀', key: 'cathie_wood' },
-  { id: 'damodaran', name: 'Aswath Damodaran', style: 'Valuation', color: '#14b8a6', emoji: '📊', key: 'aswath_damodaran' },
-]
-
 export default function PersonaCouncil() {
+  const { personas: apiPersonas } = usePersonas()
+  const personas = apiPersonas.length > 0 ? apiPersonas.map((p) => ({
+    ...p,
+    color: COLOR_HEX_MAP[p.color] || p.color,
+    emoji: EMOJI_MAP[p.key] || EMOJI_MAP[p.id] || '🧠',
+  })) : []
   const [ticker, setTicker] = useState('AAPL')
   const [opinions, setOpinions] = useState<Opinion[]>([])
   const [loading, setLoading] = useState(false)
@@ -49,74 +47,86 @@ export default function PersonaCouncil() {
     return () => { mountedRef.current = false; abortRef.current?.abort() }
   }, [])
 
+  const [streamProgress, setStreamProgress] = useState(0)
+
   const runCouncil = useCallback(async () => {
     setLoading(true)
     setOpinions([])
     setError('')
+    setStreamProgress(0)
     abortRef.current?.abort()
     const abort = new AbortController()
     abortRef.current = abort
 
     try {
+      setStreamProgress(10)
       const reader = await runHedgeFund({
         tickers: [ticker],
         start_date: new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10),
         end_date: new Date().toISOString().slice(0, 10),
         initial_cash: 100000,
-        graph_nodes: PERSONAS.map((p) => ({
+        graph_nodes: personas.map((p) => ({
           id: p.id,
           type: 'agent' as const,
           position: { x: 0, y: 0 },
-          data: { label: p.name, agentKey: p.key, description: p.style },
+          data: { label: p.name, agent_key: p.key, description: p.style },
         }) as AppNode),
         graph_edges: [],
         signal: abort.signal,
       })
       const decoder = new TextDecoder()
       const pending: Opinion[] = []
+      let sseBuf = ''
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        const chunk = decoder.decode(value)
-        for (const line of chunk.split('\n')) {
-          if (line.startsWith('data: ')) {
-            try {
-              const event = JSON.parse(line.slice(6))
-              if (event.type === 'opinion') {
-                const o = event.data
-                if (o?.agent) {
-                  const opinion: Opinion = {
-                    agent: o.agent_name || o.agent || 'Unknown',
-                    signal: o.direction === 1 ? 'bullish' : o.direction === -1 ? 'bearish' : 'neutral',
-                    confidence: Math.abs(o.score || o.confidence || 0.5),
-                    reasoning: o.reasoning || o.reason || '',
-                  }
-                  pending.push(opinion)
-                  setOpinions([...pending])
+        sseBuf += decoder.decode(value, { stream: true })
+        const parts = sseBuf.split('\n\n')
+        sseBuf = parts.pop() || ''
+        for (const block of parts) {
+          const dataLines = block.split('\n').filter(l => l.startsWith('data: ')).map(l => l.slice(6))
+          if (dataLines.length === 0) continue
+          try {
+            const event = JSON.parse(dataLines.join(''))
+            if (event.type === 'progress') {
+              const pct = typeof event.progress === 'number' ? event.progress : typeof event.percent === 'number' ? event.percent : 0
+              setStreamProgress(Math.min(pct, 90))
+            } else if (event.type === 'opinion') {
+              const o = event.data
+              if (o?.agent) {
+                setStreamProgress((prev) => Math.min(prev + Math.floor(80 / personas.length), 90))
+                const opinion: Opinion = {
+                  agent: o.agent_name || o.agent || 'Unknown',
+                  signal: o.direction === 1 ? 'bullish' : o.direction === -1 ? 'bearish' : 'neutral',
+                  confidence: Math.abs(o.score || o.confidence || 0.5),
+                  reasoning: o.reasoning || o.reason || '',
                 }
-              } else if (event.type === 'complete') {
-                const data = event.data
-                if (data?.decisions && pending.length === 0) {
-                  const ops: Opinion[] = []
-                  for (const t of Object.keys(data.decisions)) {
-                    for (const signal of data.decisions[t] || []) {
-                      ops.push({
-                        agent: signal.agent_name || signal.agent || 'Unknown',
-                        signal: signal.direction === 1 ? 'bullish' : signal.direction === -1 ? 'bearish' : 'neutral',
-                        confidence: Math.abs(signal.score || signal.confidence || 0.5),
-                        reasoning: signal.reasoning || signal.reason || '',
-                      })
-                    }
-                  }
-                  setOpinions(ops)
-                }
-              } else if (event.type === 'error') {
-                setError(event.message || 'Unknown error')
-                setLoading(false)
-                return
+                pending.push(opinion)
+                setOpinions([...pending])
               }
-            } catch {}
-          }
+              setStreamProgress(95)
+            } else if (event.type === 'complete') {
+              const data = event.data
+              if (data?.decisions && pending.length === 0) {
+                const ops: Opinion[] = []
+                for (const t of Object.keys(data.decisions)) {
+                  for (const signal of data.decisions[t] || []) {
+                    ops.push({
+                      agent: signal.agent_name || signal.agent || 'Unknown',
+                      signal: signal.direction === 1 ? 'bullish' : signal.direction === -1 ? 'bearish' : 'neutral',
+                      confidence: Math.abs(signal.score || signal.confidence || 0.5),
+                      reasoning: signal.reasoning || signal.reason || '',
+                    })
+                  }
+                }
+                setOpinions(ops)
+              }
+            } else if (event.type === 'error') {
+              setError(event.message || 'Unknown error')
+              setLoading(false)
+              return
+            }
+          } catch {}
         }
       }
     } catch (e: unknown) {
@@ -126,7 +136,7 @@ export default function PersonaCouncil() {
         addToast('Council deliberation failed', 'error')
       }
     }
-    if (mountedRef.current) setLoading(false)
+    if (mountedRef.current) { setLoading(false); setStreamProgress(100) }
   }, [ticker, addToast])
 
   const bullish = opinions.filter((o) => o.signal === 'bullish').length
@@ -150,8 +160,6 @@ export default function PersonaCouncil() {
       addToast('Failed to copy', 'error')
     }
   }
-
-  const getPersona = (name: string) => PERSONAS.find((p) => p.name === name)
 
   return (
     <div className="space-y-4">
@@ -190,7 +198,7 @@ export default function PersonaCouncil() {
       {loading && !opinions.length && (
         <div className="flex items-center gap-3 py-4">
           <div className="flex -space-x-2">
-            {PERSONAS.slice(0, 5).map((p, i) => (
+            {personas.slice(0, 5).map((p, i) => (
               <div
                 key={p.id}
                 className="w-8 h-8 rounded-full flex items-center justify-center text-xs animate-pulse"
@@ -206,8 +214,19 @@ export default function PersonaCouncil() {
             ))}
           </div>
           <span className="text-[10px] font-mono text-muted">
-            {PERSONAS.length} analysts deliberating...
+            {personas.length} analysts deliberating...
           </span>
+        </div>
+      )}
+      {loading && opinions.length > 0 && (
+        <div style={{ width: '100%', height: 3, background: 'var(--border-color)', borderRadius: 2, overflow: 'hidden' }}>
+          <div style={{
+            width: `${streamProgress}%`,
+            height: '100%',
+            background: 'var(--accent-cyan)',
+            borderRadius: 2,
+            transition: 'width 0.3s ease',
+          }} />
         </div>
       )}
 
@@ -267,7 +286,7 @@ export default function PersonaCouncil() {
 
           {/* Council Votes - War Room Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {PERSONAS.map((persona) => {
+            {personas.map((persona) => {
               const opinion = opinions.find((o) => o.agent === persona.name)
               const signalColor = opinion?.signal === 'bullish' ? 'var(--accent-green)' : opinion?.signal === 'bearish' ? 'var(--accent-red)' : 'var(--accent-yellow)'
               return (

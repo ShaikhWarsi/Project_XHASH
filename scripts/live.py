@@ -11,7 +11,7 @@ from __future__ import annotations
 import argparse
 import logging
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 
 import pandas as pd
 
@@ -78,7 +78,7 @@ def orchestrator_strategy(bars: dict[str, pd.DataFrame], portfolio: PortfolioSta
             results[name] = []
 
     signal_matrix = aggregator.aggregate(results, [symbol])
-    signal_matrix.timestamp = datetime.utcnow()
+    signal_matrix.timestamp = datetime.now(timezone.utc)
 
     orchestrator = TradingOrchestrator()
     current_prices = {symbol: float(symbol_bars["close"].iloc[-1])}
@@ -190,6 +190,7 @@ def main():
 
     except KeyboardInterrupt:
         logger.info("Shutting down...")
+    finally:
         executor.disconnect()
         logger.info("Done.")
 

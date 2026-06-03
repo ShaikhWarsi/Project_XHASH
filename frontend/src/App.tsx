@@ -8,6 +8,7 @@ import { EventBusProvider } from './contexts/EventBusContext'
 import { WorkspaceProvider } from './contexts/WorkspaceContext'
 import { AudioAlertProvider } from './contexts/AudioAlertContext'
 import { InterfaceModeProvider } from './contexts/InterfaceModeContext'
+import { WebSocketProvider } from './contexts/WebSocketProvider'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const ChartPage = lazy(() => import('./pages/Chart'))
@@ -62,6 +63,33 @@ const Infrastructure = lazy(() => import('./pages/Infrastructure'))
 const AuditLogPage = lazy(() => import('./pages/AuditLogPage'))
 const BotsPage = lazy(() => import('./pages/BotsPage'))
 const AlertsPage = lazy(() => import('./pages/Alerts'))
+const OptionsChainPage = lazy(() => import('./pages/OptionsChainPage'))
+const MarketsCalendarPage = lazy(() => import('./pages/MarketsCalendarPage'))
+const EventCalendarPage = lazy(() => import('./pages/EventCalendarPage'))
+const DarkPoolPage = lazy(() => import('./pages/DarkPoolPage'))
+const InsiderTransactionsPage = lazy(() => import('./pages/InsiderTransactionsPage'))
+const EtfFlowPage = lazy(() => import('./pages/EtfFlowPage'))
+const ShortInterestPage = lazy(() => import('./pages/ShortInterestPage'))
+const ThirteenFPage = lazy(() => import('./pages/ThirteenFPage'))
+const VolSurfacePage = lazy(() => import('./pages/VolSurfacePage'))
+const WorldMarketsPage = lazy(() => import('./pages/WorldMarketsPage'))
+const CurrencyMatrixPage = lazy(() => import('./pages/CurrencyMatrixPage'))
+const BondYieldsPage = lazy(() => import('./pages/BondYieldsPage'))
+const CommoditiesPage = lazy(() => import('./pages/CommoditiesPage'))
+const CryptoDominancePage = lazy(() => import('./pages/CryptoDominancePage'))
+const StablecoinDepegPage = lazy(() => import('./pages/StablecoinDepegPage'))
+const FundingRatePage = lazy(() => import('./pages/FundingRatePage'))
+const LiquidationMapPage = lazy(() => import('./pages/LiquidationMapPage'))
+const OrderFlowPage = lazy(() => import('./pages/OrderFlowPage'))
+const FootprintChartPage = lazy(() => import('./pages/FootprintChartPage'))
+const AlternativeChartsPage = lazy(() => import('./pages/AlternativeChartsPage'))
+const CorrelationMatrixPage = lazy(() => import('./pages/CorrelationMatrixPage'))
+const SectorHeatmapPage = lazy(() => import('./pages/SectorHeatmapPage'))
+const RealTimeGreeksPage = lazy(() => import('./pages/RealTimeGreeksPage'))
+const LiveTapePage = lazy(() => import('./pages/LiveTapePage'))
+const AltDataPage = lazy(() => import('./components/AltDataPage'))
+const EventsAnalytics = lazy(() => import('./components/EventsAnalytics'))
+const PromptToTradePage = lazy(() => import('./pages/PromptToTradePage'))
 
 import Skeleton from './components/Skeleton'
 
@@ -92,6 +120,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <InterfaceModeProvider>
+      <WebSocketProvider>
       <LivePricesProvider>
         <EventBusProvider>
           <WorkspaceProvider>
@@ -153,13 +182,41 @@ export default function App() {
                   <Route path="/settings/infrastructure" element={<LazyPage><Infrastructure /></LazyPage>} />
                   <Route path="/settings/audit-log" element={<LazyPage><AuditLogPage /></LazyPage>} />
                   <Route path="/settings/bots" element={<LazyPage><BotsPage /></LazyPage>} />
+                  <Route path="/markets/options" element={<LazyPage><OptionsChainPage /></LazyPage>} />
+                  <Route path="/markets/calendar" element={<LazyPage><MarketsCalendarPage /></LazyPage>} />
+                  <Route path="/markets/event-calendar" element={<LazyPage><EventCalendarPage /></LazyPage>} />
+                  <Route path="/markets/correlation" element={<LazyPage><CorrelationMatrixPage /></LazyPage>} />
+                  <Route path="/markets/sector-heatmap" element={<LazyPage><SectorHeatmapPage /></LazyPage>} />
+                  <Route path="/markets/world-markets" element={<LazyPage><WorldMarketsPage /></LazyPage>} />
+                  <Route path="/markets/currency-matrix" element={<LazyPage><CurrencyMatrixPage /></LazyPage>} />
+                  <Route path="/markets/bond-yields" element={<LazyPage><BondYieldsPage /></LazyPage>} />
+                  <Route path="/markets/commodities" element={<LazyPage><CommoditiesPage /></LazyPage>} />
+                  <Route path="/markets/alternative-charts" element={<LazyPage><AlternativeChartsPage /></LazyPage>} />
+                  <Route path="/markets/vol-surface" element={<LazyPage><VolSurfacePage /></LazyPage>} />
+                  <Route path="/markets/greeks" element={<LazyPage><RealTimeGreeksPage /></LazyPage>} />
+                  <Route path="/markets/live-tape" element={<LazyPage><LiveTapePage /></LazyPage>} />
+                  <Route path="/markets/dark-pool" element={<LazyPage><DarkPoolPage /></LazyPage>} />
+                  <Route path="/markets/insider" element={<LazyPage><InsiderTransactionsPage /></LazyPage>} />
+                  <Route path="/markets/etf-flow" element={<LazyPage><EtfFlowPage /></LazyPage>} />
+                  <Route path="/markets/short-interest" element={<LazyPage><ShortInterestPage /></LazyPage>} />
+                  <Route path="/markets/13f" element={<LazyPage><ThirteenFPage /></LazyPage>} />
+                  <Route path="/markets/crypto-dominance" element={<LazyPage><CryptoDominancePage /></LazyPage>} />
+                  <Route path="/markets/stablecoin-depeg" element={<LazyPage><StablecoinDepegPage /></LazyPage>} />
+                  <Route path="/markets/funding-rates" element={<LazyPage><FundingRatePage /></LazyPage>} />
+                  <Route path="/markets/liquidation-map" element={<LazyPage><LiquidationMapPage /></LazyPage>} />
+                  <Route path="/markets/order-flow" element={<LazyPage><OrderFlowPage /></LazyPage>} />
+                  <Route path="/markets/footprint" element={<LazyPage><FootprintChartPage /></LazyPage>} />
+                  <Route path="/markets/events" element={<LazyPage><EventsAnalytics /></LazyPage>} />
+                  <Route path="/research/alt-data" element={<LazyPage><AltDataPage /></LazyPage>} />
                   <Route path="/alerts" element={<LazyPage><AlertsPage /></LazyPage>} />
+                  <Route path="/ai/prompt-to-trade" element={<LazyPage><PromptToTradePage /></LazyPage>} />
                 </Route>
               </Routes>
             </AudioAlertProvider>
           </WorkspaceProvider>
         </EventBusProvider>
       </LivePricesProvider>
+      </WebSocketProvider>
       </InterfaceModeProvider>
     </BrowserRouter>
   )
