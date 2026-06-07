@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, Float, Integer, String, Text, BigInteger, Boolean, JSON
+from sqlalchemy import Column, DateTime, Float, Integer, String, Text, BigInteger, Boolean, JSON, Index
 from sqlalchemy import Text as SA_Text
 
 from .database import Base
@@ -11,6 +11,9 @@ from .database import Base
 
 class Trade(Base):
     __tablename__ = "trades"
+    __table_args__ = (
+        Index("ix_trades_symbol_ts", "symbol", "timestamp"),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     symbol = Column(String(20), nullable=False, index=True)
@@ -27,6 +30,9 @@ class Trade(Base):
 
 class SignalRecord(Base):
     __tablename__ = "signals"
+    __table_args__ = (
+        Index("ix_signals_symbol_ts", "symbol", "timestamp"),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     symbol = Column(String(20), nullable=False, index=True)
@@ -54,6 +60,9 @@ class PortfolioSnapshot(Base):
 
 class AgentDecision(Base):
     __tablename__ = "agent_decisions"
+    __table_args__ = (
+        Index("ix_agent_decisions_agent_ts", "agent", "timestamp"),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     agent = Column(String(50), nullable=False, index=True)
@@ -142,6 +151,9 @@ class PriceAlert(Base):
     """User-configured price alerts."""
 
     __tablename__ = "price_alerts"
+    __table_args__ = (
+        Index("ix_price_alerts_user_symbol", "user_id", "symbol"),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(String(50), nullable=False, index=True)
@@ -158,6 +170,9 @@ class Order(Base):
     """Persistent order records."""
 
     __tablename__ = "orders"
+    __table_args__ = (
+        Index("ix_orders_symbol_ts", "symbol", "created_at"),
+    )
 
     id = Column(String(36), primary_key=True)
     symbol = Column(String(20), nullable=False, index=True)

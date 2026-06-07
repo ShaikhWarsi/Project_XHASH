@@ -1,6 +1,7 @@
 import { createChart, CandlestickSeries, HistogramSeries, LineSeries, AreaSeries, type IChartApi, type ISeriesApi, type Time, type CandlestickData, type HistogramData, type LineData, type AreaData, type SeriesType, type MouseEventParams } from 'lightweight-charts'
 import { CoordMapper } from './CoordMapper'
 import { DrawingManager } from './drawings/DrawingManager'
+import { DrawingTool } from './drawings/DrawingTool'
 import type { ToolType, IndicatorConfig } from './DrawingTypes'
 import type { ChartThemeColors } from './ChartTheme'
 import { DARK_THEME, getLightweightChartTheme } from './ChartTheme'
@@ -66,10 +67,17 @@ export class ChartEngine {
   protected resizeObserver: ResizeObserver | null = null
   protected resizeRAF = 0
   protected animationFrameId = 0
+  protected _lastFrameTime = 0
+  protected _frameInterval = 1000 / 30
+  protected _indicatorDirty = false
+  protected _indicatorBatchTimer: ReturnType<typeof setTimeout> | null = null
   protected callbacks: ChartCallbacks = {}
+  protected _logicalWidth = 0
+  protected _logicalHeight = 0
   protected mainSeries: ISeriesApi<'Candlestick'> | null = null
   protected volumeSeries: ISeriesApi<'Histogram'> | null = null
   protected indicatorSeries: Map<string, ISeriesApi<SeriesType>> = new Map()
+  protected indicatorConfigs: Map<string, IndicatorConfig> = new Map()
   protected _symbol: string
   protected _interval: string
   protected _theme: ChartThemeColors
@@ -82,6 +90,36 @@ export class ChartEngine {
   protected _sessionTemplate: SessionTemplate | null = null
   protected _showKillZones = false
   snapToOHLC = false
+  protected _priceScalePosition: 'right' | 'left' = 'right'
+  protected _active = true
+  protected _chartType: 'candle' | 'heikinashi' | 'line' | 'area' = 'candle'
+
+  static convertToHeikinAshi(data: CandlestickData[]): CandlestickData[] {
+    if (data.length === 0) return []
+    const result: CandlestickData[] = []
+    let haOpen = data[0].open
+    for (const bar of data) {
+      const haClose = (bar.open + bar.high + bar.low + bar.close) / 4
+      const haHigh = Math.max(bar.high, haOpen, haClose)
+      const haLow = Math.min(bar.low, haOpen, haClose)
+      result.push({ time: bar.time, open: haOpen, high: haHigh, low: haLow, close: haClose })
+      haOpen = (haOpen + haClose) / 2
+    }
+    return result
+  }
+
+  setChartType(type: 'candle' | 'heikinashi' | 'line' | 'area') {
+    this._chartType = type
+    if (this._chartData.length > 0) {
+      const data = type === 'heikinashi' ? ChartEngine.convertToHeikinAshi(this._chartData) : this._chartData
+      this.mainSeries?.setData(data)
+    }
+    this.requestRender()
+  }
+
+  setPriceScalePosition(pos: 'right' | 'left') {
+    this._priceScalePosition = pos
+  }
 
   constructor(options: ChartOptions, callbacks?: ChartCallbacks) {
     this._symbol = options.symbol
@@ -91,20 +129,24 @@ export class ChartEngine {
     this._theme = options.theme ?? DARK_THEME
 
     const lcTheme = getLightweightChartTheme(this._theme)
+    const scaleKey = this._priceScalePosition === 'left' ? 'leftPriceScale' : 'rightPriceScale'
     this.chart = createChart(options.container, {
       width: options.width,
       height: options.height,
       ...lcTheme,
-      rightPriceScale: {
+      [scaleKey]: {
         borderColor: this._theme.border,
         scaleMargins: { top: 0.1, bottom: 0.3 },
-        ...(lcTheme.rightPriceScale || {}),
+        ...(lcTheme[scaleKey] || {}),
       },
     })
 
     this.mapper = new CoordMapper(this.chart)
     this.drawingManager = new DrawingManager(this.chart, this.mapper)
+    DrawingTool.setThemeAccent(this._theme.accent)
 
+    this._logicalWidth = options.width
+    this._logicalHeight = options.height
     this.overlayCanvas = document.createElement('canvas')
     this.overlayCanvas.style.position = 'absolute'
     this.overlayCanvas.style.top = '0'
@@ -128,6 +170,8 @@ export class ChartEngine {
           const { width, height } = entry.contentRect
           if (width === 0 || height === 0) continue
           this.chart.resize(width, height)
+          this._logicalWidth = width
+          this._logicalHeight = height
           const _dpr = window.devicePixelRatio || 1
           this.overlayCanvas.width = width * _dpr
           this.overlayCanvas.height = height * _dpr
@@ -145,10 +189,16 @@ export class ChartEngine {
 
     const crosshairCb = (param: MouseEventParams<Time>) => {
       this.requestRender()
-      this.callbacks.onCrosshairMove?.({
-        time: param.time ?? null,
-        price: param.seriesData?.get?.(this.mainSeries!) as any ?? null,
-      })
+      let time = param.time ?? null
+      let price = param.seriesData?.get?.(this.mainSeries!) as any ?? null
+      if (this.snapToOHLC && param.point && time != null) {
+        const snapped = findOHLCProximity(param.point.x, param.point.y, this._chartData, this.mapper as any)
+        if (snapped) {
+          time = snapped.time as any
+          price = snapped.price
+        }
+      }
+      this.callbacks.onCrosshairMove?.({ time, price })
     }
     this.crosshairHandlers.push(crosshairCb)
     this.chart.subscribeCrosshairMove(crosshairCb)
@@ -320,8 +370,9 @@ export class ChartEngine {
     this.drawingManager.chartData = data
     this._chartData = data
     if (this.mainSeries) {
-      this.mainSeries.setData(data)
-      this.updateVolumeData(data)
+      const displayData = this._chartType === 'heikinashi' ? ChartEngine.convertToHeikinAshi(data) : data
+      this.mainSeries.setData(displayData)
+      this.updateVolumeData(displayData)
       return
     }
     this.mainSeries = this.chart.addSeries(CandlestickSeries, {
@@ -331,20 +382,23 @@ export class ChartEngine {
       wickUpColor: this._theme.up,
       wickDownColor: this._theme.down,
     })
-    this.mainSeries.setData(data)
+    const displayData = this._chartType === 'heikinashi' ? ChartEngine.convertToHeikinAshi(data) : data
+    this.mainSeries.setData(displayData)
     this.mapper.registerPane('main', this.mainSeries)
 
-    const volumeData: HistogramData[] = data.map((d) => ({
+    const volumeData: HistogramData[] = displayData.map((d) => ({
       time: d.time,
       value: d.close > d.open ? ((d as any).volume ?? 0) : -((d as any).volume ?? 0),
-      color: d.close > d.open ? 'rgba(38,166,154,0.5)' : 'rgba(239,83,80,0.5)',
+      color: d.close > d.open ? this._theme.up + '80' : this._theme.down + '80',
     }))
+    const indCount = this.indicatorConfigs.size
+    const volumeTop = 1 - (0.15 * (1 + Math.min(indCount, 5)))
     this.volumeSeries = this.chart.addSeries(HistogramSeries, {
       priceFormat: { type: 'volume' },
       priceScaleId: 'volume',
     })
     this.chart.priceScale('volume').applyOptions({
-      scaleMargins: { top: 0.85, bottom: 0 },
+      scaleMargins: { top: volumeTop, bottom: 0 },
     })
     this.volumeSeries.setData(volumeData)
     this.mapper.registerPane('volume', this.volumeSeries)
@@ -357,24 +411,28 @@ export class ChartEngine {
     const volumeData: HistogramData[] = data.map((d) => ({
       time: d.time,
       value: d.close > d.open ? ((d as any).volume ?? 0) : -((d as any).volume ?? 0),
-      color: d.close > d.open ? 'rgba(38,166,154,0.5)' : 'rgba(239,83,80,0.5)',
+      color: d.close > d.open ? this._theme.up + '80' : this._theme.down + '80',
     }))
     this.volumeSeries.setData(volumeData)
   }
 
   updateData(data: CandlestickData[]) {
     this._chartData = data
-    this.mainSeries?.setData(data)
-    this.updateVolumeData(data)
+    const displayData = this._chartType === 'heikinashi' ? ChartEngine.convertToHeikinAshi(data) : data
+    this.mainSeries?.setData(displayData)
+    this.updateVolumeData(displayData)
   }
 
   updateLastBar(bar: CandlestickData) {
-    this.mainSeries?.update(bar)
+    const haBar = this._chartType === 'heikinashi'
+      ? ChartEngine.convertToHeikinAshi([bar])[0]
+      : bar
+    this.mainSeries?.update(haBar)
     if ((bar as any).volume != null) {
       this.volumeSeries?.update({
         time: bar.time,
-        value: bar.close > bar.open ? (bar as any).volume : -(bar as any).volume,
-        color: bar.close > bar.open ? 'rgba(38,166,154,0.5)' : 'rgba(239,83,80,0.5)',
+        value: haBar.close > haBar.open ? (bar as any).volume : -(bar as any).volume,
+        color: haBar.close > haBar.open ? this._theme.up + '80' : this._theme.down + '80',
       })
     }
   }
@@ -386,12 +444,36 @@ export class ChartEngine {
     }
   }
 
+  setActive(active: boolean) {
+    this._active = active
+    if (!active && this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId)
+      this.animationFrameId = 0
+    }
+  }
+
   requestRender() {
+    if (!this._active) return
+    const now = performance.now()
     if (this.animationFrameId) return
     this.animationFrameId = requestAnimationFrame(() => {
       this.animationFrameId = 0
+      if (now - this._lastFrameTime < this._frameInterval) return
+      this._lastFrameTime = now
       this.renderOverlay()
     })
+  }
+
+  requestIndicatorBatch() {
+    if (this._indicatorBatchTimer) return
+    this._indicatorDirty = true
+    this._indicatorBatchTimer = setTimeout(() => {
+      this._indicatorBatchTimer = null
+      if (this._indicatorDirty) {
+        this._indicatorDirty = false
+        this.requestRender()
+      }
+    }, 50)
   }
 
   seekToIndex(index: number, data: CandlestickData[]) {
@@ -399,12 +481,6 @@ export class ChartEngine {
     const from = data[0].time
     const to = data[index].time
     this.chart.timeScale().setVisibleRange({ from, to } as any)
-
-    if (this.mainSeries) {
-      const subset = data.slice(0, index + 1)
-      this.mainSeries.setData(subset)
-      this.updateVolumeData(subset)
-    }
   }
 
   fitContent() {
@@ -412,30 +488,47 @@ export class ChartEngine {
   }
 
   addIndicator(config: IndicatorConfig) {
-    if (this.indicatorSeries.has(config.id)) return
+    if (this.indicatorSeries.has(config.id)) {
+      this.indicatorConfigs.set(config.id, config)
+      const existing = this.indicatorSeries.get(config.id)
+      if (existing && (config as any).data) {
+        existing.setData((config as any).data as any)
+      }
+      return
+    }
+    this.indicatorConfigs.set(config.id, config)
     const color = config.style?.color ?? this._theme.accent
     if (config.type === 'line') {
       const series = this.chart.addSeries(LineSeries, {
-        color, lineWidth: 1, priceScaleId: config.paneId || undefined,
+        color, lineWidth: 1, priceScaleId: config.paneId ? `pane_${config.paneId}` : undefined,
       })
-      if ((config as any).data) series.setData((config as any).data as any[])
+      const lineData = (config as any).data as any[]
+      if (lineData) {
+        const vals = lineData.map((d: any) => d.value).filter((v: any) => v != null)
+        if (vals.length > 1 && Math.max(...vals) === Math.min(...vals) && vals[0] !== 0) {
+          lineData[0] = { ...lineData[0], value: vals[0] - 0.01 }
+          lineData[lineData.length - 1] = { ...lineData[lineData.length - 1], value: vals[0] + 0.01 }
+        }
+        series.setData(lineData)
+      }
       this.indicatorSeries.set(config.id, series)
     } else if (config.type === 'area') {
       const series = this.chart.addSeries(AreaSeries, {
         lineColor: color,
         topColor: color + '40',
         bottomColor: color + '05',
-        priceScaleId: config.paneId || undefined,
+        priceScaleId: config.paneId ? `pane_${config.paneId}` : undefined,
       })
       if ((config as any).data) series.setData((config as any).data as any[])
       this.indicatorSeries.set(config.id, series)
     } else if (config.type === 'histogram') {
       const series = this.chart.addSeries(HistogramSeries, {
-        color, priceScaleId: config.paneId || undefined,
+        color, priceScaleId: config.paneId ? `pane_${config.paneId}` : undefined,
       })
       if ((config as any).data) series.setData((config as any).data as any)
       this.indicatorSeries.set(config.id, series)
     } else if (config.type === 'multi_line') {
+      // multi_line indicators should share theme's accent line color
       const lines = ['value1', 'value2', 'value3', 'value4', 'value5']
       const colors = ['#06b6d4', '#ec4899', '#22c55e', '#eab308', '#a855f7']
       const labels = ['Tenkan', 'Kijun', 'SenkouA', 'SenkouB', 'Chikou']
@@ -552,14 +645,14 @@ export class ChartEngine {
       const left = Math.min(x1, x2)
       const width = Math.abs(x2 - x1)
       ctx.fillStyle = zone.color
-      ctx.fillRect(left, 0, width, this.overlayCanvas.height)
+      ctx.fillRect(left, 0, width, this._logicalHeight)
     }
   }
 
   protected drawStructureOverlay(ctx: CanvasRenderingContext2D) {
     const data = this._structureData
     if (!data) return
-    const w = this.overlayCanvas.width
+    const w = this._logicalWidth
     const canvasWidth = w
 
     // Key levels (subtle background lines)
@@ -592,9 +685,13 @@ export class ChartEngine {
   protected renderOverlay() {
     const ctx = this.overlayCtx
     if (!ctx) return
-    ctx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height)
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
+    ctx.textRendering = 'geometricPrecision'
+    ctx.font = `11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace`
+    ctx.clearRect(0, 0, this._logicalWidth, this._logicalHeight)
     if (this._sessionTemplate) {
-      renderSessionOverlay(ctx, this._chartData, this.mapper, this.overlayCanvas.height, this._sessionTemplate)
+      renderSessionOverlay(ctx, this._chartData, this.mapper, this._logicalHeight, this._sessionTemplate)
     }
     this.drawRegimeZones(ctx)
     this.drawStructureOverlay(ctx)
@@ -609,8 +706,8 @@ export class ChartEngine {
         close: d.close,
       }))
       renderIchimokuCloud(ctx, indicatorInput, this.mapper, {
-        width: this.overlayCanvas.width,
-        height: this.overlayCanvas.height,
+        width: this._logicalWidth,
+        height: this._logicalHeight,
         padding: { top: 0, bottom: 0, left: 0, right: 0 },
       })
     }
@@ -622,12 +719,12 @@ export class ChartEngine {
         low: d.low,
         close: d.close,
       }))
-      renderPivotLevels(ctx, indicatorInput, this.mapper, this.overlayCanvas.width)
+      renderPivotLevels(ctx, indicatorInput, this.mapper, this._logicalWidth)
     }
     if (this._chartData.length > 0) {
       renderVolumeProfile(ctx, this._chartData, this.mapper, {
-        width: this.overlayCanvas.width,
-        height: this.overlayCanvas.height,
+        width: this._logicalWidth,
+        height: this._logicalHeight,
         rightMargin: 60,
       })
     }

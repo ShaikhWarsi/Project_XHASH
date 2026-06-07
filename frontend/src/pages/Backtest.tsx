@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Play, Loader, Settings, Share2 } from 'lucide-react'
 import { useBacktestStore } from '../store/backtest'
 import { fetchOHLCV } from '../api/client'
@@ -497,6 +498,7 @@ const ENGINE_LEVERAGE_DEFAULTS: Record<string, number> = {
 export default function Backtest() {
   const addToast = useToastStore((s) => s.addToast)
   const { result, running, enginesLoading, error, engines, config, setConfig, run, clear, loadEngines } = useBacktestStore()
+  const [searchParams] = useSearchParams()
   const [showCache, setShowCache] = useState(false)
   const [tab, setTab] = useState<Tab>('run')
   const [benchmarkData, setBenchmarkData] = useState<{ time: string; value: number }[]>([])
@@ -504,9 +506,23 @@ export default function Backtest() {
   const [showTearSheet, setShowTearSheet] = useState(false)
   const [showStressTest, setShowStressTest] = useState(false)
 
-  const extResult = result as ExtendedBacktestResult | null
-
   useEffect(() => { loadEngines() }, [loadEngines])
+
+  useEffect(() => {
+    const entryRaw = searchParams.get('entryConditions')
+    const exitRaw = searchParams.get('exitConditions')
+    const tickersRaw = searchParams.get('tickers')
+    const timeframe = searchParams.get('timeframe')
+    if (entryRaw || exitRaw) {
+      setConfig({
+        entryConditions: entryRaw || '',
+        exitConditions: exitRaw || '',
+        strategy: 'custom',
+        tickers: tickersRaw || config.tickers,
+        ...(timeframe ? { start: '', end: '' } : {}),
+      })
+    }
+  }, [])
 
   useEffect(() => {
     if (!result || result.timestamps.length === 0) return
@@ -828,6 +844,10 @@ export default function Backtest() {
               <MetricsCard label="P. FACTOR" value={(result.profit_factor ?? 0).toFixed(2)} sublabel="Profit/Loss" color={(result.profit_factor ?? 0) > 1.5 ? 'var(--accent-green)' : (result.profit_factor ?? 0) > 1 ? 'var(--accent-yellow)' : 'var(--accent-red)'} />
               <MetricsCard label="SORTINO" value={(result.sortino_ratio ?? 0).toFixed(2)} sublabel="Downside Risk" color={(result.sortino_ratio ?? 0) >= 1 ? 'var(--accent-green)' : (result.sortino_ratio ?? 0) >= 0 ? 'var(--accent-yellow)' : 'var(--accent-red)'} />
               <MetricsCard label="ANN. RET" value={`${((result.annualized_return ?? 0) * 100).toFixed(2)}%`} sublabel="Yearly" color={(result.annualized_return ?? 0) >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'} />
+
+              <div className="flex items-center gap-1 px-2 py-1 rounded-sm" style={{ background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.2)', gridColumn: '1 / -1', fontSize: 9, fontFamily: "'JetBrains Mono', monospace", color: 'var(--accent-yellow)' }}>
+                ⓘ Returns do not include commissions. Estimated commission impact: ${fmtCurrency((result.total_trades ?? 0) * 0.65)}
+              </div>
 
               {/* Stress Test button (#207) */}
               <button

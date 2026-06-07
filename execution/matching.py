@@ -95,6 +95,7 @@ class OrderMatchingEngine:
         self._toactivate_check()
         self._check_submitted()
         self._execute_pending()
+        self._charge_borrow_fees()
         self._credit_interest()
         self._futures_mtm()
         self._get_value()
@@ -162,28 +163,39 @@ class OrderMatchingEngine:
         elif order.exectype == OrderType.Historical:
             self._try_exec_historical(order)
 
-    def _slip_up(self, phigh: float, price: float, doslip: bool = True) -> float | None:
+    def _calc_dynamic_slippage(self, price: float, is_buy: bool, size: int = 0) -> float:
+        base_perc = self._slippage_perc
+        if base_perc == 0.0 and self._slippage_fixed:
+            base_perc = self._slippage_fixed / max(price, 0.01)
+        bar_vol = self._bar_data.get("volume", 1_000_000)
+        adv_dollar = bar_vol * price
+        order_dollar = abs(size) * price
+        adv_ratio = order_dollar / max(adv_dollar, 1)
+        impact = base_perc * (1.0 + (adv_ratio ** 0.5) * 10.0)
+        spread_est = base_perc * 0.5
+        regime_mult = 1.0
+        if "close" in self._bar_data and "open" in self._bar_data:
+            bar_range = abs(self._bar_data["close"] - self._bar_data["open"]) / max(self._bar_data["open"], 0.01)
+            if bar_range > 0.02:
+                regime_mult = 1.5
+            elif bar_range > 0.04:
+                regime_mult = 2.0
+        return impact + spread_est + (base_perc * (regime_mult - 1.0))
+
+    def _slip_up(self, phigh: float, price: float, doslip: bool = True, size: int = 0) -> float | None:
         if not doslip:
             return price
-        if self._slippage_perc:
-            pslip = price * (1 + self._slippage_perc)
-        elif self._slippage_fixed:
-            pslip = price + self._slippage_fixed
-        else:
-            return price
+        slip = self._calc_dynamic_slippage(price, is_buy=True, size=size)
+        pslip = price * (1 + slip)
         if self._slip_match and pslip > phigh:
             return phigh if self._slip_limit else phigh
         return pslip
 
-    def _slip_down(self, plow: float, price: float, doslip: bool = True) -> float | None:
+    def _slip_down(self, plow: float, price: float, doslip: bool = True, size: int = 0) -> float | None:
         if not doslip:
             return price
-        if self._slippage_perc:
-            pslip = price * (1 - self._slippage_perc)
-        elif self._slippage_fixed:
-            pslip = price - self._slippage_fixed
-        else:
-            return price
+        slip = self._calc_dynamic_slippage(price, is_buy=False, size=size)
+        pslip = price * (1 - slip)
         if self._slip_match and pslip < plow:
             return plow if self._slip_limit else plow
         return pslip
@@ -195,9 +207,9 @@ class OrderMatchingEngine:
         elif self._coc:
             exprice = getattr(order, '_created_pclose', pclose)
         if order.isbuy:
-            p = self._slip_up(phigh, exprice, doslip=self._slip_open)
+            p = self._slip_up(phigh, exprice, doslip=self._slip_open, size=abs(order.executed.remsize or order.size))
         else:
-            p = self._slip_down(plow, exprice, doslip=self._slip_open)
+            p = self._slip_down(plow, exprice, doslip=self._slip_open, size=abs(order.executed.remsize or order.size))
         if p is None:
             return
         self._execute(order, p)
@@ -277,6 +289,14 @@ class OrderMatchingEngine:
         size = abs(order.executed.remsize) if order.executed.remsize else abs(order.size)
         if not size:
             return
+
+        if self._filler is not None:
+            order._bar_volume = self._bar_data.get("volume", 1_000_000)
+            fillable = self._filler(order, price, 0)
+            if fillable < size:
+                size = fillable
+                if size == 0:
+                    return
 
         if not order.isbuy:
             size = -size
@@ -399,6 +419,16 @@ class OrderMatchingEngine:
                     o.cancel()
                     self.notifs.append(o)
             self.pending = new_pending
+
+    def _charge_borrow_fees(self):
+        if not self._bar_data:
+            return
+        close = self._bar_data.get('close', 0)
+        for symbol, size in list(self.positions.items()):
+            if size < 0:
+                price = self.position_prices.get(symbol, close)
+                fee = self._comminfo.get_borrow_fee(size, price, 1.0)
+                self.cash -= fee
 
     def _credit_interest(self):
         pass

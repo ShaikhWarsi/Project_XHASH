@@ -27,12 +27,17 @@ async def get_portfolio(session: AsyncSession = Depends(get_session)):
                 "unrealized_pnl": getattr(pos, "unrealized_pnl", 0),
                 "realized_pnl": getattr(pos, "realized_pnl", 0),
                 "market_value": getattr(pos, "market_value", 0),
+                "daily_pnl": getattr(pos, "daily_pnl", 0),
             }
     realized_pnl = 0.0
+    long_realized = 0.0
+    short_realized = 0.0
     if p.realized_gains and isinstance(p.realized_gains, dict):
-        for v in p.realized_gains.values():
+        for sym, v in p.realized_gains.items():
             if isinstance(v, dict):
                 realized_pnl += v.get("long", 0) + v.get("short", 0)
+                long_realized += v.get("long", 0)
+                short_realized += v.get("short", 0)
             elif isinstance(v, (int, float, Decimal)):
                 realized_pnl += float(v)
             else:
@@ -49,6 +54,8 @@ async def get_portfolio(session: AsyncSession = Depends(get_session)):
         "margin_used": getattr(p, "margin_used", 0),
         "margin_req": getattr(p, "margin_requirement", 0),
         "realized_gains": realized_pnl,
+        "long_realized": long_realized,
+        "short_realized": short_realized,
         "positions": positions,
     }
 

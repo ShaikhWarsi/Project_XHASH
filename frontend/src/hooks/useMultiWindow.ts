@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
-import { createSyncChannel, getTabId, setPrimaryTabId, TE_SYNC, type SyncEvent } from '../utils/broadcastChannels'
+import { createSyncChannel, getTabId, getPrimaryTabId, setPrimaryTabId, TE_SYNC, type SyncEvent } from '../utils/broadcastChannels'
 
 interface UseMultiWindowOptions {
   onEvent?: (event: SyncEvent) => void

@@ -2,17 +2,107 @@ from __future__ import annotations
 
 import os
 import time
+import uuid
 import asyncio
 import logging
+import signal
 from contextlib import asynccontextmanager
+from contextvars import ContextVar
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import RedirectResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+
+request_id_var: ContextVar[str] = ContextVar("request_id", default="")
+_shutting_down = False
+
+# ── PII redaction ──
+_PII_PATTERNS = [
+    (r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', '***EMAIL***'),
+    (r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b', '***PHONE***'),
+    (r'(api[_-]?key|apikey|secret|password|token)["\s:=]+\S+', r'\1=***REDACTED***'),
+    (r'Bearer\s+\S+', 'Bearer ***REDACTED***'),
+]
+
+
+class PiiRedactFilter(logging.Filter):
+    def filter(self, record):
+        if hasattr(record, 'msg') and isinstance(record.msg, str):
+            for pattern, replacement in _PII_PATTERNS:
+                record.msg = __import__('re').sub(pattern, replacement, record.msg, flags=__import__('re').IGNORECASE)
+        if hasattr(record, 'args') and record.args:
+            sanitized = []
+            for arg in record.args:
+                if isinstance(arg, str):
+                    for pattern, replacement in _PII_PATTERNS:
+                        arg = __import__('re').sub(pattern, replacement, arg, flags=__import__('re').IGNORECASE)
+                sanitized.append(arg)
+            record.args = tuple(sanitized)
+        return True
+
+
+class RequestIdFilter(logging.Filter):
+    def filter(self, record):
+        record.request_id = request_id_var.get() or "-"
+        return True
+
+
+logging.getLogger().addFilter(RequestIdFilter())
+logging.getLogger().addFilter(PiiRedactFilter())
+_log_fmt = os.environ.get("LOG_FORMAT", "dev")
+if _log_fmt != "json":
+    for h in logging.getLogger().handlers:
+        if h.formatter and not h.formatter._fmt.startswith("[%(request_id)s"):
+            h.setFormatter(logging.Formatter("[%(request_id)s] %(levelname)s %(name)s: %(message)s"))
+
+_STRUCTLOG_AVAILABLE = False
+_LOG_FORMAT = os.environ.get("LOG_FORMAT", "dev")  # dev | json
+try:
+    import structlog
+    shared_processors = [
+        structlog.contextvars.merge_contextvars,
+        structlog.stdlib.filter_by_level,
+        structlog.stdlib.add_logger_name,
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+    ]
+    if _LOG_FORMAT == "json":
+        shared_processors.append(structlog.processors.JSONRenderer())
+    else:
+        shared_processors.append(structlog.dev.ConsoleRenderer())
+    structlog.configure(
+        processors=shared_processors,
+        wrapper_class=structlog.stdlib.BoundLogger,
+        context_class=dict,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        cache_logger_on_first_use=True,
+    )
+    _STRUCTLOG_AVAILABLE = True
+    logging.getLogger(__name__).info("structlog configured")
+except ImportError:
+    logging.getLogger(__name__).info("structlog not installed — using standard logging")
+
+
+def get_logger(name: str = __name__):
+    if _STRUCTLOG_AVAILABLE:
+        import structlog
+        return structlog.get_logger(name)
+    return logging.getLogger(name)
+
+
+def bind_context(request_id: str = "", user_id: str = "", **kwargs):
+    if _STRUCTLOG_AVAILABLE:
+        import structlog
+        structlog.contextvars.bind_contextvars(request_id=request_id, user_id=user_id, **kwargs)
+
 
 from .routes import backtest_routes, bars_routes, cfa, chart_routes, config, flows, hedge_fund, market_data, metrics, mmc, portfolio, signals, stream, structure, trades, global_market
 from .routes.ws import router as ws_router
@@ -80,6 +170,24 @@ from .routes.market_intel import router as market_intel_router
 from .routes.broker_routes import router as broker_router
 from .routes.options_routes import router as options_router
 from .routes.calendar_routes import router as calendar_router
+from .routes.strategy_health import router as strategy_health_router
+from .routes.auto_tag_trades import router as auto_tag_trades_router
+from .routes.explain_pnl import router as explain_pnl_router
+from .routes.prompts import router as prompts_router
+from .routes.leaderboard import router as leaderboard_router
+from .routes.auth import router as auth_router
+from .routes.explain_stops import router as explain_stops_router
+from .routes.trade_coach import router as trade_coach_router
+from .routes.risk_report import router as risk_report_router
+from .routes.monte_carlo_routes import router as monte_carlo_router
+from .scheduler import create_scheduler, register_job, get_run_history, get_job_status
+from .routes.walkforward_routes import router as walkforward_router
+from .routes.scenario_routes import router as scenario_router
+from .routes.memory_routes import router as memory_router
+from .routes.calibration_routes import router as calibration_router
+from .routes.reflection_routes import router as reflection_router
+from .routes.wall_clock_routes import router as wall_clock_router
+from .routes.panic import router as panic_router
 from persistence import init_db, close_db
 from persistence.database import _engine as db_engine
 
@@ -88,6 +196,9 @@ logger = logging.getLogger(__name__)
 _start_time = time.time()
 
 _background_tasks: list[asyncio.Task] = []
+_scheduler = None
+_request_latencies: dict[str, list[float]] = {}
+_metrics_lock = asyncio.Lock()
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
@@ -184,63 +295,130 @@ def get_enabled_background_tasks() -> list[str]:
     return [name.strip() for name in raw.split(",") if name.strip() in _BACKGROUND_TASK_REGISTRY]
 
 
+def _log_task_failure(task: asyncio.Task):
+    exc = task.exception()
+    if exc:
+        logger.error("Background task '%s' failed: %s", task.get_name(), exc)
+
+
 def start_background_tasks():
-    global _background_tasks
-    for name in get_enabled_background_tasks():
-        task_func = _BACKGROUND_TASK_REGISTRY[name]
-        logger.info("Starting background task: %s", name)
-        _background_tasks.append(asyncio.create_task(task_func(), name=f"trading-engine:{name}"))
-    _background_tasks.append(asyncio.create_task(ws_manager.periodic_cleanup(), name="trading-engine:ws-cleanup"))
+    global _background_tasks, _scheduler
+    _background_tasks = [t for t in _background_tasks if not t.done()]
+
+    _scheduler = create_scheduler()
+    if _scheduler:
+        # APScheduler mode — register jobs with retry + observability
+        for name in get_enabled_background_tasks():
+            from .market_intel import refresh_market_news_snapshots, refresh_macro_signal_snapshot, refresh_etf_flow_snapshot, refresh_stock_analysis_snapshots
+            _FN_MAP = {
+                "market_news": refresh_market_news_snapshots,
+                "macro_signals": refresh_macro_signal_snapshot,
+                "etf_flows": refresh_etf_flow_snapshot,
+                "stock_analysis": refresh_stock_analysis_snapshots,
+            }
+            fn = _FN_MAP.get(name)
+            if fn:
+                interval = int(os.environ.get(f"{name.upper()}_INTERVAL", "3600"))
+                register_job(_scheduler, name, fn, interval)
+        _scheduler.start()
+    else:
+        # Legacy mode — asyncio background tasks
+        for name in get_enabled_background_tasks():
+            task_func = _BACKGROUND_TASK_REGISTRY[name]
+            logger.info("Starting background task: %s", name)
+            t = asyncio.create_task(task_func(), name=f"trading-engine:{name}")
+            t.add_done_callback(_log_task_failure)
+            _background_tasks.append(t)
+
+    # WS manager tasks always run as asyncio tasks
+    t = asyncio.create_task(ws_manager.periodic_cleanup(), name="trading-engine:ws-cleanup")
+    t.add_done_callback(_log_task_failure)
+    _background_tasks.append(t)
+    t2 = asyncio.create_task(ws_manager.heartbeat_loop(), name="trading-engine:ws-heartbeat")
+    t2.add_done_callback(_log_task_failure)
+    _background_tasks.append(t2)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_db()
-    await seed_demo_data()
-
-    # Load active credentials and seed back into provider registries
+    global _shutting_down
     try:
-        import json
-        from sqlalchemy import select
-        from persistence.database import _session_factory
-        from persistence.models import ApiKey
-        from data.registry import registry
-        from data.providers import global_provider_registry
+        await init_db()
+        await seed_demo_data()
 
-        async with _session_factory() as session:
-            stmt = select(ApiKey).where(ApiKey.is_active == 1)
-            result = await session.execute(stmt)
-            keys = result.scalars().all()
-            for key in keys:
-                try:
-                    config = json.loads(key.key_value)
-                    # Update registry
-                    if key.provider in registry._providers:
-                        registry._providers[key.provider].credentials.update(config)
-                        logger.info("Restored credentials for registry provider: %s", key.provider)
+        # Load active credentials and seed back into provider registries
+        try:
+            import json
+            from sqlalchemy import select
+            from persistence.database import _session_factory
+            from persistence.models import ApiKey
+            from data.registry import registry
+            from data.providers import global_provider_registry
 
-                    # Update global_provider_registry
-                    p = global_provider_registry.get(key.provider)
-                    if p and hasattr(p, "credentials") and isinstance(p.credentials, dict):
-                        p.credentials.update(config)
-                        logger.info("Restored credentials for global_provider_registry provider: %s", key.provider)
-                except Exception as ex:
-                    logger.warning("Failed to restore credentials for %s: %s", key.provider, ex)
-    except Exception as e:
-        logger.warning("Failed to load and seed API keys on startup: %s", e)
+            async with _session_factory() as session:
+                stmt = select(ApiKey).where(ApiKey.is_active == 1)
+                result = await session.execute(stmt)
+                keys = result.scalars().all()
+                for key in keys:
+                    try:
+                        config = json.loads(key.key_value)
+                        # Update registry
+                        if key.provider in registry._providers:
+                            registry._providers[key.provider].credentials.update(config)
+                            logger.info("Restored credentials for registry provider: %s", key.provider)
 
-    try:
-        yfinance_provider = YFinanceProvider()
-        global_provider_registry.register(yfinance_provider, enabled=True)
-        logger.info("Registered YFinance provider")
-    except Exception as e:
-        logger.warning("Failed to register YFinance provider: %s", e)
-    if _env_bool("TRADING_ENGINE_MARKET_INTEL_ENABLED", True):
-        start_background_tasks()
-    yield
-    for task in _background_tasks:
-        task.cancel()
-    await close_db()
+                        # Update global_provider_registry
+                        p = global_provider_registry.get(key.provider)
+                        if p and hasattr(p, "credentials") and isinstance(p.credentials, dict):
+                            p.credentials.update(config)
+                            logger.info("Restored credentials for global_provider_registry provider: %s", key.provider)
+                    except Exception as ex:
+                        logger.warning("Failed to restore credentials for %s: %s", key.provider, ex)
+        except Exception as e:
+            logger.warning("Failed to load and seed API keys on startup: %s", e)
+
+        try:
+            yfinance_provider = YFinanceProvider()
+            global_provider_registry.register(yfinance_provider, enabled=True)
+            logger.info("Registered YFinance provider")
+        except Exception as e:
+            logger.warning("Failed to register YFinance provider: %s", e)
+        if _env_bool("TRADING_ENGINE_MARKET_INTEL_ENABLED", True):
+            start_background_tasks()
+
+        # ── Register OS signal handlers for graceful shutdown ──
+        loop = asyncio.get_event_loop()
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            try:
+                loop.add_signal_handler(sig, lambda s=sig: asyncio.create_task(_handle_shutdown(s)))
+            except NotImplementedError:
+                pass
+
+        yield
+    finally:
+        _shutting_down = True
+        logger.warning("Shutdown phase 1/3: stop accepting new requests")
+
+        await asyncio.sleep(0.5)
+
+        logger.warning("Shutdown phase 2/3: drain in-flight (%ds window)", 30)
+        await asyncio.sleep(30)
+
+        global _scheduler
+        if _scheduler:
+            _scheduler.shutdown(wait=False)
+        for task in _background_tasks:
+            task.cancel()
+        if _background_tasks:
+            await asyncio.wait(_background_tasks, timeout=10)
+        await close_db()
+        logger.warning("Shutdown phase 3/3: complete")
+
+
+async def _handle_shutdown(sig: signal.Signals):
+    global _shutting_down
+    _shutting_down = True
+    logger.warning("Received signal %s, initiating graceful shutdown", sig.name)
 
 
 
@@ -263,6 +441,31 @@ def _check_ccxt():
         return {"status": "error", "detail": str(e)}
 
 
+def _check_yfinance():
+    try:
+        import yfinance as yf
+        ticker = yf.Ticker("SPY")
+        hist = ticker.history(period="1d")
+        if hist is not None and not hist.empty:
+            return {"status": "ok", "last_close": float(hist["Close"].iloc[-1])}
+        return {"status": "degraded", "detail": "empty response"}
+    except ImportError:
+        return {"status": "unavailable"}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)[:100]}
+
+
+def _check_disk():
+    try:
+        import shutil
+        usage = shutil.disk_usage(".")
+        free_gb = usage.free / (1024 ** 3)
+        status = "ok" if free_gb > 0.5 else "degraded"
+        return {"status": status, "free_gb": round(free_gb, 1), "total_gb": round(usage.total / (1024 ** 3), 1)}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)[:100]}
+
+
 def create_app(title: str = "Trading Engine API") -> FastAPI:
     app = FastAPI(title=title, version="0.2.0", lifespan=lifespan)
 
@@ -279,10 +482,166 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
     if allow_all:
         logger.info("CORS: allowing all origins (credentials disabled)")
 
+    app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+    @app.middleware("http")
+    async def cache_control_middleware(request: Request, call_next):
+        response = await call_next(request)
+        if request.method == "GET" and response.status_code == 200:
+            path = request.url.path
+            # Static/rarely-changing endpoints: cache 60s browser, 10s shared
+            if path in ("/health", "/healthz", "/api/health"):
+                response.headers["Cache-Control"] = "no-cache, no-store"
+            elif path in ("/metrics",):
+                response.headers["Cache-Control"] = "no-cache"
+            elif path.startswith("/llm/models"):
+                response.headers["Cache-Control"] = "public, max-age=300"
+            elif path.startswith("/market/news"):
+                response.headers["Cache-Control"] = "public, max-age=60"
+            # Portfolio/signals: short cache to avoid stale data
+            elif path.startswith("/portfolio") or path.startswith("/signals"):
+                response.headers["Cache-Control"] = "no-cache, max-age=5"
+            else:
+                # Default: 5s browser cache
+                response.headers.setdefault("Cache-Control", "public, max-age=5")
+            # Set X-Request-Id for tracing
+            rid = getattr(request.state, "request_id", "")
+            if rid:
+                response.headers["X-Request-Id"] = rid
+        return response
+
+    @app.middleware("http")
+    async def etag_middleware(request: Request, call_next):
+        response = await call_next(request)
+        if request.method == "GET" and response.status_code == 200 and response.body:
+            if request.url.path in ("/portfolio", "/api/portfolio", "/request-metrics"):
+                import hashlib
+                etag = hashlib.md5(response.body).hexdigest()
+                response.headers["ETag"] = f'"{etag}"'
+                if_none_match = request.headers.get("if-none-match", "")
+                if if_none_match.strip('"') == etag:
+                    from fastapi.responses import Response
+                    return Response(status_code=304)
+        return response
+
+    @app.middleware("http")
+    async def shutdown_middleware(request: Request, call_next):
+        if _shutting_down:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=503, content={"detail": "Server shutting down"})
+        return await call_next(request)
+
+    @app.middleware("http")
+    async def request_id_middleware(request: Request, call_next):
+        request_id = request.headers.get("X-Request-Id") or str(uuid.uuid4())
+        request.state.request_id = request_id
+        token = request_id_var.set(request_id)
+        structlog_ctx = None
+        if _STRUCTLOG_AVAILABLE:
+            try:
+                import structlog
+                structlog_ctx = structlog.contextvars.bind_contextvars(request_id=request_id)
+            except Exception:
+                pass
+        _start = time.time()
+        try:
+            response = await call_next(request)
+            response.headers["X-Request-Id"] = request_id
+            elapsed = time.time() - _start
+            route = request.url.path
+            async with _metrics_lock:
+                _request_latencies.setdefault(route, []).append(elapsed)
+                if len(_request_latencies[route]) > 100:
+                    _request_latencies[route] = _request_latencies[route][-100:]
+            return response
+        finally:
+            request_id_var.reset(token)
+
+    @app.middleware("http")
+    async def csp_middleware(request: Request, call_next):
+        response = await call_next(request)
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; "
+            "style-src 'self' 'unsafe-inline' https:; "
+            "img-src 'self' data: https:; "
+            "font-src 'self' data: https:; "
+            "connect-src 'self' https: wss:; "
+            "frame-ancestors 'none';"
+        )
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        return response
+
+    @app.middleware("http")
+    async def audit_middleware(request: Request, call_next):
+        response = await call_next(request)
+        if request.method in ("POST", "PUT", "PATCH", "DELETE") and not request.url.path.startswith("/ws"):
+            try:
+                body = await request.body()
+                body_preview = body[:200].decode("utf-8", errors="replace") if body else ""
+            except Exception:
+                body_preview = ""
+            details = {
+                "method": request.method,
+                "path": request.url.path,
+                "query": str(request.url.query),
+                "body": body_preview,
+                "status": response.status_code,
+                "request_id": getattr(request.state, "request_id", ""),
+            }
+            log_entry = {
+                "action": f"{request.method} {request.url.path}",
+                "entity_type": request.url.path.split("/")[1] if request.url.path.count("/") >= 1 else "",
+                "entity_id": request.url.path.split("/")[-1] if request.url.path.count("/") >= 2 else "",
+                "details": details,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+            try:
+                from .routes.audit_routes import _audit_logs
+                _audit_logs.append(log_entry)
+                if len(_audit_logs) > 5000:
+                    _audit_logs[:len(_audit_logs) - 5000] = []
+            except Exception:
+                pass
+        return response
+
     limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     app.add_middleware(SlowAPIMiddleware)
+
+    # ── Prometheus metrics ──
+    if _env_bool("PROMETHEUS_ENABLED", False):
+        try:
+            from prometheus_fastapi_instrumentator import Instrumentator
+            Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+            logger.info("Prometheus metrics enabled at /metrics")
+        except ImportError:
+            logger.info("prometheus-fastapi-instrumentator not installed — skipping Prometheus")
+
+    # ── Sentry APM ──
+    sentry_dsn = os.environ.get("SENTRY_DSN", "")
+    if sentry_dsn:
+        try:
+            import sentry_sdk
+            sentry_sdk.init(
+                dsn=sentry_dsn,
+                traces_sample_rate=float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+                environment=os.environ.get("ENV", "development"),
+            )
+            logger.info("Sentry APM enabled")
+        except ImportError:
+            logger.info("sentry-sdk not installed — skipping Sentry")
+
+    # ── DataDog APM ──
+    if _env_bool("DATADOG_ENABLED", False):
+        try:
+            from ddtrace import patch_all
+            patch_all()
+            logger.info("DataDog APM enabled")
+        except ImportError:
+            logger.info("ddtrace not installed — skipping DataDog")
 
     auth_key = os.getenv("TRADING_ENGINE_API_KEY") or os.getenv("API_KEY")
     is_prod = os.getenv("ENV", "development").lower() == "production" or _env_bool("PRODUCTION", False)
@@ -392,6 +751,23 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
     app.include_router(news_sidebar_router)
     app.include_router(calendar_sidebar_router)
     app.include_router(chat_ws_router)
+    app.include_router(strategy_health_router)
+    app.include_router(auto_tag_trades_router)
+    app.include_router(explain_pnl_router)
+    app.include_router(prompts_router)
+    app.include_router(leaderboard_router)
+    app.include_router(explain_stops_router)
+    app.include_router(trade_coach_router)
+    app.include_router(risk_report_router)
+    app.include_router(monte_carlo_router)
+    app.include_router(walkforward_router)
+    app.include_router(scenario_router)
+    app.include_router(memory_router)
+    app.include_router(calibration_router)
+    app.include_router(reflection_router)
+    app.include_router(wall_clock_router)
+    app.include_router(auth_router)
+    app.include_router(panic_router)
 
     @app.get("/")
     async def root():
@@ -399,18 +775,89 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
 
     @app.get("/health")
     async def health():
+        dep_db = _check_db()
+        dep_ccxt = _check_ccxt()
+        dep_yfinance = _check_yfinance()
+        dep_disk = _check_disk()
+        n_tasks = sum(1 for t in _background_tasks if not t.done())
         return {
-            "status": "ok",
+            "status": "ok" if dep_db.get("status") == "ok" else "degraded",
             "uptime_seconds": int(time.time() - _start_time),
+            "background_tasks_running": n_tasks,
+            "shutting_down": _shutting_down,
             "dependencies": {
-                "database": _check_db(),
-                "ccxt": _check_ccxt(),
+                "database": dep_db,
+                "ccxt": dep_ccxt,
+                "yfinance": dep_yfinance,
+                "disk": dep_disk,
             },
         }
+
+    @app.get("/healthz")
+    async def healthz():
+        dep_db = _check_db()
+        dep_ccxt = _check_ccxt()
+        dep_yfinance = _check_yfinance()
+        dep_disk = _check_disk()
+        all_ok = all(d.get("status") == "ok" for d in (dep_db, dep_ccxt, dep_yfinance, dep_disk))
+        status_code = 200 if all_ok else 503
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            content={
+                "status": "ok" if all_ok else "degraded",
+                "uptime_seconds": int(time.time() - _start_time),
+                "shutting_down": _shutting_down,
+                "dependencies": {
+                    "database": dep_db,
+                    "ccxt": dep_ccxt,
+                    "yfinance": dep_yfinance,
+                    "disk": dep_disk,
+                },
+            },
+            status_code=status_code,
+        )
 
     @app.get("/api/health")
     async def api_health():
         return await health()
+
+    @app.get("/exchanges/health")
+    async def exchange_health():
+        from execution.exchanges.factory import create_exchange_client
+        exchanges = ["binance", "coinbase", "kraken", "bybit", "okx"]
+        results = {}
+        for name in exchanges:
+            try:
+                client = create_exchange_client(exchange=name)
+                ticker = await asyncio.to_thread(lambda c=client: c.fetch_ticker("BTC/USDT"))
+                results[name] = {"status": "ok", "bid": ticker.get("bid"), "ask": ticker.get("ask"), "error": None}
+            except Exception as e:
+                results[name] = {"status": "error", "error": str(e)[:100]}
+        return results
+
+    @app.get("/request-metrics")
+    async def request_metrics():
+        async with _metrics_lock:
+            route_stats = {}
+            for route, latencies in _request_latencies.items():
+                route_stats[route] = {
+                    "count": len(latencies),
+                    "avg_ms": round(sum(latencies) / len(latencies) * 1000, 2) if latencies else 0,
+                    "max_ms": round(max(latencies) * 1000, 2) if latencies else 0,
+                }
+        return {
+            "uptime_seconds": int(time.time() - _start_time),
+            "background_tasks": sum(1 for t in _background_tasks if not t.done()),
+            "routes": route_stats,
+        }
+
+    @app.get("/scheduler/status")
+    async def scheduler_status():
+        return get_job_status()
+
+    @app.get("/scheduler/history")
+    async def scheduler_history(job: str = "", limit: int = 20):
+        return get_run_history(job_name=job or None, limit=limit)
 
     return app
 

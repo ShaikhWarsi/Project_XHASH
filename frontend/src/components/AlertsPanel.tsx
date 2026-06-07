@@ -160,7 +160,7 @@ export default function AlertsPanel({ symbol: defaultSymbol }: { symbol?: string
                   @ ${h.triggeredPrice.toFixed(2)}
                 </div>
                 <div className="font-mono-data text-[7px]" style={{ color: 'var(--text-muted)' }}>
-                  {new Date(h.triggeredAt).toLocaleDateString()}
+                  {new Date(h.triggeredAt).toLocaleString()}
                 </div>
               </div>
             </div>

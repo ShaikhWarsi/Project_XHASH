@@ -57,6 +57,27 @@ def _serialize_timestamp(sm):
     return ts.isoformat() if hasattr(ts, "isoformat") else str(ts)
 
 
+@router.get("/latest")
+async def get_latest_signals():
+    """Return the latest signal engine output without pagination."""
+    sm = await app_state.async_get_signals()
+    if not sm:
+        return {"status": "empty", "message": "No signal data available", "timestamp": "", "signals": {}, "composite_scores": {}, "regime": None}
+
+    signals_dict = {}
+    for symbol in sorted(sm.signals.keys()):
+        sigs = sm.signals[symbol]
+        signals_dict[symbol] = [_serialize_signal(s) for s in sigs]
+
+    return {
+        "status": "ok",
+        "timestamp": _serialize_timestamp(sm),
+        "signals": signals_dict,
+        "composite_scores": sm.composite_scores,
+        "regime": _serialize_regime(sm),
+    }
+
+
 @router.get("/count")
 async def get_signals_count():
     sm = await app_state.async_get_signals()
@@ -82,7 +103,8 @@ async def get_signals(
             "regime": None,
         }
 
-    page_symbols = list(islice(sm.signals.keys(), offset, offset + limit))
+    sorted_keys = sorted(sm.signals.keys())
+    page_symbols = list(islice(sorted_keys, offset, offset + limit))
     signals_dict = {}
     for symbol in page_symbols:
         sigs = sm.signals[symbol]

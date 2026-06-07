@@ -121,6 +121,12 @@ export const MultiChartGrid = forwardRef<MultiChartGridHandle, MultiChartGridPro
     }
   }, [themeColors])
 
+  useEffect(() => {
+    for (const [idx, engine] of engineMap.current) {
+      engine.setActive(idx === focusedCell)
+    }
+  }, [focusedCell])
+
   const gridStyle: React.CSSProperties = {
     display: 'grid',
     gap: '2px',

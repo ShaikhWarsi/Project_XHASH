@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import HTMLResponse
 
 from api.state import app_state
 
@@ -94,6 +96,35 @@ async def run_sql(body: dict):
     except Exception as e:
         logger.warning("Analytics SQL failed: %s", e)
         return {"error": str(e), "columns": [], "rows": []}
+
+
+@router.get("/tearsheet/{run_id}", response_class=HTMLResponse)
+async def backtest_tearsheet(run_id: int, with_benchmark: bool = Query(False, description="Include SPY benchmark")):
+    from persistence.database import get_db_context
+    from persistence.repositories import BacktestRepository
+
+    async with get_db_context() as session:
+        run = await BacktestRepository.get_run(session, run_id)
+        if not run:
+            raise HTTPException(status_code=404, detail="Run not found")
+        eq = json.loads(run.equity_curve_json) if run.equity_curve_json else []
+        if not eq:
+            raise HTTPException(status_code=400, detail="No equity curve data for this run")
+
+    benchmark_rets = None
+    if with_benchmark:
+        try:
+            import yfinance as yf
+            spy = await asyncio.to_thread(lambda: yf.download("SPY", period="1y", auto_adjust=True)["Close"].pct_change().dropna().tolist())
+            benchmark_rets = spy[-len(eq):] if len(spy) > len(eq) else spy
+        except Exception as e:
+            logger.warning("Could not load SPY benchmark: %s", e)
+
+    from analytics.tearsheet import generate_tearsheet
+    config = json.loads(run.config_json) if run.config_json else {}
+    title = config.get("name", f"Backtest Run #{run.id}")
+    html = generate_tearsheet(eq, benchmark_returns=benchmark_rets, title=title)
+    return HTMLResponse(content=html)
 
 
 @router.get("/fast")

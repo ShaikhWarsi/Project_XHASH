@@ -82,7 +82,10 @@ export default function TaskOrchestration() {
         start: '2024-01-01',
         end: '2024-12-31',
         capital: 100000,
-        strategy: 'hybrid',
+        strategy: 'sma_cross',
+        entryConditions: [{ source: 'price', indicator: 'sma_fast', operator: 'crosses_above', value: 'sma_slow' }],
+        exitConditions: [{ source: 'price', indicator: 'sma_fast', operator: 'crosses_below', value: 'sma_slow' }],
+        commission_pct: 0.001,
       })
       setTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, status: 'completed', progress: 100, completedAt: new Date().toLocaleTimeString() } : t))
       setLogs((prev) => [...prev, `[${new Date().toLocaleTimeString()}] Task ${taskId} completed`])

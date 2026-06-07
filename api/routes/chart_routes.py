@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timedelta
 
@@ -18,16 +19,18 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chart", tags=["chart"])
 
 
-def _fetch_data(symbol: str, interval: str, period_days: int, provider: str) -> pd.DataFrame | None:
+async def _fetch_data(symbol: str, interval: str, period_days: int, provider: str) -> pd.DataFrame | None:
     try:
         from openbb import obb
 
-        btc = obb.crypto.price.historical(
-            symbol=symbol,
-            provider=provider,
-            interval=interval,
-            start_date=(datetime.now() - timedelta(days=period_days)).strftime("%Y-%m-%d"),
-        ).to_df()
+        btc = await asyncio.to_thread(
+            lambda: obb.crypto.price.historical(
+                symbol=symbol,
+                provider=provider,
+                interval=interval,
+                start_date=(datetime.now() - timedelta(days=period_days)).strftime("%Y-%m-%d"),
+            ).to_df()
+        )
         return btc
     except Exception as e:
         logger.warning("openbb failed for %s: %s", symbol, e)
@@ -247,12 +250,12 @@ async def get_chart(
     user_id: str = Query(""),
 ):
     cache_key = get_chart_cache_key(symbol, user_id=user_id, interval=interval, period=period_days, provider=provider)
-    cached = get_chart_html(cache_key)
+    cached = await get_chart_html(cache_key)
     if cached:
         from fastapi.responses import HTMLResponse
         return HTMLResponse(cached)
 
-    btc = _fetch_data(symbol, interval, period_days, provider)
+    btc = await _fetch_data(symbol, interval, period_days, provider)
     if btc is None or btc.empty:
         return HTMLResponse(f"""<html><body style="background:#0a0f1a;color:#8892a6;font-family:monospace;padding:40px;text-align:center">
 <h2>No data available</h2><p>Could not fetch data for <b>{symbol}</b>. Both data providers failed.</p>
@@ -263,5 +266,5 @@ async def get_chart(
     fig = _build_chart(btc, symbol, levels)
 
     html = fig.to_html(full_html=False, include_plotlyjs="cdn")
-    set_chart_html(cache_key, html)
+    await set_chart_html(cache_key, html)
     return HTMLResponse(html)

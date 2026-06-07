@@ -1,119 +1,203 @@
-import { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { getApiKey } from '../api/client'
 
-type ChannelType = 'prices' | 'signals' | 'orders' | 'trades' | 'motd' | 'news' | 'calendar' | 'chat'
+const HEARTBEAT_INTERVAL = 25000
+const MAX_RETRIES = 20
+const BASE_DELAY = 1000
 
-interface ChannelData {
-  [channel: string]: unknown
+interface ManagedConnection {
+  ws: WebSocket | null
+  connected: boolean
+  subscribers: Set<(data: any) => void>
+  retryCount: number
+  retryTimer: ReturnType<typeof setTimeout> | null
+  heartbeatTimer: ReturnType<typeof setInterval> | null
+  disconnectTimer: ReturnType<typeof setTimeout> | null
+  pendingMessages: string[]
+  lastActivity: number
 }
 
-interface WebSocketContextValue {
-  useChannel: (channel: ChannelType) => { data: unknown; connected: boolean }
+interface WebSocketContextType {
+  subscribe: (endpoint: string, handler: (data: any) => void) => () => void
+  send: (endpoint: string, data: unknown) => void
+  connected: boolean
+  getConnected: (endpoint: string) => boolean
 }
 
-const WebSocketContext = createContext<WebSocketContextValue | null>(null)
+const WebSocketContext = createContext<WebSocketContextType | null>(null)
 
-function getWebSocketUrl(): string {
+const connections = new Map<string, ManagedConnection>()
+
+function buildUrl(endpoint: string): string {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
   const host = window.location.host
-  return `${protocol}//${host}/ws`
+  let url = endpoint.startsWith('ws') ? endpoint : `${protocol}//${host}/api${endpoint}`
+  const apiKey = getApiKey()
+  if (apiKey) {
+    const separator = url.includes('?') ? '&' : '?'
+    url += `${separator}api_key=${encodeURIComponent(apiKey)}`
+  }
+  return url
+}
+
+function createConnection(endpoint: string) {
+  const conn = connections.get(endpoint)
+  if (!conn) return
+
+  if (conn.ws) {
+    conn.ws.close()
+  }
+  if (conn.heartbeatTimer) {
+    clearInterval(conn.heartbeatTimer)
+    conn.heartbeatTimer = null
+  }
+  if (conn.disconnectTimer) {
+    clearTimeout(conn.disconnectTimer)
+    conn.disconnectTimer = null
+  }
+
+  const url = buildUrl(endpoint)
+  const ws = new WebSocket(url)
+  conn.ws = ws
+
+  ws.onopen = () => {
+    conn.connected = true
+    conn.retryCount = 0
+    conn.lastActivity = Date.now()
+    conn.heartbeatTimer = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN && Date.now() - conn.lastActivity > HEARTBEAT_INTERVAL / 2) {
+        ws.send(JSON.stringify({ type: 'ping' }))
+      }
+    }, HEARTBEAT_INTERVAL)
+    if (conn.pendingMessages.length > 0) {
+      for (const msg of conn.pendingMessages.splice(0)) {
+        ws.send(msg)
+      }
+    }
+  }
+
+  ws.onmessage = (event) => {
+    conn.lastActivity = Date.now()
+    try {
+      const data = JSON.parse(event.data)
+      if (data.type === 'ping') { ws.send(JSON.stringify({ type: 'pong' })); return }
+      if (data.type === 'pong') return
+      conn.subscribers.forEach((handler) => {
+        try { handler(data) } catch { /* handler error */ }
+      })
+    } catch { /* silent */ }
+  }
+
+  ws.onclose = () => {
+    conn.connected = false
+    if (conn.heartbeatTimer) {
+      clearInterval(conn.heartbeatTimer)
+      conn.heartbeatTimer = null
+    }
+    if (conn.retryCount < MAX_RETRIES) {
+      const delay = Math.min(BASE_DELAY * Math.pow(2, conn.retryCount), 30000)
+      const jitter = delay * (0.5 + Math.random() * 0.5)
+      conn.retryCount++
+      conn.retryTimer = setTimeout(() => createConnection(endpoint), jitter)
+    }
+  }
+
+  ws.onerror = () => {
+    conn.connected = false
+  }
+}
+
+function ensureConnection(endpoint: string): ManagedConnection {
+  let conn = connections.get(endpoint)
+  if (!conn) {
+    conn = {
+      ws: null,
+      connected: false,
+      subscribers: new Set(),
+      retryCount: 0,
+      retryTimer: null,
+      heartbeatTimer: null,
+      disconnectTimer: null,
+      pendingMessages: [],
+      lastActivity: 0,
+    }
+    connections.set(endpoint, conn)
+    createConnection(endpoint)
+  }
+  return conn
+}
+
+function scheduleDisconnect(endpoint: string) {
+  const conn = connections.get(endpoint)
+  if (!conn) return
+  if (conn.disconnectTimer) clearTimeout(conn.disconnectTimer)
+  conn.disconnectTimer = setTimeout(() => {
+    if (conn.subscribers.size === 0) {
+      if (conn.heartbeatTimer) clearInterval(conn.heartbeatTimer)
+      if (conn.retryTimer) clearTimeout(conn.retryTimer)
+      if (conn.ws) conn.ws.close()
+      connections.delete(endpoint)
+    }
+  }, 5000)
 }
 
 export function WebSocketProvider({ children }: { children: ReactNode }) {
-  const wsRef = useRef<WebSocket | null>(null)
   const [connected, setConnected] = useState(false)
-  const channelDataRef = useRef<Record<string, unknown>>({})
-  const listenersRef = useRef<Set<() => void>>(new Set())
-  const retryCountRef = useRef(0)
-  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const mountedRef = useRef(true)
-  const maxRetries = 10
-
-  const notifyListeners = useCallback(() => {
-    listenersRef.current.forEach((fn) => fn())
-  }, [])
-
-  const connect = useCallback(() => {
-    if (!mountedRef.current) return
-    if (wsRef.current?.readyState === WebSocket.OPEN) return
-    if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
-
-    const url = getWebSocketUrl()
-    const ws = new WebSocket(url)
-    wsRef.current = ws
-
-    ws.onopen = () => {
-      if (!mountedRef.current) { ws.close(); return }
-      setConnected(true)
-      retryCountRef.current = 0
-    }
-
-    ws.onmessage = (event) => {
-      if (!mountedRef.current) return
-      try {
-        const msg = JSON.parse(event.data) as { channel?: string; data?: unknown }
-        if (msg.channel) {
-          channelDataRef.current[msg.channel] = msg.data
-          notifyListeners()
-        }
-      } catch { /* silent */ }
-    }
-
-    ws.onclose = () => {
-      if (!mountedRef.current) return
-      setConnected(false)
-      if (retryCountRef.current < maxRetries) {
-        const delay = Math.min(1000 * Math.pow(2, retryCountRef.current), 30000)
-        const jitter = delay * (0.5 + Math.random() * 0.5)
-        retryCountRef.current++
-        retryTimerRef.current = setTimeout(connect, jitter)
-      }
-    }
-
-    ws.onerror = () => {
-      ws.close()
-    }
-  }, [notifyListeners])
+  const checkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
-    mountedRef.current = true
-    connect()
+    checkIntervalRef.current = setInterval(() => {
+      const anyConnected = Array.from(connections.values()).some((c) => c.connected)
+      setConnected(anyConnected)
+    }, 2000)
     return () => {
-      mountedRef.current = false
-      if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
-      if (wsRef.current) wsRef.current.close()
+      if (checkIntervalRef.current) clearInterval(checkIntervalRef.current)
     }
-  }, [connect])
+  }, [])
 
-  const useChannel = (channel: ChannelType) => {
-    const [, forceUpdate] = useState(0)
-    const prevDataRef = useRef(channelDataRef.current[channel])
-
-    useEffect(() => {
-      const handler = () => {
-        const newData = channelDataRef.current[channel]
-        if (newData !== prevDataRef.current) {
-          prevDataRef.current = newData
-          forceUpdate((n) => n + 1)
-        }
+  const subscribe = useCallback((endpoint: string, handler: (data: any) => void) => {
+    const conn = ensureConnection(endpoint)
+    conn.subscribers.add(handler)
+    if (conn.disconnectTimer) {
+      clearTimeout(conn.disconnectTimer)
+      conn.disconnectTimer = null
+    }
+    return () => {
+      conn.subscribers.delete(handler)
+      if (conn.subscribers.size === 0) {
+        scheduleDisconnect(endpoint)
       }
-      listenersRef.current.add(handler)
-      return () => { listenersRef.current.delete(handler) }
-    }, [channel])
+    }
+  }, [])
 
-    return { data: channelDataRef.current[channel], connected }
-  }
+  const send = useCallback((endpoint: string, data: unknown) => {
+    const conn = connections.get(endpoint)
+    if (conn?.ws?.readyState === WebSocket.OPEN) {
+      conn.ws.send(typeof data === 'string' ? data : JSON.stringify(data))
+      return
+    }
+    if (conn) {
+      const msg = typeof data === 'string' ? data : JSON.stringify(data)
+      conn.pendingMessages.push(msg)
+      if (conn.pendingMessages.length > 50) {
+        conn.pendingMessages.shift()
+      }
+    }
+  }, [])
+
+  const getConnected = useCallback((endpoint: string) => {
+    return connections.get(endpoint)?.connected ?? false
+  }, [])
 
   return (
-    <WebSocketContext.Provider value={{ useChannel }}>
+    <WebSocketContext.Provider value={{ subscribe, send, connected, getConnected }}>
       {children}
     </WebSocketContext.Provider>
   )
 }
 
-export function useChannel(channel: ChannelType) {
+export function useWebSocketProvider() {
   const ctx = useContext(WebSocketContext)
-  if (!ctx) {
-    throw new Error('useChannel must be used within a WebSocketProvider')
-  }
-  return ctx.useChannel(channel)
+  if (!ctx) throw new Error('useWebSocketProvider must be used within WebSocketProvider')
+  return ctx
 }

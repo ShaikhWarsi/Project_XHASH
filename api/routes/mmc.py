@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Query
+import asyncio
+
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import HTMLResponse
 import yfinance as yf
 
@@ -20,13 +22,15 @@ async def analyze_mmc(
 
     try:
         ticker = yf.Ticker(symbol)
-        df = ticker.history(period=period, interval=interval)
+        df = await asyncio.to_thread(ticker.history, period=period, interval=interval)
         if df.empty:
-            return {"error": f"No data returned for {symbol}"}
+            raise HTTPException(404, f"No data returned for {symbol}")
         result = analyzer.analyze(df)
         return result.to_dict()
+    except HTTPException:
+        raise
     except Exception as e:
-        return {"error": str(e)}
+        raise HTTPException(500, str(e))
 
 
 @router.get("/chart", response_class=HTMLResponse)
@@ -40,11 +44,13 @@ async def mmc_chart(
 
     try:
         ticker = yf.Ticker(symbol)
-        df = ticker.history(period=period, interval=interval)
+        df = await asyncio.to_thread(ticker.history, period=period, interval=interval)
         if df.empty:
             return HTMLResponse(f"<h2>No data returned for {symbol}</h2>", status_code=404)
         analyzer.analyze(df)
         html = analyzer.generate_chart_html()
+        if not html.strip():
+            return HTMLResponse(f"<h2>MMC chart generated empty HTML for {symbol}</h2>", status_code=500)
         return HTMLResponse(html)
     except Exception as e:
         return HTMLResponse(f"<h2>Error: {str(e)}</h2>", status_code=500)

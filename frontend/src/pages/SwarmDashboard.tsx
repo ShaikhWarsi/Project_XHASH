@@ -20,7 +20,7 @@ export default function SwarmDashboard() {
   const [selectedRun, setSelectedRun] = useState<string | null>(null)
   const [runDetails, setRunDetails] = useState<any>(null)
   const [health, setHealth] = useState<any>(null)
-  const [tab, setTab] = useState<'details' | 'messages'>('details')
+  const [tab, setTab] = useState<'details' | 'messages' | 'graph'>('details')
 
   const fetchRuns = async () => {
     try {
@@ -66,6 +66,7 @@ export default function SwarmDashboard() {
     <div className="h-full flex flex-col font-mono-data text-[11px] text-primary bg-[var(--bg-app)]">
       <div className="flex items-center gap-2 px-3 py-1 border-b border-default">
         <Activity size={12} /><span className="font-bold text-[13px]">SWARM DASHBOARD</span>
+        <span className="bg-[rgba(234,179,8,0.15)] text-[var(--accent-yellow)] px-1 py-0.5 text-[8px] font-bold rounded-sm">DEMO</span>
         <span className="text-muted">|</span>
         {health && (
           <>
@@ -133,6 +134,7 @@ export default function SwarmDashboard() {
           <div className="flex gap-4 mb-2 border-b border-default">
             <button onClick={() => setTab('details')} className={`text-[10px] pb-1 ${tab === 'details' ? 'text-accent-blue border-b border-accent-blue' : 'text-muted'}`}>DETAILS</button>
             <button onClick={() => setTab('messages')} className={`text-[10px] pb-1 ${tab === 'messages' ? 'text-accent-blue border-b border-accent-blue' : 'text-muted'}`}>MESSAGES</button>
+            <button onClick={() => setTab('graph')} className={`text-[10px] pb-1 ${tab === 'graph' ? 'text-accent-blue border-b border-accent-blue' : 'text-muted'}`}>GRAPH</button>
           </div>
           {tab === 'details' ? (
             selectedRun && runDetails ? (
@@ -184,8 +186,10 @@ export default function SwarmDashboard() {
                 Select a run to view details
               </div>
             )
+          ) : tab === 'graph' ? (
+            <AgentGraph runDetails={runDetails} />
           ) : (
-            <MessagesPanel />
+            <MessagesPanel runDetails={runDetails} />
           )}
         </div>
       </div>
@@ -193,44 +197,113 @@ export default function SwarmDashboard() {
   )
 }
 
-function MessagesPanel() {
-  const [messages, setMessages] = useState<Array<{ timestamp: string; from: string; to: string; content: string }>>([])
-  const mockMessages = [
-    { from: 'Analyst-1', to: 'Coordinator', content: 'Analyzing market data for Q2 trends...' },
-    { from: 'Analyst-2', to: 'Coordinator', content: 'Sentiment analysis indicates bullish divergence on tech sector' },
-    { from: 'Coordinator', to: 'Trader-1', content: 'Execute buy order for AAPL at market price' },
-    { from: 'Trader-1', to: 'Coordinator', content: 'Order filled: 100 shares AAPL @ $178.32' },
-    { from: 'Analyst-3', to: 'Coordinator', content: 'Risk assessment: portfolio beta within acceptable range' },
-    { from: 'Coordinator', to: 'Analyst-1', content: 'Requesting updated projection for Q3 earnings' },
-    { from: 'Analyst-1', to: 'Coordinator', content: 'Q3 EPS estimated at $1.45, +12% YoY' },
-    { from: 'Trader-2', to: 'Coordinator', content: 'Monitoring position: AAPL up 2.3% on session' },
-    { from: 'Analyst-2', to: 'Coordinator', content: 'Sector rotation detected — capital flowing to semiconductors' },
-    { from: 'Coordinator', to: 'All Agents', content: 'Status check — report current positions' },
-  ]
+function MessagesPanel({ runDetails }: { runDetails: any }) {
+  const messages: Array<{ timestamp: string; from: string; content: string }> = []
 
-  useEffect(() => {
-    if (messages.length >= mockMessages.length) return
-    const t = setTimeout(() => {
-      setMessages(prev => [...prev, { ...mockMessages[prev.length], timestamp: new Date().toLocaleTimeString() }])
-    }, 800 + Math.random() * 1200)
-    return () => clearTimeout(t)
-  }, [messages])
+  if (runDetails?.messages) {
+    for (const m of runDetails.messages) {
+      messages.push({
+        timestamp: m.timestamp ? new Date(m.timestamp).toLocaleTimeString() : '',
+        from: m.agent_id ?? m.from ?? 'system',
+        content: m.content ?? m.message ?? '',
+      })
+    }
+  } else if (runDetails?.tasks) {
+    for (const t of runDetails.tasks) {
+      if (t.result) {
+        messages.push({
+          timestamp: t.completed_at ? new Date(t.completed_at).toLocaleTimeString() : '',
+          from: t.agent_id ?? t.id ?? 'task',
+          content: typeof t.result === 'string' ? t.result : JSON.stringify(t.result),
+        })
+      }
+    }
+  }
 
   return (
     <div className="space-y-1 font-mono text-[10px]">
       {messages.length === 0 ? (
-        <div className="text-muted text-[10px] p-2">Waiting for agent messages...</div>
+        <div className="text-muted text-[10px] p-2">
+          {runDetails ? 'No messages in this run.' : 'Select a run to view messages.'}
+        </div>
       ) : (
         messages.map((m, i) => (
           <div key={i} className="flex items-start gap-2 border-b border-[rgba(26,35,50,0.3)] py-1.5">
             <span className="text-muted shrink-0 w-14">{m.timestamp}</span>
-            <span className="text-accent-blue shrink-0 w-16">{m.from}</span>
-            <span className="text-muted shrink-0">→</span>
-            <span className="text-accent-green shrink-0 w-16">{m.to}</span>
-            <span className="text-primary">{m.content}</span>
+            <span className="text-accent-blue shrink-0 w-20">{m.from}</span>
+            <span className="text-primary flex-1">{m.content}</span>
           </div>
         ))
       )}
+    </div>
+  )
+}
+
+function AgentGraph({ runDetails }: { runDetails: any }) {
+  if (!runDetails?.tasks?.length) {
+    return (
+      <div className="flex items-center justify-center h-full text-muted text-[10px]">
+        {runDetails ? 'No task graph available.' : 'Select a run to view graph.'}
+      </div>
+    )
+  }
+
+  const tasks = runDetails.tasks
+  const nodeIds = tasks.map((t: any) => t.id ?? t.agent_id ?? `task-${Math.random()}`)
+  const nodeStatuses = tasks.map((t: any) => t.status)
+  const edges: Array<{ from: number; to: number }> = []
+  for (let i = 0; i < tasks.length; i++) {
+    const deps = tasks[i].depends_on ?? []
+    for (const dep of deps) {
+      const j = nodeIds.indexOf(dep)
+      if (j >= 0) edges.push({ from: j, to: i })
+    }
+  }
+
+  const n = tasks.length
+  const w = 500, h = Math.max(200, n * 50)
+  const cols = Math.ceil(Math.sqrt(n))
+  const positions = tasks.map((_: any, i: number) => ({
+    x: 40 + (i % cols) * (w - 80) / Math.max(cols - 1, 1),
+    y: 30 + Math.floor(i / cols) * 50,
+  }))
+
+  const statusColors: Record<string, string> = {
+    running: '#3b82f6', completed: '#22c55e', failed: '#ef4444',
+    cancelled: '#6b7280', pending: '#eab308',
+  }
+
+  return (
+    <div className="overflow-auto">
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full">
+        {edges.map((e, i) => {
+          const f = positions[e.from], t = positions[e.to]
+          const mx = (f.x + t.x) / 2
+          const my = (f.y + t.y) / 2
+          return (
+            <g key={i}>
+              <line x1={f.x} y1={f.y} x2={t.x} y2={t.y} stroke="#3d4050" strokeWidth="1.5" />
+              <polygon
+                points={`${t.x - 6},${t.y - 4} ${t.x - 6},${t.y + 4} ${t.x},${t.y}`}
+                fill="#3d4050"
+                transform={`rotate(${Math.atan2(t.y - f.y, t.x - f.x) * 180 / Math.PI}, ${t.x}, ${t.y})`}
+              />
+            </g>
+          )
+        })}
+        {tasks.map((t: any, i: number) => {
+          const pos = positions[i]
+          const sc = statusColors[nodeStatuses[i]] ?? '#6b7280'
+          return (
+            <g key={i}>
+              <rect x={pos.x - 40} y={pos.y - 10} width={80} height={20} rx={4} fill="var(--bg-card)" stroke={sc} strokeWidth="1.5" />
+              <text x={pos.x} y={pos.y + 3} textAnchor="middle" fill={sc} fontSize="8" fontFamily="monospace">
+                {(t.agent_id ?? t.id ?? '').slice(0, 12)}
+              </text>
+            </g>
+          )
+        })}
+      </svg>
     </div>
   )
 }

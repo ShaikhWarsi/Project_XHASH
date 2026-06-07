@@ -46,29 +46,48 @@ api.interceptors.response.use(
   },
 )
 
-const DEDUP_MAP = new Map<string, Promise<any>>()
+const DEDUP_MAP = new Map<string, { promise: Promise<any>; ts: number }>()
 const DEDUP_MAX = 100
+const DEDUP_TTL = 30_000
+let _dedupCleanupTimer: ReturnType<typeof setInterval> | null = null
 
-function dedupKey(url: string): string {
+function _ensureDedupCleanup() {
+  if (_dedupCleanupTimer) return
+  _dedupCleanupTimer = setInterval(() => {
+    const cutoff = Date.now() - DEDUP_TTL
+    for (const [key, entry] of DEDUP_MAP) {
+      if (entry.ts < cutoff) DEDUP_MAP.delete(key)
+    }
+    if (DEDUP_MAP.size === 0 && _dedupCleanupTimer) {
+      clearInterval(_dedupCleanupTimer)
+      _dedupCleanupTimer = null
+    }
+  }, DEDUP_TTL)
+}
+
+export function dedupGet<T = any>(url: string, params?: Record<string, any>): Promise<T> {
+  const key = url + '?' + JSON.stringify(params ?? {})
+  const now = Date.now()
+  _ensureDedupCleanup()
   if (DEDUP_MAP.size >= DEDUP_MAX) {
     const oldest = DEDUP_MAP.keys().next().value
     if (oldest) DEDUP_MAP.delete(oldest)
   }
-  return url
-}
-
-export function dedupGet<T = any>(url: string, params?: Record<string, any>): Promise<T> {
-  const key = dedupKey(url) + '?' + JSON.stringify(params ?? {})
-  if (!DEDUP_MAP.has(key)) {
-    DEDUP_MAP.set(key, api.get(url, { params }).then((res) => {
-      DEDUP_MAP.delete(key)
-      return res.data
-    }).catch((err) => {
-      DEDUP_MAP.delete(key)
-      throw err
-    }))
-  }
-  return DEDUP_MAP.get(key)!
+  const existing = DEDUP_MAP.get(key)
+  if (existing && now - existing.ts < DEDUP_TTL) return existing.promise
+  const p = api.get(url, { params }).then((res) => {
+    DEDUP_MAP.delete(key)
+    if (DEDUP_MAP.size === 0 && _dedupCleanupTimer) {
+      clearInterval(_dedupCleanupTimer)
+      _dedupCleanupTimer = null
+    }
+    return res.data
+  }).catch((err) => {
+    DEDUP_MAP.delete(key)
+    throw err
+  })
+  DEDUP_MAP.set(key, { promise: p, ts: now })
+  return p
 }
 
 let _apiKey: string | null = null
@@ -83,6 +102,11 @@ api.interceptors.request.use((config) => {
     }
   }
   config.headers['X-Requested-With'] = 'XMLHttpRequest'
+  // CSRF token from meta tag
+  const csrfMeta = document.querySelector('meta[name="csrf-token"]')
+  if (csrfMeta && config.method && !['get', 'head', 'options'].includes(config.method)) {
+    config.headers['X-CSRF-Token'] = csrfMeta.getAttribute('content') || ''
+  }
   return config
 })
 
@@ -103,7 +127,6 @@ export function checkRateLimit(action: string): boolean {
 
 export function clearAuthState() {
   _apiKey = null
-  delete api.defaults.headers.common['Authorization']
 }
 
 export function setApiKey(key: string | null) {
@@ -169,6 +192,8 @@ export async function runBacktest(config: {
   engine_type?: string
   leverage?: number
   agents?: string[]
+  entryConditions?: string
+  exitConditions?: string
 }): Promise<BacktestResult> {
   if (!checkRateLimit('backtest')) {
     throw new Error('Please wait before running another backtest')
@@ -249,6 +274,7 @@ export function connectDashboardSSE(
     }
 
     source.onerror = () => {
+      if (currentEs !== source) return
       console.debug('SSE connection lost — data may be stale')
       onStale?.(true)
       source.close()
@@ -421,7 +447,14 @@ export async function fetchMMCAnalysis(symbol = 'BTC-USD', period = '1mo', inter
   return data
 }
 
-export async function fetchStructure(symbol: string, timeframe: string): Promise<Record<string, unknown>> {
+export interface StructureResponse {
+  active_order_blocks?: { level: number; direction: string; confidence: number }[]
+  active_fvgs?: { top: number; bottom: number; direction: string }[]
+  liquidity_levels?: { level: number; direction: string; confidence: number }[]
+  key_levels?: number[]
+}
+
+export async function fetchStructure(symbol: string, timeframe: string): Promise<StructureResponse> {
   const { data } = await api.get(`/structure/${symbol}`, { params: { timeframe } })
   return data
 }

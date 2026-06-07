@@ -332,7 +332,7 @@ export default function HedgeFund() {
             </div>
             <div className="w-6 h-0.5 bg-[#3a3d4e] shrink-0" />
             <div className="flex items-center gap-2 shrink-0">
-              {allPersonas.slice(0, 5).map((p) => (
+              {allPersonas.slice(0, allPersonas.length > 8 ? 7 : allPersonas.length).map((p) => (
                 <div key={p.id} className="flex flex-col items-center gap-1">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center ${colorMap[p.color]}`}>
                     <p.icon className="w-4 h-4" />
@@ -340,7 +340,9 @@ export default function HedgeFund() {
                   <span className="text-[10px] text-[#9aa0a6]">{p.name.split(' ')[1]}</span>
                 </div>
               ))}
-              <div className="text-xs text-[#5f6368] ml-1">+2 more</div>
+              {allPersonas.length > 8 && (
+                <div className="text-xs text-[#5f6368] ml-1">+{allPersonas.length - 7} more</div>
+              )}
             </div>
             <div className="w-6 h-0.5 bg-[#3a3d4e] shrink-0" />
             <div className="flex flex-col items-center gap-1 shrink-0">

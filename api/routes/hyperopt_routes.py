@@ -35,11 +35,21 @@ async def optimize(req: OptimizeRequest):
     n_trials = min(req.n_trials, 1000)
     optimizer = OptunaOptimizer(n_trials=n_trials)
     result = optimizer.optimize(space, objective)
+    trials_data = []
+    if optimizer.study:
+        for t in optimizer.study.trials:
+            if t.state.name == "COMPLETE" and t.value is not None:
+                trials_data.append({
+                    "params": {k: round(v, 4) if isinstance(v, float) else v for k, v in t.params.items()},
+                    "score": round(t.value, 4),
+                    "iteration": t.number,
+                })
     return {
         "symbol": req.symbol,
         "n_trials": result["n_trials"],
         "best_params": result["best_params"],
         "best_sharpe": round(result["best_value"], 4),
+        "trials": trials_data,
     }
 
 
@@ -58,6 +68,55 @@ async def multi_timeframe_optimize(req: MultiTimeframeRequest):
         "timeframes": mtf,
         "composite_score": round(composite, 4),
         "n_timeframes": len(req.timeframes),
+    }
+
+
+@router.post("/study/visualizations")
+async def study_visualizations(req: OptimizeRequest):
+    import optuna
+    space = req.search_space or OptunaOptimizer.default_strategy_space()
+
+    def objective(params):
+        return OptunaOptimizer.run_sma_cross_backtest(req.symbol, params)
+
+    n_trials = min(req.n_trials, 1000)
+    optimizer = OptunaOptimizer(n_trials=n_trials)
+    optimizer.optimize(space, objective)
+
+    if optimizer.study is None or len(optimizer.study.trials) < 2:
+        from fastapi import HTTPException
+        raise HTTPException(400, "Need at least 2 completed trials")
+
+    vis = {}
+    try:
+        from optuna.visualization import plot_parallel_coordinate, plot_slice, plot_contour, plot_edf
+        import optuna.visualization as vis_mod
+        v1 = vis_mod.plot_parallel_coordinate(optimizer.study)
+        if v1: vis["parallel_coordinate"] = v1.to_plotly_json()
+    except Exception:
+        pass
+    try:
+        v2 = vis_mod.plot_slice(optimizer.study)
+        if v2: vis["slice"] = v2.to_plotly_json()
+    except Exception:
+        pass
+    try:
+        v3 = vis_mod.plot_contour(optimizer.study)
+        if v3: vis["contour"] = v3.to_plotly_json()
+    except Exception:
+        pass
+    try:
+        v4 = vis_mod.plot_edf(optimizer.study)
+        if v4: vis["edf"] = v4.to_plotly_json()
+    except Exception:
+        pass
+
+    return {
+        "symbol": req.symbol,
+        "n_trials": len(optimizer.study.trials),
+        "best_params": optimizer.study.best_params,
+        "best_value": optimizer.study.best_value,
+        "visualizations": vis,
     }
 
 

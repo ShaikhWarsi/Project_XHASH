@@ -5,10 +5,13 @@ interface UseWebSocketOptions<T = unknown> {
   onError?: (error: Event) => void
   maxRetries?: number
   retryDelay?: number
+  throttleMs?: number
 }
 
+const DEFAULT_THROTTLE_MS = 100
+
 export function useWebSocket<T = unknown>(url: string, options: UseWebSocketOptions<T> = {}) {
-  const { onMessage, onError, maxRetries = 10, retryDelay = 1000 } = options
+  const { onMessage, onError, maxRetries = 10, retryDelay = 1000, throttleMs = DEFAULT_THROTTLE_MS } = options
   const [connected, setConnected] = useState(false)
   const [lastData, setLastData] = useState<T | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
@@ -16,6 +19,12 @@ export function useWebSocket<T = unknown>(url: string, options: UseWebSocketOpti
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const mountedRef = useRef(true)
   const urlRef = useRef(url)
+  const onMessageRef = useRef(onMessage)
+  const onErrorRef = useRef(onError)
+  onMessageRef.current = onMessage
+  onErrorRef.current = onError
+  const lastDataRef = useRef<T | null>(null)
+  const throttleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     urlRef.current = url
@@ -24,6 +33,21 @@ export function useWebSocket<T = unknown>(url: string, options: UseWebSocketOpti
   useEffect(() => {
     mountedRef.current = true
     return () => { mountedRef.current = false }
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (throttleTimerRef.current) {
+        clearTimeout(throttleTimerRef.current)
+      }
+    }
+  }, [])
+
+  const flushData = useCallback(() => {
+    throttleTimerRef.current = null
+    if (mountedRef.current) {
+      setLastData(lastDataRef.current)
+    }
   }, [])
 
   const connect = useCallback(() => {
@@ -53,40 +77,47 @@ export function useWebSocket<T = unknown>(url: string, options: UseWebSocketOpti
       if (!mountedRef.current) return
       try {
         const data = JSON.parse(event.data)
-        setLastData(data)
-        onMessage?.(data)
+        lastDataRef.current = data
+        onMessageRef.current?.(data)
+        if (throttleMs > 0) {
+          if (!throttleTimerRef.current) {
+            throttleTimerRef.current = setTimeout(flushData, throttleMs)
+          }
+        } else {
+          setLastData(data)
+        }
       } catch { /* silent */ }
     }
 
     ws.onerror = (event) => {
       if (!mountedRef.current) return
       setConnected(false)
-      onError?.(event)
+      onErrorRef.current?.(event)
     }
 
     ws.onclose = () => {
       if (!mountedRef.current) return
       setConnected(false)
       if (retryCountRef.current < maxRetries) {
-        const delay = Math.min(retryDelay * Math.pow(2, retryCountRef.current), 30000)
+        const baseDelay = Math.min(retryDelay * Math.pow(2, retryCountRef.current), 30000)
+        const jitter = Math.random() * 2000
         retryCountRef.current++
-        retryTimerRef.current = setTimeout(connect, delay)
+        retryTimerRef.current = setTimeout(connect, baseDelay + jitter)
       }
     }
-  }, [onMessage, onError, maxRetries, retryDelay])
+  }, [maxRetries, retryDelay, throttleMs, flushData])
 
   useEffect(() => {
     if (!url) return
     connect()
     return () => {
       if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
+      if (throttleTimerRef.current) clearTimeout(throttleTimerRef.current)
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
         wsRef.current.close()
       }
     }
   }, [connect, url])
-
-
 
   const send = useCallback((data: T | string) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -96,6 +127,7 @@ export function useWebSocket<T = unknown>(url: string, options: UseWebSocketOpti
 
   const close = useCallback(() => {
     if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
+    if (throttleTimerRef.current) clearTimeout(throttleTimerRef.current)
     if (wsRef.current) wsRef.current.close()
     setConnected(false)
   }, [])

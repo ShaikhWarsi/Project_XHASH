@@ -5,6 +5,7 @@ export interface HyperoptResult {
   n_trials: number
   best_params: Record<string, unknown>
   best_sharpe: number
+  trials?: Array<{ params: Record<string, number>; score: number; iteration: number }>
 }
 
 export interface MultiTimeframeResult {

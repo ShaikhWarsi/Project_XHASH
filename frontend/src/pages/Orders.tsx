@@ -32,11 +32,19 @@ export default function Orders() {
   const [batchSelection, setBatchSelection] = useState<string[]>([])
   const { push: pushUndo, undo, redo, canUndo, canRedo, reset: _resetUndo } = useUndoRedo<OrderResponse[]>(orders)
 
+  const dedupOrders = (incoming: OrderResponse[]): OrderResponse[] => {
+    const map = new Map<string, OrderResponse>()
+    for (const o of incoming) {
+      map.set(o.id ?? JSON.stringify(o), o)
+    }
+    return Array.from(map.values())
+  }
+
   const wsOrders = useWebSocket<{ type: string; data: OrderResponse[] }>('/ws/orders', { maxRetries: 999 })
 
   useEffect(() => {
     if (wsOrders.lastData?.type === 'orders' && Array.isArray(wsOrders.lastData.data)) {
-      setOrders(wsOrders.lastData.data)
+      setOrders((prev) => dedupOrders([...prev, ...wsOrders.lastData!.data]))
     }
   }, [wsOrders.lastData])
 
@@ -47,7 +55,7 @@ export default function Orders() {
         fetchOrders(),
         fetchPositions(),
       ])
-      setOrders(fetchedOrders)
+      setOrders(dedupOrders(fetchedOrders))
       setPositions(fetchedPositions)
       pushUndo(fetchedOrders, 'load orders')
     } catch (err: any) {

@@ -75,6 +75,7 @@ export default function Settings() {
   const { theme, setTheme, density, setDensity, fontSize, setFontSize } = useTheme()
   const { data: configData, isLoading } = useApiQuery<AppConfig>('/config')
   const [config, setConfig] = useState<AppConfig | null>(null)
+  const originalRef = useRef<string>('')
   const [apiKeyInput, setApiKeyInput] = useState('')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -132,8 +133,13 @@ export default function Settings() {
   }, [rebindingHotkey])
 
   useEffect(() => {
-    if (configData) setConfig(configData)
+    if (configData) {
+      setConfig(configData)
+      originalRef.current = JSON.stringify(configData)
+    }
   }, [configData])
+
+  const isDirty = config != null && originalRef.current !== '' && JSON.stringify(config) !== originalRef.current
 
   const update = (key: string, value: string | number | boolean) => {
     if (!config) return
@@ -147,6 +153,7 @@ export default function Settings() {
     try {
       await api.put('/config', config)
       setMessage('Settings saved')
+      originalRef.current = JSON.stringify(config)
     } catch {
       setMessage('Save failed')
     }
@@ -570,14 +577,21 @@ export default function Settings() {
         </div>
       </Card>
 
-      <button
-        onClick={save}
-        disabled={saving}
-        className="text-sm font-medium px-5 py-2 rounded-lg transition-colors text-white"
-        style={{ background: 'var(--accent-blue)', opacity: saving ? 0.6 : 1 }}
-      >
-        {saving ? 'Saving...' : 'Save Settings'}
-      </button>
+      <div className="flex items-center gap-3">
+        {isDirty && (
+          <span className="text-[10px] font-mono px-2 py-1 rounded-sm" style={{ background: 'var(--accent-yellow)20', color: 'var(--accent-yellow)' }}>
+            UNSAVED CHANGES
+          </span>
+        )}
+        <button
+          onClick={save}
+          disabled={saving || !isDirty}
+          className="text-sm font-medium px-5 py-2 rounded-lg transition-colors text-white"
+          style={{ background: isDirty ? 'var(--accent-blue)' : 'var(--bg-hover)', opacity: saving ? 0.6 : 1, cursor: isDirty ? 'pointer' : 'not-allowed' }}
+        >
+          {saving ? 'Saving...' : 'Save Settings'}
+        </button>
+      </div>
     </div>
   )
 }

@@ -25,8 +25,11 @@ _MAX_AUDIT_LOGS = 5000
 
 
 @router.get("/logs")
-async def audit_logs(limit: int = Query(default=100, ge=1, le=500)):
-    return {"logs": _audit_logs[-limit:]}
+async def audit_logs(limit: int = Query(default=100, ge=1, le=500), offset: int = Query(default=0, ge=0)):
+    total = len(_audit_logs)
+    start = max(0, total - offset - limit)
+    end = max(0, total - offset)
+    return {"logs": _audit_logs[start:end], "total": total, "limit": limit, "offset": offset}
 
 
 @router.post("/log")

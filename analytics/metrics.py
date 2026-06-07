@@ -48,11 +48,13 @@ class PerformanceMetrics:
 
     @classmethod
     def compute(cls, equity_curve: list[float], returns: Optional[list[float]] = None, benchmark_returns: Optional[list[float]] = None) -> PerformanceMetrics:
-        eq = np.array(equity_curve)
+        eq = np.array(equity_curve, dtype=float)
+        eq = np.nan_to_num(eq, nan=0.0, posinf=0.0, neginf=0.0)
         if returns is None:
-            rets = np.diff(eq) / eq[:-1]
+            rets = np.diff(eq) / np.maximum(eq[:-1], 1e-10)
         else:
-            rets = np.array(returns)
+            rets = np.array(returns, dtype=float)
+        rets = np.nan_to_num(rets, nan=0.0, posinf=0.0, neginf=0.0)
 
         if len(rets) < 2:
             return cls()

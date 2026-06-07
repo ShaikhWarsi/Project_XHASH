@@ -26,6 +26,8 @@ import ScreenerWidget from '../components/widgets/ScreenerWidget'
 import { useEventBus, EVENTS } from '../contexts/EventBusContext'
 import { useAudio } from '../contexts/AudioAlertContext'
 import { useToastStore } from '../store/toast'
+import { RegimeSwitch } from '../components/widgets/RegimeSwitch'
+import LastActionLog from '../components/LastActionLog'
 
 const SNAPSHOT_CACHE_KEY = 'dashboard_snapshot_cache'
 
@@ -271,7 +273,7 @@ export default function Dashboard() {
     { t: '08:25', h: 'AMZN: AWS announces new AI chip Trainium 3', s: 'AMZN', src: 'Reuters' },
   ]
 
-  const morningPnL = (Math.random() - 0.3) * 5000
+  const morningPnL = portfolio?.cash ? (portfolio.total_value - 100000) * 0.02 : 0
   const biggestMover = Object.keys(posMap).length > 0
     ? Object.entries(posMap).sort((a, b) => Math.abs(b[1].unrealized_pnl || 0) - Math.abs(a[1].unrealized_pnl || 0))[0]
     : null
@@ -291,6 +293,8 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
+
+      <RegimeSwitch />
 
       {/* DAILY BRIEFING */}
       <Card title="DAILY BRIEFING">
@@ -695,6 +699,9 @@ export default function Dashboard() {
             <ActivityFeed />
           </div>
         )}
+        <div className="mt-2">
+          <LastActionLog maxHeight={120} />
+        </div>
       </div>
     </div>
   )

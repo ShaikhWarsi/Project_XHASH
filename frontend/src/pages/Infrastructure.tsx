@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { api } from '../api/client'
 import { Shield, Filter, Cpu, Activity, Clock } from 'lucide-react'
 import Spinner from '../components/Spinner'
+import ProtectionsPanel from '../components/ProtectionsPanel'
+import PairlistsPanel from '../components/PairlistsPanel'
 import { useToastStore } from '../store/toast'
 
 type Tab = 'providers' | 'mcp' | 'cache' | 'protections' | 'pairlists' | 'health' | 'scheduler'
@@ -281,41 +283,9 @@ export default function Infrastructure() {
           </div>
         )}
 
-        {tab === 'protections' && (
-          <div>
-            <div className="text-[10px] font-semibold text-[#5d6b7e] mb-1">PROTECTION PLUGINS</div>
-            {[
-              { name: 'Max Drawdown Guard', desc: 'Stops trading if drawdown exceeds threshold (default 25%)' },
-              { name: 'Cooldown Period', desc: 'Pauses trading after N consecutive losses (default 5)' },
-              { name: 'Max Daily Loss', desc: 'Stops trading if daily loss exceeds threshold (default 5%)' },
-              { name: 'Min Trades Guard', desc: 'Requires minimum trades before allowing trading (default 3)' },
-            ].map((p, i) => (
-              <div key={i} className="bg-card border border-default px-2 py-1.5 rounded mb-1">
-                <div className="font-semibold text-[10px]">{p.name}</div>
-                <div className="text-[9px] text-[#5d6b7e]">{p.desc}</div>
-              </div>
-            ))}
-          </div>
-        )}
+        {tab === 'protections' && <ProtectionsPanel />}
 
-        {tab === 'pairlists' && (
-          <div>
-            <div className="text-[10px] font-semibold text-[#5d6b7e] mb-1">PAIRLIST FILTERS</div>
-            {[
-              { name: 'Volume Filter', desc: 'Filters by minimum average volume (default 1M)' },
-              { name: 'Volatility Filter', desc: 'Filters by volatility range (default 0-5%)' },
-              { name: 'Spread Filter', desc: 'Filters by bid-ask spread (default max 1%)' },
-              { name: 'Price Filter', desc: 'Filters by price range (default $1+)' },
-              { name: 'Market Cap Filter', desc: 'Filters by market cap range (default $100M+)' },
-              { name: 'Performance Filter', desc: 'Filters by recent performance (30d return)' },
-            ].map((p, i) => (
-              <div key={i} className="bg-card border border-default px-2 py-1.5 rounded mb-1">
-                <div className="font-semibold text-[10px]">{p.name}</div>
-                <div className="text-[9px] text-[#5d6b7e]">{p.desc}</div>
-              </div>
-            ))}
-          </div>
-        )}
+        {tab === 'pairlists' && <PairlistsPanel />}
 
         {tab === 'health' && (
           <div>

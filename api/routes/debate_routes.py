@@ -5,13 +5,25 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
+from api.services.agent_service import AGENT_REGISTRY
 from api.services.debate import DebateService, DebateConfig
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/debate", tags=["debate"])
 
-_VALID_AGENTS = {"momentum", "technicals", "sentiment", "value", "risk", "fundamentals", "growth", "macro"}
+_DEBATE_AGENT_MAP = {
+    "technicals": "technicals",
+    "sentiment": "sentiment",
+    "fundamentals": "fundamentals",
+    "valuation": "valuation",
+    "value": "valuation",
+    "risk": "risk_manager",
+    "growth": "growth_agent",
+    "momentum": "technicals",
+    "macro": "valuation",
+}
+_VALID_AGENTS = set(_DEBATE_AGENT_MAP.keys())
 
 
 @router.post("/run")
@@ -21,10 +33,10 @@ async def run_debate(
     bull_agents: str = Query(default="momentum,technicals,sentiment"),
     bear_agents: str = Query(default="value,risk,fundamentals"),
 ):
-    bull = [a.strip() for a in bull_agents.split(",") if a.strip()]
-    bear = [a.strip() for a in bear_agents.split(",") if a.strip()]
+    bull = [_DEBATE_AGENT_MAP.get(a.strip(), a.strip()) for a in bull_agents.split(",") if a.strip()]
+    bear = [_DEBATE_AGENT_MAP.get(a.strip(), a.strip()) for a in bear_agents.split(",") if a.strip()]
     for a in bull + bear:
-        if a not in _VALID_AGENTS:
+        if a not in _VALID_AGENTS and a not in AGENT_REGISTRY:
             raise HTTPException(400, f"Unknown agent '{a}'. Valid: {sorted(_VALID_AGENTS)}")
     config = DebateConfig(
         symbol=symbol,
@@ -62,10 +74,10 @@ async def multi_round_debate(
     bull_agents: str = Query(default="momentum,technicals,sentiment"),
     bear_agents: str = Query(default="value,risk,fundamentals"),
 ):
-    bull = [a.strip() for a in bull_agents.split(",") if a.strip()]
-    bear = [a.strip() for a in bear_agents.split(",") if a.strip()]
+    bull = [_DEBATE_AGENT_MAP.get(a.strip(), a.strip()) for a in bull_agents.split(",") if a.strip()]
+    bear = [_DEBATE_AGENT_MAP.get(a.strip(), a.strip()) for a in bear_agents.split(",") if a.strip()]
     for a in bull + bear:
-        if a not in _VALID_AGENTS:
+        if a not in _VALID_AGENTS and a not in AGENT_REGISTRY:
             raise HTTPException(400, f"Unknown agent '{a}'. Valid: {sorted(_VALID_AGENTS)}")
     config = DebateConfig(
         symbol=symbol,

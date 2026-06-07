@@ -289,7 +289,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             top: 0,
             left: 0,
             bottom: 0,
-            width: 'var(--sidebar-width)',
+            width: 200,
             background: 'var(--bg-sidebar)',
             borderRight: '1px solid var(--border-color)',
             zIndex: 'var(--z-sidebar)',

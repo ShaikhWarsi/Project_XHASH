@@ -23,9 +23,14 @@ import { ChartToolbar } from '../components/chart/ChartToolbar'
 import { TimeframeSelector } from '../components/chart/TimeframeSelector'
 import { ObjectTree } from '../components/chart/ui/ObjectTree'
 import { IndicatorPane } from '../components/chart/drawings/indicators/IndicatorPane'
+import { AIChartInspector } from '../components/chart/AIChartInspector'
+import { IndicatorPicker } from '../components/chart/IndicatorPicker'
+import { ChartLegend } from '../components/chart/ChartLegend'
+import { ShortcutsOverlay } from '../components/chart/ShortcutsOverlay'
 import { DrawingProperties } from '../components/chart/ui/DrawingProperties'
 import { CompareSymbol } from '../components/chart/ui/CompareSymbol'
 import { ChartSettings } from '../components/chart/ui/ChartSettings'
+import PictureInPicture from '../components/PictureInPicture'
 import { LayoutBuilder } from '../components/chart/ui/LayoutBuilder'
 import OpenBBChart from '../components/chart/plotly/OpenBBChart'
 import TAIndicatorPanel from '../components/chart/plotly/TAIndicatorPanel'
@@ -79,6 +84,7 @@ import { AlertDialog } from '../components/chart/alerts/AlertDialog'
 // Multi-timeframe overlay
 import MultiTimeframeOverlay from '../components/chart/overlays/MultiTimeframeOverlay'
 // Anchored VWAP
+import DrawingTemplatePanel from '../components/chart/drawings/DrawingTemplatePanel'
 // Pattern detector
 import { PatternDetector, type DetectedPattern } from '../components/chart/patterns/PatternDetector'
 // Tick engine
@@ -171,8 +177,9 @@ export default function ChartPage() {
   const [layers, setLayers] = useState<any[]>([])
   const [layerOrder, setLayerOrder] = useState<Record<string, number>>({})
   const [showTemplates, setShowTemplates] = useState(false)
+  const [templatesTab, setTemplatesTab] = useState<'chart' | 'drawings'>('chart')
   const [theme, setTheme] = useState<ThemeName>(() => getStoredTheme())
-  const themeColors = getThemeColors(theme)
+  const themeColors = useMemo(() => getThemeColors(theme), [theme])
   const [showCorrelation, setShowCorrelation] = useState(false)
   const [correlationData, setCorrelationData] = useState<any>(null)
   const [correlationLoading, setCorrelationLoading] = useState(false)
@@ -212,6 +219,8 @@ export default function ChartPage() {
   const [showPatterns, setShowPatterns] = useState(false)
   const [detectedPatterns, setDetectedPatterns] = useState<DetectedPattern[]>([])
   const [showSymbolSearch, setShowSymbolSearch] = useState(false)
+  const [inspectorCandle, setInspectorCandle] = useState<BarData | null>(null)
+  const [showIndicatorDrawer, setShowIndicatorDrawer] = useState(false)
   const [showOrderEntry, setShowOrderEntry] = useState(false)
   const [orderEntrySide, setOrderEntrySide] = useState<'BUY' | 'SELL'>('BUY')
   const [showAlertDialog, setShowAlertDialog] = useState(false)
@@ -225,9 +234,15 @@ export default function ChartPage() {
   const chartPanelRef = useRef<HTMLDivElement>(null)
   const dataRef = useRef<BarData[]>([])
   const loadingDataRef = useRef(false)
+  const [crosshairLinked, setCrosshairLinked] = useState(true)
+  const [showShortcuts, setShowShortcuts] = useState(false)
+
+  useEffect(() => { chartSync.setLinked(crosshairLinked) }, [crosshairLinked, chartSync])
 
   const wsUrl = useMemo(() => `/ws/prices?symbols=${symbol}`, [symbol])
   const { lastData: wsPriceData, connected: wsConnected } = useWebSocket<any>(wsUrl)
+
+  const ohlcvLastBarTimeRef = useRef<number | null>(null)
 
   const setChartData = useCallback((bars: BarData[]) => {
     if (!chartRef.current) {
@@ -244,9 +259,20 @@ export default function ChartPage() {
     }))
     chartRef.current.setMainSeries(chartData)
     chartRef.current.fitContent()
+    // Record last bar timestamp for WS reconciliation
+    if (bars.length > 0) {
+      const lastBar = bars[bars.length - 1]
+      ohlcvLastBarTimeRef.current = typeof lastBar.time === 'string'
+        ? new Date(lastBar.time).getTime() / 1000
+        : lastBar.time
+    }
   }, [])
 
+  const themeAppliedRef = useRef<string>('')
   useEffect(() => {
+    const key = JSON.stringify(themeColors)
+    if (themeAppliedRef.current === key) return
+    themeAppliedRef.current = key
     applyThemeToDocument(themeColors)
   }, [themeColors])
 
@@ -410,6 +436,7 @@ export default function ChartPage() {
           chartSync.unregister(id)
         }
       }
+      chartSync.destroy()
     }
   }, [chartSync])
 
@@ -424,14 +451,25 @@ export default function ChartPage() {
   const pendingTicksRef = useRef<PriceTick[]>([])
   const flushPendingTicksRef = useRef<() => void>(() => {})
 
+  const toEpoch = (t: string | number): number =>
+    typeof t === 'string' ? new Date(t).getTime() / 1000 : t
+
   const processTick = useCallback((tick: PriceTick, engine: ChartEngine, bars: BarData[], secs: number) => {
     const price = tick.price ?? tick.close
-    const time = tick.time ?? Math.floor(Date.now() / 1000)
+    const rawTime = tick.time ?? Date.now() / 1000
+    const timeSec = toEpoch(rawTime)
     if (price == null) return
     const lastBar = bars[bars.length - 1]
     if (!lastBar) return
-    const barTime = Math.floor(time / secs) * secs
-    const isNewBar = barTime > Number(lastBar.time)
+    const barTime = Math.floor(timeSec / secs) * secs
+
+    // WS/OHLCV reconciliation: if OHLCV just loaded and this tick belongs to a
+    // different bar boundary, ignore it to prevent flicker
+    if (ohlcvLastBarTimeRef.current != null) {
+      const ohlcvBarTime = Math.floor(ohlcvLastBarTimeRef.current / secs) * secs
+      if (barTime < ohlcvBarTime) return
+    }
+    const isNewBar = barTime > toEpoch(lastBar.time)
 
     if (isNewBar) {
       const newBar = {
@@ -536,6 +574,19 @@ export default function ChartPage() {
         onClick: () => handleIndicatorAddClick(),
         shortcut: 'I',
       },
+      ...(indicators.length > 0 ? [{
+        label: 'Indicators',
+        submenu: indicators.map((ind) => ({
+          label: `${ind.name}${ind.hidden ? ' (hidden)' : ''}`,
+          submenu: [
+            { label: 'Remove', onClick: () => handleIndicatorRemove(ind.id) },
+            { label: 'Hide', onClick: () => {} },
+            { label: 'Color...', onClick: () => {} },
+            { label: 'Scale Left', onClick: () => { if (chartRef.current) chartRef.current.setPriceScalePosition('left') } },
+            { label: 'Scale Right', onClick: () => { if (chartRef.current) chartRef.current.setPriceScalePosition('right') } },
+          ] as ContextMenuItem[],
+        })),
+      } as ContextMenuItem] : []),
       {
         label: 'Add Drawing',
         submenu: [
@@ -546,6 +597,14 @@ export default function ChartPage() {
           {
             label: 'Fibonacci',
             onClick: () => handleToolSelect('fib_retracement'),
+          },
+          {
+            label: 'Auto-Fib',
+            onClick: () => { chartRef.current?.drawingManager.createDrawing('auto_fib'); setDrawingsCount(chartRef.current?.drawingManager.getDrawings().length ?? 0) },
+          },
+          {
+            label: 'Auto-Pitchfork',
+            onClick: () => { chartRef.current?.drawingManager.createDrawing('auto_pitchfork'); setDrawingsCount(chartRef.current?.drawingManager.getDrawings().length ?? 0) },
           },
           {
             label: 'Rectangle',
@@ -575,7 +634,7 @@ export default function ChartPage() {
       },
       { label: 'Layout', onClick: () => setShowLayout(true) },
     ],
-    [handleToolSelect, handleIntervalChange, toggleFullscreen, handleExportDrawings],
+    [handleToolSelect, handleIntervalChange, toggleFullscreen, handleExportDrawings, indicators],
   )
 
   const handleContextMenu = useCallback(
@@ -804,6 +863,59 @@ export default function ChartPage() {
     setComparisonSymbols((prev) => prev.filter((s) => s !== sym))
   }, [])
 
+  const handleSaveLayout = useCallback(() => {
+    const cfg = {
+      symbol, interval, chartStyle, indicators: indicators.map((i) => ({
+        id: i.id, name: i.name, params: i.params, style: i.style,
+      })),
+      drawings: chartRef.current?.drawingManager.getDrawings().map((d) => ({
+        type: d.type, points: d.points, style: d.style,
+      })) || [],
+    }
+    addToast('Layout saved', 'info')
+  }, [symbol, interval, chartStyle, indicators, addToast])
+
+  const handleCrosshairLinkToggle = useCallback(() => {
+    setCrosshairLinked((v) => !v)
+  }, [])
+
+  const handleShowShortcuts = useCallback(() => {
+    setShowShortcuts((v) => !v)
+  }, [])
+
+  const legendSeries = useMemo(() => [
+    { id: 'price', name: symbol, color: 'var(--accent-cyan)', visible: true, type: 'candlestick' as const },
+    ...indicators.map((ind) => ({
+      id: ind.id,
+      name: ind.name,
+      color: ind.style?.color || 'var(--accent-yellow)',
+      visible: true,
+      type: 'line' as const,
+    })),
+    ...(comparisonSymbols.map((sym) => ({
+      id: `cmp_${sym}`, name: sym, color: 'var(--accent-blue)', visible: true, type: 'line' as const,
+    }))),
+  ], [symbol, indicators, comparisonSymbols])
+
+  const handleLegendToggle = useCallback((id: string) => {
+    if (id === 'price') return
+    setIndicators((prev) => prev.map((ind) =>
+      ind.id === id ? { ...ind, style: { ...ind.style, color: ind.style?.color || 'var(--accent-yellow)' } } : ind
+    ))
+  }, [])
+
+  const handleLegendSolo = useCallback((id: string) => {
+    setIndicators((prev) => prev.map((ind) => ({ ...ind, hidden: ind.id !== id })))
+  }, [])
+
+  const handleHideAll = useCallback(() => {
+    setIndicators((prev) => prev.map((ind) => ({ ...ind, hidden: true })))
+  }, [])
+
+  const handleShowAll = useCallback(() => {
+    setIndicators((prev) => prev.map((ind) => ({ ...ind, hidden: false })))
+  }, [])
+
   const handleLoadCorrelation = useCallback(async () => {
     const syms = correlationSymbols.split(',').map((s) => s.trim()).filter(Boolean)
     if (syms.length < 2) {
@@ -932,8 +1044,15 @@ export default function ChartPage() {
         canRedo={canRedo}
         symbol={symbol}
         interval={interval}
+        chartType={chartStyle}
+        onChartTypeChange={(t) => setChartStyle(t as ChartStyle)}
         onIndicatorAdd={handleIndicatorAddClick}
         onTemplates={() => setShowTemplates(v => !v)}
+        onSaveLayout={handleSaveLayout}
+        onCompareAdd={() => setShowCompare((v) => !v)}
+        crosshairLinked={crosshairLinked}
+        onCrosshairLinkToggle={handleCrosshairLinkToggle}
+        onShowShortcuts={handleShowShortcuts}
       />
 
       {showLayout && (
@@ -955,6 +1074,10 @@ export default function ChartPage() {
           <button onClick={() => setShowCompare(!showCompare)}
             className="bg-transparent text-muted cursor-pointer text-[10px]">
             + Compare
+          </button>
+          <button onClick={() => setShowIndicatorDrawer(v => !v)}
+            className={`bg-transparent cursor-pointer text-[10px] ${showIndicatorDrawer ? 'text-accent-blue' : 'text-muted'}`}>
+            Indicators
           </button>
           <button onClick={() => setShowChartSettings(!showChartSettings)}
             className="bg-transparent text-muted cursor-pointer text-[10px]">
@@ -1010,17 +1133,27 @@ export default function ChartPage() {
           onChartReady={handleEngineReady}
         />
 
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/70">
-            <Spinner label="Loading chart..." />
-          </div>
-        )}
+        <div
+          className="absolute inset-0 flex items-center justify-center bg-black/70"
+          style={{
+            opacity: loading ? 1 : 0,
+            transition: 'opacity 0.25s ease',
+            pointerEvents: loading ? 'auto' : 'none',
+          }}
+        >
+          <Spinner label="Loading chart..." />
+        </div>
 
-        {error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/70">
-            <div className="text-[11px] font-mono-data text-down">{error}</div>
-          </div>
-        )}
+        <div
+          className="absolute inset-0 flex items-center justify-center bg-black/70"
+          style={{
+            opacity: error ? 1 : 0,
+            transition: 'opacity 0.25s ease',
+            pointerEvents: error ? 'auto' : 'none',
+          }}
+        >
+          <div className="text-[11px] font-mono-data text-down">{error}</div>
+        </div>
 
         {indicators.length > 0 && (
           <div className="absolute bottom-0 left-0 right-0">
@@ -1036,41 +1169,15 @@ export default function ChartPage() {
         )}
 
         {showInlineSearch && (
-          <div style={{
-            position: 'absolute', top: 4, left: '50%', transform: 'translateX(-50%)',
-            zIndex: 60, width: 220,
-            background: 'var(--bg-card)', border: '1px solid var(--accent-blue)',
-            borderRadius: 4, fontFamily: 'JetBrains Mono, monospace',
-            fontSize: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
-          }}>
-            <input
-              autoFocus
-              type="text"
-              value={inlineQuery}
-              onChange={e => setInlineQuery(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Escape') { setShowInlineSearch(false); setInlineQuery('') }
-              }}
-              placeholder="Search indicators..."
-              style={{ width: '100%', background: 'transparent', border: 'none', padding: '6px 8px', color: 'var(--text-primary)', outline: 'none', fontFamily: 'inherit', fontSize: 10 }}
-            />
-            {inlineQuery && (
-              <div style={{ maxHeight: 200, overflowY: 'auto' }}>
-                {PRESET_INDICATORS.filter(p => String(p.name).toLowerCase().includes(inlineQuery.toLowerCase())).slice(0, 12).map((preset, idx) => (
-                  <div key={idx}
-                    onClick={() => handleInlineSelect(preset)}
-                    style={{ padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, borderBottom: '1px solid var(--border-color)' }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: preset.color as any }} />
-                    <span style={{ flex: 1, color: 'var(--text-primary)' }}>{preset.name}</span>
-                    <span style={{ color: 'var(--text-muted)', fontSize: 8 }}>{preset.category || ''}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <IndicatorPicker
+            onSelect={(ind) => {
+              setShowInlineSearch(false)
+              if (chartRef.current) {
+                chartRef.current.addIndicator({ id: `ind_${Date.now()}`, name: ind.name, type: 'line', params: ind.default_params || {} } as any)
+              }
+            }}
+            onClose={() => setShowInlineSearch(false)}
+          />
         )}
 
         {showInlineParams && selectedIndicatorPreset && (
@@ -1142,6 +1249,47 @@ export default function ChartPage() {
             symbol={symbol}
           />
         )}
+
+        {inspectorCandle && (
+          <AIChartInspector
+            candle={inspectorCandle}
+            symbol={symbol}
+            onClose={() => setInspectorCandle(null)}
+          />
+        )}
+
+        {showIndicatorDrawer && indicators.length > 0 && (
+          <div style={{
+            position: 'absolute', top: 0, right: 0, zIndex: 60,
+            width: 240, height: '100%', overflowY: 'auto',
+            background: 'var(--bg-card)',
+            borderLeft: '1px solid var(--border-color)',
+            padding: 8, fontSize: 10, fontFamily: 'JetBrains Mono, monospace',
+          }}>
+            <div style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 9, marginBottom: 8 }}>
+              INDICATOR SETTINGS
+              <button onClick={() => setShowIndicatorDrawer(false)}
+                style={{ float: 'right', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>X</button>
+            </div>
+            {indicators.map((ind) => (
+              <div key={ind.id} style={{ padding: '6px 4px', borderBottom: '1px solid var(--border-color)', marginBottom: 4 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <span style={{ color: ind.style?.color || 'var(--accent-yellow)' }}>{ind.name}</span>
+                  <button onClick={() => handleIndicatorRemove(ind.id)}
+                    style={{ background: 'none', border: 'none', color: 'var(--accent-red)', cursor: 'pointer', fontSize: 8 }}>Remove</button>
+                </div>
+                {ind.params && Object.entries(ind.params).map(([key, val]) => (
+                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: 8, minWidth: 40 }}>{key}</span>
+                    <input type="number" value={val as number}
+                      onChange={(e) => { /* params change handler */ }}
+                      style={{ width: 60, background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 2, padding: '1px 4px', color: 'var(--text-primary)', fontSize: 8, fontFamily: 'inherit' }} />
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       </DropZone>
 
@@ -1155,7 +1303,7 @@ export default function ChartPage() {
           <div className="flex items-center gap-3 px-2 py-0.5 bg-card border-b border-default font-mono-data text-[10px]">
             <span className="font-bold text-accent-cyan">{symbol}</span>
             <span className="font-bold text-primary">${last.close.toFixed(2)}</span>
-            <span className={chg >= 0 ? 'text-accent-green' : 'text-accent-red'}>{chg >= 0 ? '+' : ''}{chg.toFixed(2)} ({chgPct >= 0 ? '+' : ''}{chgPct.toFixed(2)}%)</span>
+            <span className={chg >= 0 ? 'text-accent-green' : 'text-accent-red'}>Δ {chg >= 0 ? '+' : ''}{chg.toFixed(2)} ({chgPct >= 0 ? '+' : ''}{chgPct.toFixed(2)}%)</span>
             <span className="text-muted">O: ${last.open.toFixed(2)}</span>
             <span className="text-muted">H: ${last.high.toFixed(2)}</span>
             <span className="text-muted">L: ${last.low.toFixed(2)}</span>
@@ -1197,6 +1345,14 @@ export default function ChartPage() {
         )
       })()}
 
+      <ChartLegend
+        series={legendSeries}
+        onToggle={handleLegendToggle}
+        onSolo={handleLegendSolo}
+        onHideAll={handleHideAll}
+        onShowAll={handleShowAll}
+      />
+
       {/* Sticky bottom toolbar rail */}
       <div className="flex items-center gap-0 px-1 py-0.5 bg-card border-t border-default select-none sticky bottom-0 z-10">
         <TimeframeSelector interval={interval} onIntervalChange={handleIntervalChange} />
@@ -1221,7 +1377,8 @@ export default function ChartPage() {
           {timeMachineSynced ? '\u26C5' : '\u2601'} Sync
         </button>
         <div className="flex-1" />
-        <div className="flex items-center gap-1 text-[8px] font-mono-data text-muted">
+        <PictureInPicture symbol={symbol} />
+        <div className="flex items-center gap-1 text-[8px] font-mono-data text-muted ml-1">
           <span>{data.length} bars</span>
           {wsConnected && <span className="text-up">{'\u25CF'} LIVE</span>}
         </div>
@@ -1377,9 +1534,35 @@ export default function ChartPage() {
         }}
           className="bg-transparent text-[10px] transition-colors text-muted cursor-pointer">Share</button>
         {showTemplates && (
-          <div className="absolute bottom-full right-36 z-50 w-56">
-            <div className="bg-card border border-default rounded-sm p-2">
-              <ChartTemplates currentConfig={currentChartConfig} onLoadConfig={handleLoadChartConfig} />
+          <div className="absolute bottom-full right-36 z-50">
+            <div className="bg-card border border-default rounded-sm p-2 min-w-[220px]">
+              <div style={{ display: 'flex', gap: 1, marginBottom: 4, borderBottom: '1px solid var(--border-color)', paddingBottom: 4 }}>
+                {(['chart', 'drawings'] as const).map((tab) => (
+                  <button key={tab} onClick={() => setTemplatesTab(tab)}
+                    style={{
+                      flex: 1, padding: '2px 0', fontSize: 8, fontWeight: 600,
+                      background: templatesTab === tab ? 'var(--accent-cyan)' : 'transparent',
+                      color: templatesTab === tab ? '#000' : 'var(--text-muted)',
+                      border: 'none', cursor: 'pointer', borderRadius: 2,
+                      fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase',
+                    }}>
+                    {tab}
+                  </button>
+                ))}
+              </div>
+              {templatesTab === 'chart' ? (
+                <ChartTemplates currentConfig={currentChartConfig} onLoadConfig={handleLoadChartConfig} />
+              ) : (
+                <DrawingTemplatePanel
+                  currentDrawings={allDrawings}
+                  onApplyTemplate={(drawings) => {
+                    for (const d of drawings) chartRef.current?.drawingManager.addDrawingFromJSON(d as any)
+                    setDrawingsCount(chartRef.current?.drawingManager.getDrawings().length ?? 0)
+                    setShowTemplates(false)
+                  }}
+                  onClose={() => setShowTemplates(false)}
+                />
+              )}
             </div>
           </div>
         )}
@@ -1802,6 +1985,10 @@ export default function ChartPage() {
           onClose={() => setContextMenu((prev) => ({ ...prev, show: false }))}
           id="chart-context-menu"
         />
+      )}
+
+      {showShortcuts && (
+        <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />
       )}
     </div>
   )

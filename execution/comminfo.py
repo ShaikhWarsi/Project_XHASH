@@ -95,6 +95,14 @@ class CommInfo:
             return size * (newprice - price) * self.mult
         return 0.0
 
+    def get_borrow_fee(self, size: int, price: float, days: float, borrow_rate: float = 0.0) -> float:
+        if size >= 0:
+            return 0.0
+        rate = borrow_rate or self.interest
+        if rate <= 0:
+            rate = 0.05
+        return days * price * abs(size) * (rate / 365.0)
+
     def get_credit_interest(self, size: int, price: float, days: float, days_360: bool = False) -> float:
         if size >= 0 and not self.interest_long:
             return 0.0

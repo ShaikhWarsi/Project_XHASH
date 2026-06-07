@@ -1,9 +1,10 @@
 import { DrawingTool } from '../DrawingTool'
 import { drawControlHandle, HIT_THRESHOLD } from '../Utils'
-import { FIB_LEVELS, FIB_COLORS } from '../../DrawingTypes'
+import { FIB_LEVELS as DEFAULT_FIB_LEVELS, FIB_COLORS } from '../../DrawingTypes'
 
 export class FibRetracement extends DrawingTool {
   static readonly pointCount = 2
+  static CUSTOM_LEVELS: number[] = [...DEFAULT_FIB_LEVELS]
   get pointCount() { return FibRetracement.pointCount }
 
   render(ctx: CanvasRenderingContext2D, mapper: any, paneIndex: number) {
@@ -19,7 +20,7 @@ export class FibRetracement extends DrawingTool {
     const range = hiP - loP
     const midX = (x1 + x2) / 2
 
-    const levels = FIB_LEVELS
+    const levels = FibRetracement.CUSTOM_LEVELS
     for (let i = 0; i < levels.length; i++) {
       const level = loP + range * (1 - levels[i])
       const ly = mapper.priceToY(level, paneIndex)

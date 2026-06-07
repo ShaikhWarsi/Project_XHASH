@@ -77,6 +77,11 @@ export default function KeyboardShortcutListener() {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      let node = e.target as HTMLElement | null
+      while (node) {
+        if (node.hasAttribute?.('data-no-hotkeys') || node.closest?.('[data-no-hotkeys]')) return
+        node = node.parentElement
+      }
       if (e.key === '?' && !e.metaKey && !e.ctrlKey) {
         e.preventDefault()
         setOpen((v) => !v)

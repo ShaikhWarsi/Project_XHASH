@@ -140,6 +140,7 @@ class Position:
     current_price: float
     unrealized_pnl: float = 0.0
     realized_pnl: float = 0.0
+    daily_pnl: float = 0.0
 
     @property
     def market_value(self) -> float:

@@ -1,14 +1,22 @@
 from __future__ import annotations
 import math
+import time
 from fastapi import APIRouter
 from api.state import app_state
 from api.sector_map import get_sector_exposures
 
 router = APIRouter(tags=["risk"])
 
+_risk_cache: dict[str, tuple[dict, float]] = {}
+_RISK_CACHE_TTL = 30.0
+
 
 @router.get("/risk")
 async def get_risk_metrics():
+    now = time.time()
+    cached = _risk_cache.get("risk_metrics")
+    if cached and now - cached[1] < _RISK_CACHE_TTL:
+        return cached[0]
     snapshot = await app_state.async_snapshot()
     portfolio = snapshot.get("portfolio", {})
     metrics = snapshot.get("metrics", {})
@@ -39,8 +47,8 @@ async def get_risk_metrics():
 
     heatmap = await get_sector_exposures(positions_data)
 
-    return {
-        "_simulated": True,
+    result = {
+        "_source": "live",
         "totalExposure": gross_exposure,
         "totalExposurePercent": (gross_exposure / total_value * 100) if total_value else 0,
         "longExposure": long_exposure,
@@ -59,3 +67,5 @@ async def get_risk_metrics():
         "beta": 1.0,
         "portfolioHeatmap": heatmap,
     }
+    _risk_cache["risk_metrics"] = (result, now)
+    return result

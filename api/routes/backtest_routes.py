@@ -13,6 +13,8 @@ from persistence.repositories import BacktestRepository
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/backtest", tags=["backtest"])
 
+_BACKTEST_SEMAPHORE = asyncio.Semaphore(2)
+
 
 @router.get("/engines")
 async def list_backtest_engines():
@@ -34,7 +36,7 @@ def _list_signal_engines() -> dict:
 MAX_TICKERS = 20
 MAX_DATE_RANGE_DAYS = 1095  # 3 years
 
-VALID_STRATEGIES = {"sma_cross", "momentum", "mean_reversion"}
+BUILTIN_STRATEGIES = {"sma_cross", "momentum", "mean_reversion"}
 
 @router.post("/run")
 async def run_backtest(config: dict, session: AsyncSession = Depends(get_session)):
@@ -55,9 +57,9 @@ async def run_backtest(config: dict, session: AsyncSession = Depends(get_session
         raise HTTPException(status_code=400, detail=f"Maximum {MAX_TICKERS} tickers allowed, got {len(tickers)}")
 
     try:
-        from datetime import datetime as dt
-        start_dt = dt.strptime(start, "%Y-%m-%d")
-        end_dt = dt.strptime(end, "%Y-%m-%d")
+        from datetime import datetime as dt, timezone
+        start_dt = dt.strptime(start, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        end_dt = dt.strptime(end, "%Y-%m-%d").replace(tzinfo=timezone.utc)
         if start_dt >= end_dt:
             raise HTTPException(status_code=400, detail="start must be before end")
         if (end_dt - start_dt).days > MAX_DATE_RANGE_DAYS:
@@ -66,10 +68,11 @@ async def run_backtest(config: dict, session: AsyncSession = Depends(get_session
         raise HTTPException(status_code=400, detail="Invalid date format, use YYYY-MM-DD")
 
     from signals.engine_registry import ENGINE_REGISTRY
-    valid_signal_engines = set(ENGINE_REGISTRY.keys())
-    all_strategies = VALID_STRATEGIES | valid_signal_engines
+    signal_engines = set(ENGINE_REGISTRY.keys())
+    all_strategies = BUILTIN_STRATEGIES | signal_engines
     if strategy not in all_strategies:
         raise HTTPException(status_code=400, detail=f"Unknown strategy '{strategy}'. Valid options: {', '.join(sorted(all_strategies))}")
+    is_signal_engine = strategy in signal_engines and strategy not in BUILTIN_STRATEGIES
 
     try:
         from datetime import datetime as dt
@@ -83,26 +86,29 @@ async def run_backtest(config: dict, session: AsyncSession = Depends(get_session
         from core.types import Order, PortfolioState
         from data.yfinance_provider import YFinanceProvider
 
-        engine_type = config.get("engine_type", "default")
-        engine_params = get_engine_params(engine_type)
+        adjust_corp_actions = config.get("adjust_for_splits_dividends", True)
 
         source = YFinanceProvider()
         data = {}
 
         chunk_size = 5
+        chunk_tasks = []
         for chunk_start in range(0, len(tickers), chunk_size):
             chunk = tickers[chunk_start:chunk_start + chunk_size]
 
-            def _fetch_chunk(syms=chunk):
+            async def _fetch_chunk(syms=chunk):
                 result = {}
                 for ticker in syms:
-                    df = source.fetch_bars(ticker, Timeframe.D1, start_dt, end_dt)
+                    df = await asyncio.to_thread(lambda t=ticker: source.fetch_bars(t, Timeframe.D1, start_dt, end_dt, auto_adjust=adjust_corp_actions))
                     if df is not None and len(df) > 0:
                         result[ticker] = df
                 return result
 
-            chunk_data = await asyncio.to_thread(_fetch_chunk)
-            data.update(chunk_data)
+            chunk_tasks.append(_fetch_chunk())
+
+        chunk_results = await asyncio.gather(*chunk_tasks)
+        for cr in chunk_results:
+            data.update(cr)
 
         if not data:
             raise HTTPException(status_code=400, detail="No data fetched for the given tickers and date range")
@@ -111,20 +117,30 @@ async def run_backtest(config: dict, session: AsyncSession = Depends(get_session
         sma_slow = config.get("sma_slow", 50)
         order_qty = config.get("order_quantity", 10)
 
+        commission_pct = config.get("commission_pct", 0.001)  # 0.1% per trade
+        slippage_pct = config.get("slippage_pct", 0.0005)     # 0.05% slippage
+
+        def _apply_costs(price: float, side: str) -> float:
+            slippage = price * slippage_pct
+            return price + slippage if side == "BUY" else price - slippage
+
         def sma_cross_strategy(bars, portfolio):
             orders = []
             for symbol, df in bars.items():
-                if len(df) < sma_slow:
+                if len(df) < sma_slow + 1:
                     continue
                 close = df["close"]
-                sma_f = close.tail(sma_fast).mean()
-                sma_s = close.tail(sma_slow).mean()
+                # Exclude current bar to eliminate lookahead bias
+                sma_f = close.iloc[-(sma_fast + 1):-1].mean()
+                sma_s = close.iloc[-(sma_slow + 1):-1].mean()
                 last_close = close.iloc[-1]
                 pos = portfolio.positions.get(symbol)
+                entry_price = _apply_costs(last_close, "BUY")
+                exit_price = _apply_costs(last_close, "SELL")
                 if last_close > sma_f and sma_f > sma_s and (pos is None or pos.quantity == 0):
-                    orders.append(Order(symbol=symbol, side=OrderSide.BUY, quantity=order_qty, order_type=OrderType.MARKET, price=last_close))
+                    orders.append(Order(symbol=symbol, side=OrderSide.BUY, quantity=order_qty, order_type=OrderType.MARKET, price=entry_price))
                 elif last_close < sma_f and pos is not None and pos.quantity > 0:
-                    orders.append(Order(symbol=symbol, side=OrderSide.SELL, quantity=pos.quantity, order_type=OrderType.MARKET, price=last_close))
+                    orders.append(Order(symbol=symbol, side=OrderSide.SELL, quantity=pos.quantity, order_type=OrderType.MARKET, price=exit_price))
             return orders
 
         momentum_lookback = config.get("momentum_lookback", 5)
@@ -133,16 +149,19 @@ async def run_backtest(config: dict, session: AsyncSession = Depends(get_session
         def momentum_strategy(bars, portfolio):
             orders = []
             for symbol, df in bars.items():
-                if len(df) < momentum_lookback:
+                if len(df) < momentum_lookback + 1:
                     continue
                 close = df["close"]
+                # pct_change(lookback) at index -1 uses close[-1] vs close[-1-lookback]; no lookahead bias
                 returns = close.pct_change(momentum_lookback).iloc[-1] if len(close) > momentum_lookback else 0
                 last_close = close.iloc[-1]
                 pos = portfolio.positions.get(symbol)
+                entry_price = _apply_costs(last_close, "BUY")
+                exit_price = _apply_costs(last_close, "SELL")
                 if returns > momentum_threshold and (pos is None or pos.quantity == 0):
-                    orders.append(Order(symbol=symbol, side=OrderSide.BUY, quantity=order_qty, order_type=OrderType.MARKET, price=last_close))
+                    orders.append(Order(symbol=symbol, side=OrderSide.BUY, quantity=order_qty, order_type=OrderType.MARKET, price=entry_price))
                 elif returns < -momentum_threshold and pos is not None and pos.quantity > 0:
-                    orders.append(Order(symbol=symbol, side=OrderSide.SELL, quantity=pos.quantity, order_type=OrderType.MARKET, price=last_close))
+                    orders.append(Order(symbol=symbol, side=OrderSide.SELL, quantity=pos.quantity, order_type=OrderType.MARKET, price=exit_price))
             return orders
 
         mean_reversion_period = config.get("mean_reversion_period", 20)
@@ -151,22 +170,25 @@ async def run_backtest(config: dict, session: AsyncSession = Depends(get_session
         def mean_reversion_strategy(bars, portfolio):
             orders = []
             for symbol, df in bars.items():
-                if len(df) < mean_reversion_period:
+                if len(df) < mean_reversion_period + 1:
                     continue
                 close = df["close"]
-                sma = close.tail(mean_reversion_period).mean()
-                std = close.tail(mean_reversion_period).std()
+                # Exclude current bar to eliminate lookahead bias
+                lookback = close.iloc[-(mean_reversion_period + 1):-1]
+                sma = lookback.mean()
+                std = lookback.std()
                 last_close = close.iloc[-1]
                 pos = portfolio.positions.get(symbol)
+                entry_price = _apply_costs(last_close, "BUY")
+                exit_price = _apply_costs(last_close, "SELL")
                 if last_close < sma - mean_reversion_z * std and (pos is None or pos.quantity == 0):
-                    orders.append(Order(symbol=symbol, side=OrderSide.BUY, quantity=order_qty, order_type=OrderType.MARKET, price=last_close))
+                    orders.append(Order(symbol=symbol, side=OrderSide.BUY, quantity=order_qty, order_type=OrderType.MARKET, price=entry_price))
                 elif last_close > sma + mean_reversion_z * std and pos is not None and pos.quantity > 0:
-                    orders.append(Order(symbol=symbol, side=OrderSide.SELL, quantity=pos.quantity, order_type=OrderType.MARKET, price=last_close))
+                    orders.append(Order(symbol=symbol, side=OrderSide.SELL, quantity=pos.quantity, order_type=OrderType.MARKET, price=exit_price))
             return orders
 
-        def signal_engine_strategy(bars, portfolio):
+        def signal_engine_strategy(bars, portfolio, engine_name="order_block"):
             orders = []
-            engine_name = config.get("signal_engine", "order_block")
             engine_cls = ENGINE_REGISTRY.get(engine_name)
             if engine_cls is None:
                 return orders
@@ -188,9 +210,12 @@ async def run_backtest(config: dict, session: AsyncSession = Depends(get_session
                     continue
             return orders
 
-        strategies = {"sma_cross": sma_cross_strategy, "momentum": momentum_strategy, "mean_reversion": mean_reversion_strategy}
-        strategies.update({name: signal_engine_strategy for name in ENGINE_REGISTRY})
-        strategy_fn = strategies.get(strategy, sma_cross_strategy)
+        builtin_strategies = {"sma_cross": sma_cross_strategy, "momentum": momentum_strategy, "mean_reversion": mean_reversion_strategy}
+        if is_signal_engine:
+            engine_name = strategy
+            strategy_fn = lambda bars, portfolio: signal_engine_strategy(bars, portfolio, engine_name)
+        else:
+            strategy_fn = builtin_strategies.get(strategy, sma_cross_strategy)
 
         def _run_engine():
             engine = BacktestEngine(
@@ -199,9 +224,12 @@ async def run_backtest(config: dict, session: AsyncSession = Depends(get_session
                 commission=engine_params["commission"],
                 slippage=engine_params["slippage"],
             )
+            if not adjust_corp_actions:
+                engine.load_corporate_actions(tickers)
             return engine.run(strategy_fn, data)
 
-        result = await asyncio.to_thread(_run_engine)
+        async with _BACKTEST_SEMAPHORE:
+            result = await asyncio.to_thread(_run_engine)
 
         from analytics.metrics import PerformanceMetrics
         metrics = PerformanceMetrics.compute(result.equity_curve)
@@ -275,4 +303,68 @@ async def get_backtest(backtest_id: int, session: AsyncSession = Depends(get_ses
         "total_return": run.total_return,
         "sharpe_ratio": run.sharpe_ratio,
         "max_drawdown": run.max_drawdown,
+    }
+
+
+@router.get("/{backtest_id}/trades")
+async def get_backtest_trades(backtest_id: int, session: AsyncSession = Depends(get_session)):
+    run = await BacktestRepository.get_run(session, backtest_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Backtest not found")
+    metrics = _safe_json(run.metrics_json)
+    return {
+        "trades": metrics.get("trades", []),
+        "total_trades": len(metrics.get("trades", [])),
+    }
+
+
+@router.get("/{backtest_id}/metrics/full")
+async def get_backtest_full_metrics(backtest_id: int, session: AsyncSession = Depends(get_session)):
+    run = await BacktestRepository.get_run(session, backtest_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Backtest not found")
+    equity_curve = _safe_json(run.equity_curve_json) or []
+
+    from analytics.metrics import PerformanceMetrics
+    if equity_curve:
+        metrics = PerformanceMetrics.compute(equity_curve)
+    else:
+        metrics = PerformanceMetrics()
+
+    return {
+        "returns": {
+            "total_return": metrics.total_return,
+            "annualized_return": metrics.annualized_return,
+            "cumulative_return": metrics.cumulative_return,
+            "alpha": metrics.alpha,
+            "beta": metrics.beta,
+            "benchmark_return": metrics.benchmark_return,
+        },
+        "risk": {
+            "annualized_volatility": metrics.annualized_volatility,
+            "max_drawdown": metrics.max_drawdown,
+            "max_drawdown_duration": metrics.max_drawdown_duration,
+            "value_at_risk_95": metrics.value_at_risk_95,
+            "conditional_var_95": metrics.conditional_var_95,
+        },
+        "risk_adjusted": {
+            "sharpe_ratio": metrics.sharpe_ratio,
+            "sortino_ratio": metrics.sortino_ratio,
+            "calmar_ratio": metrics.calmar_ratio,
+            "ulcer_index": metrics.ulcer_index,
+            "martin_ratio": metrics.martin_ratio,
+        },
+        "trading": {
+            "win_rate": metrics.win_rate,
+            "profit_factor": metrics.profit_factor,
+            "total_trades": metrics.total_trades,
+            "avg_win": metrics.avg_win,
+            "avg_loss": metrics.avg_loss,
+            "expectancy": metrics.expectancy,
+        },
+        "stability": {
+            "batting_average": metrics.batting_average,
+            "upside_capture": metrics.upside_capture,
+            "downside_capture": metrics.downside_capture,
+        },
     }

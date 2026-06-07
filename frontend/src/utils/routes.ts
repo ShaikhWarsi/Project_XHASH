@@ -57,6 +57,18 @@ export const ROUTES: RouteConfig[] = [
   { path: '/ai/rl-training', label: 'RL Training', group: 'ai', workflow: 'quant' },
   { path: '/ai/llm', label: 'LLM Playground', group: 'ai', workflow: 'researcher' },
   { path: '/ai/persona-council', label: 'Persona Council', group: 'ai', workflow: 'quant' },
+  { path: '/ai/strategy-generator', label: 'Strategy Generator', group: 'ai', workflow: 'quant' },
+  { path: '/ai/indicator-generator', label: 'Indicator Generator', group: 'ai', workflow: 'quant' },
+  { path: '/ai/strategy-health', label: 'Strategy Health', group: 'ai', workflow: 'quant' },
+  { path: '/ai/auto-tag-trades', label: 'Auto-Tag Trades', group: 'ai', workflow: 'trader' },
+  { path: '/ai/explain-pnl', label: 'Explain P&L', group: 'ai', workflow: 'trader' },
+  { path: '/ai/prompt-library', label: 'Prompt Library', group: 'ai', workflow: 'researcher' },
+  { path: '/ai/leaderboard', label: 'AI Leaderboard', group: 'ai', workflow: 'quant' },
+  { path: '/ai/explain-stops', label: 'Explain Stops', group: 'ai', workflow: 'trader' },
+  { path: '/ai/trade-coach', label: 'Trade Coach', group: 'ai', workflow: 'trader' },
+  { path: '/ai/risk-report', label: 'Risk Report', group: 'ai', workflow: 'trader' },
+  { path: '/ai/reasoning-trace', label: 'Reasoning Trace', group: 'ai', workflow: 'researcher' },
+  { path: '/ai/disagreement-detector', label: 'Disagreement', group: 'ai', workflow: 'quant' },
 
   // Research
   { path: '/research/cfa', label: 'CFA Analytics', group: 'research', workflow: 'researcher' },

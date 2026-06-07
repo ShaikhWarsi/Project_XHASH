@@ -87,6 +87,29 @@ export default function HeatMapWidget({ id, onRemove }: { id: string; onRemove?:
 
   const totalWeight = useMemo(() => sectors.reduce((s, x) => s + x.weight, 0), [sectors])
   const sortedSectors = useMemo(() => [...sectors].sort((a, b) => b.weight - a.weight), [sectors])
+
+  // Per-view normalized color scale
+  const { viewMinChange, viewMaxChange } = useMemo(() => {
+    if (sectors.length === 0) return { viewMinChange: -1, viewMaxChange: 1 }
+    const changes = sectors.map((s) => s.change)
+    return {
+      viewMinChange: Math.min(...changes),
+      viewMaxChange: Math.max(...changes),
+    }
+  }, [sectors])
+
+  const getHeatColorNormalized = useCallback((change: number): string => {
+    const range = viewMaxChange - viewMinChange || 1
+    const normalized = (change - viewMinChange) / range
+    const intensity = Math.abs(normalized - 0.5) * 2
+    if (normalized > 0.5) {
+      const g = Math.round(80 + 135 * intensity)
+      return `rgb(0, ${g}, ${Math.round(30 * intensity)})`
+    }
+    const r = Math.round(80 + 135 * intensity)
+    return `rgb(${r}, ${Math.round(15 * (1 - intensity))}, ${Math.round(15 * (1 - intensity))})`
+  }, [viewMinChange, viewMaxChange])
+
   const isLoading = sectors.length === 0
 
   return (
@@ -140,12 +163,14 @@ export default function HeatMapWidget({ id, onRemove }: { id: string; onRemove?:
                   style={{
                     gridColumn: `span ${area.colSpan}`,
                     gridRow: `span ${area.rowSpan}`,
-                    backgroundColor: getHeatColor(sector.change),
+                    backgroundColor: getHeatColorNormalized(sector.change),
                     border: isHovered ? '1px solid rgba(255,255,255,0.4)' : '1px solid var(--border-color)',
                     transition: 'all 0.2s ease, transform 0.15s ease',
                     transform: isHovered ? 'scale(1.02)' : 'scale(1)',
                     zIndex: isHovered ? 2 : 1,
                     textShadow: '0 1px 3px rgba(0,0,0,0.8)',
+                    contentVisibility: 'auto',
+                    containIntrinsicSize: 'auto 120px',
                   }}
                 >
                   <div className="font-bold tracking-wider" style={{

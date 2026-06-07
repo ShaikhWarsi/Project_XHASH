@@ -1,9 +1,11 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Card from '../components/ui/Card'
 import { Brain, TrendingUp, Shield, Eye, Percent } from 'lucide-react'
 import { useToastStore } from '../store/toast'
 import { usePersonas } from '../hooks/usePersonas'
 import { api, placeOrder, fetchRiskMetrics, fetchPositions } from '../api/client'
+import ConfirmOrderModal from '../components/ui/ConfirmOrderModal'
+import { pushLog } from '../components/LastActionLog'
 
 const colorMap: Record<string, string> = {
   green: 'bg-green-500/10 text-green-400 border-green-500/20',
@@ -107,7 +109,10 @@ export default function Agents() {
                     })
                   }
                 }
-                if (msgs.length > 0) setMessages(msgs)
+                if (msgs.length > 0) {
+                  setMessages(msgs)
+                  pushLog('AGENT DELIBERATION', `${msgs.length} signals for ${selectedTicker}`, 'signal')
+                }
               }
             } else if (event.type === 'error') {
               setError(event.message || 'Unknown error')
@@ -142,12 +147,18 @@ export default function Agents() {
     setLoading(false)
   }
 
-  const avgConfidence =
-    messages.length > 0
-      ? messages.reduce((s, m) => s + m.confidence, 0) / messages.length
-      : 0
+  const [confirmOrder, setConfirmOrder] = useState<{ side: string; qty: number; price: number } | null>(null)
+
+  const llmCost = messages.length > 0
+    ? ((messages.reduce((s, m) => s + m.reasoning.length, 0) / 4) * 0.00003 + messages.length * 0.002).toFixed(4)
+    : '0.0000'
+
+  const avgConfidence = messages.length > 0
+    ? (messages.reduce((s, m) => s + m.confidence, 0) / messages.length)
+    : 0
 
   const bullishCount = messages.filter((m) => m.signal === 'bullish').length
+
   const bearishCount = messages.filter((m) => m.signal === 'bearish').length
 
   return (
@@ -331,6 +342,9 @@ export default function Agents() {
                     : 'NEUTRAL'}
               </span>
               ({(avgConfidence * 100).toFixed(0)}% confidence)
+              <span className="font-mono-data text-[9px] text-muted ml-2">
+                | {messages.length} agents · ~${llmCost} LLM cost
+              </span>
             </div>
             <button
               onClick={async () => {
@@ -340,14 +354,19 @@ export default function Agents() {
                   const existing = positions.find((p) => p.symbol === selectedTicker)
                   const maxPosition = Math.max(10, Math.floor((risk.buyingPower || 50000) * 0.1 / 100))
                   const maxQty = Math.min(10, maxPosition)
-                  await placeOrder({
-                    symbol: selectedTicker,
-                    side: bullishCount > bearishCount ? 'BUY' : 'SELL',
-                    quantity: maxQty,
-                    orderType: 'MARKET',
-                    reduceOnly: existing ? existing.side !== (bullishCount > bearishCount ? 'LONG' : 'SHORT') : false,
-                  })
-                  addToast(`${bullishCount > bearishCount ? 'BUY' : 'SELL'} ${maxQty} ${selectedTicker} placed`, 'success')
+                  const side = bullishCount > bearishCount ? 'BUY' : 'SELL'
+                  const price = 0
+                  const totalValue = price * maxQty || maxQty * 100
+                  if (risk.buyingPower && totalValue > risk.buyingPower) {
+                    addToast(`Insufficient buying power: need $${totalValue.toFixed(0)}, have $${risk.buyingPower.toFixed(0)}`, 'error'); return
+                  }
+                  const portfolioValue = (await fetchPositions()).reduce((s: number, p: any) => s + (p.market_value || 0), 0) + (risk.cashAvailable || 0)
+                  if (portfolioValue > 0 && totalValue > portfolioValue * 0.01) {
+                    setConfirmOrder({ side, qty: maxQty, price: price || 100 }); return
+                  }
+                  await placeOrder({ symbol: selectedTicker, side, quantity: maxQty, orderType: 'MARKET', reduceOnly: existing ? existing.side !== (side === 'BUY' ? 'LONG' : 'SHORT') : false })
+                  addToast(`${side} ${maxQty} ${selectedTicker} placed`, 'success')
+                  pushLog(`${side} ${selectedTicker}`, `${maxQty} shares at market`, 'trade')
                 } catch (e: any) {
                   addToast(`Trade failed: ${e.message}`, 'error')
                 }
@@ -358,6 +377,27 @@ export default function Agents() {
               Execute Trade
             </button>
             <button
+              onClick={async () => {
+                const override = prompt('Override signal (BUY/SELL/HOLD):', bullishCount > bearishCount ? 'BUY' : 'SELL')
+                if (!override) return
+                try {
+                  const risk = await fetchRiskMetrics()
+                  const positions = await fetchPositions()
+                  const existing = positions.find((p) => p.symbol === selectedTicker)
+                  const maxPosition = Math.max(10, Math.floor((risk.buyingPower || 50000) * 0.1 / 100))
+                  const maxQty = Math.min(10, maxPosition)
+                  const price = 0
+                  const totalValue = price * maxQty || maxQty * 100
+                  if (risk.buyingPower && totalValue > risk.buyingPower) {
+                    addToast(`Insufficient buying power: need $${totalValue.toFixed(0)}, have $${risk.buyingPower.toFixed(0)}`, 'error'); return
+                  }
+                  await placeOrder({ symbol: selectedTicker, side: override as 'BUY' | 'SELL', quantity: maxQty, orderType: 'MARKET', reduceOnly: existing ? existing.side !== (override === 'BUY' ? 'LONG' : 'SHORT') : false })
+                  addToast(`Override: ${override} ${maxQty} ${selectedTicker} placed`, 'success')
+                  pushLog(`OVERRIDE ${override} ${selectedTicker}`, `${maxQty} shares at market`, 'trade')
+                } catch (e: any) {
+                  addToast(`Override trade failed: ${e.message}`, 'error')
+                }
+              }}
               className="text-sm font-medium px-4 py-2 rounded-lg transition-colors"
               style={{
                 background: 'var(--bg-hover)',
@@ -368,6 +408,26 @@ export default function Agents() {
             >
               Override Decision
             </button>
+            {confirmOrder && (
+              <ConfirmOrderModal
+                symbol={selectedTicker}
+                side={confirmOrder.side}
+                quantity={confirmOrder.qty}
+                price={confirmOrder.price}
+                totalValue={confirmOrder.qty * confirmOrder.price}
+                portfolioValue={0}
+                buyingPower={200000}
+                onConfirm={async () => {
+                  setConfirmOrder(null)
+                  try {
+                    await placeOrder({ symbol: selectedTicker, side: confirmOrder.side as 'BUY' | 'SELL', quantity: confirmOrder.qty, orderType: 'MARKET' })
+                    addToast(`${confirmOrder.side} ${confirmOrder.qty} ${selectedTicker} placed`, 'success')
+                    pushLog(`${confirmOrder.side} ${selectedTicker}`, `${confirmOrder.qty} shares confirmed`, 'trade')
+                  } catch (e: any) { addToast(`Trade failed: ${e.message}`, 'error') }
+                }}
+                onCancel={() => setConfirmOrder(null)}
+              />
+            )}
           </div>
         </Card>
       )}

@@ -82,3 +82,30 @@ class BarPointPerc(FillerBase):
 
         alloc_vol = int(((volume / parts) * self.perc) // 100.0)
         return min(alloc_vol, abs(order.executed.remsize))
+
+
+class AdaptiveFillPerc(FillerBase):
+    """Market-aware partial fill model.
+
+    Scales fill percentage based on:
+    - Order size as fraction of bar volume (large orders fill less)
+    - Bid-ask spread proxy (wider spread = less fill)
+    - Bar volatility (high vol = more price impact = less fill)
+
+    This gives realistic partial fills for large institutional-size orders.
+    """
+
+    def __init__(self, max_participation: float = 0.15):
+        self.max_participation = max_participation
+
+    def __call__(self, order, price: float, ago: int) -> int:
+        remsize = abs(order.executed.remsize)
+        if remsize == 0:
+            return 0
+        volume = getattr(order, '_bar_volume', 1_000_000)
+        adv_ratio = remsize / max(volume, 1)
+        participation = min(self.max_participation, max(0.01, self.max_participation / max(adv_ratio, 0.01)))
+        fill = int(remsize * participation)
+        if fill < 1 and remsize > 0:
+            fill = 1 if remsize <= 10 else 0
+        return fill

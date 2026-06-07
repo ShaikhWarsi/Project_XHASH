@@ -13,9 +13,24 @@ export default function StrategyOptimizer() {
   const [result, setResult] = useState<any>(null)
   const [loading, setLoading] = useState(false)
 
-  const paramSpec = {
+  const [paramSpec, setParamSpec] = useState<Record<string, { min: number; max: number; step: number }>>({
     fast_ma: { min: 10, max: 100, step: 5 },
     slow_ma: { min: 30, max: 200, step: 10 },
+  })
+  const [paramSpecStr, setParamSpecStr] = useState(() => JSON.stringify(paramSpec, null, 2))
+
+  const addParam = () => {
+    const name = prompt('Parameter name (e.g., rsi_period):')
+    if (!name) return
+    const next = { ...paramSpec, [name]: { min: 10, max: 50, step: 5 } }
+    setParamSpec(next)
+    setParamSpecStr(JSON.stringify(next, null, 2))
+  }
+  const removeParam = (name: string) => {
+    const next = { ...paramSpec }
+    delete next[name]
+    setParamSpec(next)
+    setParamSpecStr(JSON.stringify(next, null, 2))
   }
 
   const runTune = async () => {
@@ -115,6 +130,32 @@ export default function StrategyOptimizer() {
       </div>
 
       <div className="flex-1 overflow-auto p-3">
+        {(tab === 'tune' || tab === 'optimize') && (
+          <div className="mb-2">
+            <div className="flex items-center gap-1 mb-1">
+              <span className="text-[9px] text-muted">Parameters:</span>
+              <button onClick={addParam} className="border border-default bg-card text-primary px-1.5 py-0.5 text-[9px] cursor-pointer rounded-sm">+ Add</button>
+            </div>
+            <div className="flex flex-wrap gap-1 mb-1">
+              {Object.entries(paramSpec).map(([name, spec]) => (
+                <div key={name} className="bg-card border border-default px-2 py-0.5 rounded flex items-center gap-1 text-[10px]">
+                  <span className="text-accent-cyan">{name}</span>
+                  <span className="text-muted">[{spec.min}–{spec.max} / step {spec.step}]</span>
+                  <button onClick={() => removeParam(name)} className="border-none text-down cursor-pointer text-[9px] ml-0.5">&times;</button>
+                </div>
+              ))}
+            </div>
+            <details>
+              <summary className="text-[9px] text-muted cursor-pointer select-none">JSON Editor</summary>
+              <textarea value={paramSpecStr} onChange={(e) => {
+                setParamSpecStr(e.target.value)
+                try { setParamSpec(JSON.parse(e.target.value)) } catch {}
+              }}
+                className="w-full bg-card border border-default text-primary px-2 py-1 text-[10px] font-mono mt-1"
+                rows={4} />
+            </details>
+          </div>
+        )}
         {result?.status === 'error' && <div className="text-down text-[10px]">Error: {result.error}</div>}
 
         {result?.regime && tab === 'regime' && (

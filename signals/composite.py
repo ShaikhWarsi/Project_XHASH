@@ -35,12 +35,17 @@ class SignalAggregator:
         timestamp = datetime.now(timezone.utc)
         matrix = SignalMatrix(timestamp=timestamp, signals={s: [] for s in symbols}, regime=regime)
 
+        seen: set[tuple[str, str, int, float, float]] = set()
         for engine_name, signals in results.items():
             w = self._weights.get(engine_name, SignalWeight(engine=engine_name))
             for sig in signals:
                 if sig.confidence < w.min_confidence:
                     continue
                 sig.metadata["_engine"] = engine_name
+                dedup_key = (engine_name, sig.symbol, sig.direction.value if sig.direction else 0, round(sig.strength, 4), round(sig.confidence, 4))
+                if dedup_key in seen:
+                    continue
+                seen.add(dedup_key)
                 matrix.signals.setdefault(sig.symbol, []).append(sig)
 
         matrix.composite_scores = self._compute_scores(matrix.signals)

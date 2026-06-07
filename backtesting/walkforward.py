@@ -16,12 +16,16 @@ class WalkForwardResult:
     avg_return: float = 0.0
     avg_max_dd: float = 0.0
     stability: float = 0.0
+    oos_sharpes: list[float] = field(default_factory=list)
+    oos_sharpe_p5: float = 0.0
+    oos_sharpe_p50: float = 0.0
+    oos_sharpe_p95: float = 0.0
 
 
 class WalkForwardEngine:
     """Walk-forward optimization and validation.
 
-    Splits data into sequential train/test windows.
+    Supports both percentage-based and fixed-bar window sizes.
     """
 
     def __init__(
@@ -29,10 +33,16 @@ class WalkForwardEngine:
         train_pct: float = 0.6,
         step_pct: float = 0.2,
         min_train_bars: int = 100,
+        train_bars: Optional[int] = None,
+        test_bars: Optional[int] = None,
+        slide_bars: Optional[int] = None,
     ):
         self.train_pct = train_pct
         self.step_pct = step_pct
         self.min_train_bars = min_train_bars
+        self.train_bars = train_bars
+        self.test_bars = test_bars
+        self.slide_bars = slide_bars
 
     def run(
         self,
@@ -56,15 +66,21 @@ class WalkForwardEngine:
         if n < self.min_train_bars:
             return WalkForwardResult()
 
-        train_size = int(n * self.train_pct)
-        step_size = int(n * self.step_pct)
+        if self.train_bars is not None and self.test_bars is not None:
+            train_size = self.train_bars
+            step_size = self.slide_bars or self.test_bars
+            test_size = self.test_bars
+        else:
+            train_size = int(n * self.train_pct)
+            step_size = int(n * self.step_pct)
+            test_size = step_size * 2
 
         engine = BacktestEngine()
         results: list[BacktestResult] = []
 
         for start in range(0, n - train_size, step_size):
             train_end = start + train_size
-            test_end = min(n, train_end + step_size * 2)
+            test_end = min(n, train_end + test_size)
 
             train_data = {sym: df.iloc[start:train_end] for sym, df in aligned.items()}
             test_data = {sym: df.iloc[train_end:test_end] for sym, df in aligned.items()}
@@ -80,6 +96,11 @@ class WalkForwardEngine:
                 return test_fn(snapshot, portfolio, params)
 
             result = engine.run(strategy_fn, test_data, symbols)
+            result._walkforward_params = params
+            result._train_start = str(train_data[symbols[0]].index[0]) if symbols else ""
+            result._train_end = str(train_data[symbols[0]].index[-1]) if symbols else ""
+            result._test_start = str(test_data[symbols[0]].index[0]) if symbols else ""
+            result._test_end = str(test_data[symbols[0]].index[-1]) if symbols else ""
             results.append(result)
 
         if not results:
@@ -97,6 +118,10 @@ class WalkForwardEngine:
             avg_return=avg_return,
             avg_max_dd=avg_dd,
             stability=stability,
+            oos_sharpes=sharpe_values,
+            oos_sharpe_p5=float(np.percentile(sharpe_values, 5)) if sharpe_values else 0.0,
+            oos_sharpe_p50=float(np.median(sharpe_values)) if sharpe_values else 0.0,
+            oos_sharpe_p95=float(np.percentile(sharpe_values, 95)) if sharpe_values else 0.0,
         )
 
     def _align_data(self, data: dict[str, pd.DataFrame], symbols: list[str]) -> dict[str, pd.DataFrame]:

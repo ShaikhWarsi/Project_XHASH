@@ -68,7 +68,7 @@ export default function Portfolio() {
 
   const positionRows = useMemo(() =>
     positions.map(([symbol, pos]) => {
-      const dailyPnl = (Math.random() * 200 - 100)
+      const dailyPnl = pos.daily_pnl ?? 0
       return {
         id: symbol,
         symbol, side: pos.side, quantity: pos.quantity,
@@ -85,14 +85,14 @@ export default function Portfolio() {
   )
 
   const posColumns = useMemo(() => [
-    { key: 'symbol', label: 'Symbol', render: (r: any) => <span className="text-accent-cyan font-semibold">{r.symbol}</span>, sortable: true, sortValue: (r: any) => r.symbol },
-    { key: 'side', label: 'Side', render: (r: any) => <span className={r.side === 'LONG' ? 'text-up' : 'text-down'}>{r.side}</span>, sortable: true, sortValue: (r: any) => r.side, align: 'right' as const },
-    { key: 'quantity', label: 'Qty', render: (r: any) => r.quantity, sortable: true, sortValue: (r: any) => Number(r.quantity), align: 'right' as const },
-    { key: 'entry_price', label: 'Entry', render: (r: any) => `$${r.entry_price}`, sortable: true, sortValue: (r: any) => Number(r.entry_price), align: 'right' as const },
-    { key: 'current_price', label: 'Current', render: (r: any) => `$${r.current_price}`, sortable: true, sortValue: (r: any) => Number(r.current_price), align: 'right' as const },
-    { key: 'market_value', label: 'Mkt Val', render: (r: any) => `$${r.market_value}`, sortable: true, sortValue: (r: any) => Number(r.market_value.replace(/,/g, '')), align: 'right' as const },
-    { key: 'unrealized_pnl', label: 'P&L', render: (r: any) => <span className={r.pnlDirection === 'up' ? 'text-up' : 'text-down'}>{Number(r.unrealized_pnl) >= 0 ? '+' : ''}${r.unrealized_pnl}</span>, sortable: true, sortValue: (r: any) => Number(r.unrealized_pnl), align: 'right' as const },
-    { key: 'daily_pnl', label: 'Since Yest', render: (r: any) => <span className={r.dailyDirection === 'up' ? 'text-up' : 'text-down'}>{Number(r.daily_pnl) >= 0 ? '+' : ''}${r.daily_pnl}</span>, sortable: true, sortValue: (r: any) => Number(r.daily_pnl), align: 'right' as const },
+    { key: 'symbol', label: 'Symbol', width: '72px', render: (r: any) => <span className="text-accent-cyan font-semibold">{r.symbol}</span>, sortable: true, sortValue: (r: any) => r.symbol },
+    { key: 'side', label: 'Side', width: '56px', render: (r: any) => <span className={r.side === 'LONG' ? 'text-up' : 'text-down'}>{r.side}</span>, sortable: true, sortValue: (r: any) => r.side, align: 'right' as const },
+    { key: 'quantity', label: 'Qty', width: '72px', render: (r: any) => r.quantity, sortable: true, sortValue: (r: any) => Number(r.quantity), align: 'right' as const },
+    { key: 'entry_price', label: 'Entry', width: '80px', render: (r: any) => `$${r.entry_price}`, sortable: true, sortValue: (r: any) => Number(r.entry_price), align: 'right' as const },
+    { key: 'current_price', label: 'Current', width: '80px', render: (r: any) => `$${r.current_price}`, sortable: true, sortValue: (r: any) => Number(r.current_price), align: 'right' as const },
+    { key: 'market_value', label: 'Mkt Val', width: '80px', render: (r: any) => `$${r.market_value}`, sortable: true, sortValue: (r: any) => Number(r.market_value.replace(/,/g, '')), align: 'right' as const },
+    { key: 'unrealized_pnl', label: 'P&L', width: '88px', render: (r: any) => <span className={r.pnlDirection === 'up' ? 'text-up' : 'text-down'}>{Number(r.unrealized_pnl) >= 0 ? '+' : ''}${r.unrealized_pnl}</span>, sortable: true, sortValue: (r: any) => Number(r.unrealized_pnl), align: 'right' as const },
+    { key: 'daily_pnl', label: 'Since Yest', width: '96px', render: (r: any) => <span className={r.dailyDirection === 'up' ? 'text-up' : 'text-down'}>{Number(r.daily_pnl) >= 0 ? '+' : ''}${r.daily_pnl}</span>, sortable: true, sortValue: (r: any) => Number(r.daily_pnl), align: 'right' as const },
   ], [])
 
   if (loading) return <PortfolioSkeleton />

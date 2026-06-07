@@ -88,3 +88,57 @@ async def toggle_bot(name: str, body: dict[str, Any]):
 @router.get("/bots/{name}/test")
 async def test_bot(name: str):
     return {"success": True, "message": f"Test message sent to {name}"}
+
+
+# ── Webhook receivers ─────────────────────────────────────
+@router.post("/webhook/telegram")
+async def telegram_webhook(body: dict[str, Any]):
+    message = body.get("message", {})
+    text = message.get("text", "")
+    chat_id = message.get("chat", {}).get("id")
+    logger.info("Telegram webhook received: chat=%s text='%s'", chat_id, text[:200])
+    for bot in _DEFAULT_BOTS:
+        if bot["name"] == "telegram-signals":
+            bot["connected"] = True
+            bot["last_active"] = datetime.now(timezone.utc).isoformat()
+            break
+    return {"ok": True}
+
+
+@router.post("/webhook/discord")
+async def discord_webhook(body: dict[str, Any]):
+    content = body.get("content", "")
+    channel_id = body.get("channel_id", "")
+    logger.info("Discord webhook received: channel=%s content='%s'", channel_id, content[:200])
+    for bot in _DEFAULT_BOTS:
+        if bot["name"] == "discord-alerts":
+            bot["connected"] = True
+            bot["last_active"] = datetime.now(timezone.utc).isoformat()
+            break
+    return {"ok": True}
+
+
+@router.post("/webhook/tradingview")
+async def tradingview_webhook(body: dict[str, Any]):
+    logger.info("TradingView webhook received: %s", str(body)[:300])
+    for bot in _DEFAULT_BOTS:
+        if bot["name"] == "tradingview-webhook":
+            bot["connected"] = True
+            bot["last_active"] = datetime.now(timezone.utc).isoformat()
+            break
+    try:
+        from api.state import app_state as _as
+        if hasattr(_as, "_trades") and body.get("action") in ("buy", "sell"):
+            _as._trades.append({
+                "id": "tv_" + str(len(_as._trades) + 1),
+                "symbol": body.get("ticker", "UNKNOWN"),
+                "side": body.get("action"),
+                "quantity": body.get("quantity", 0),
+                "price": body.get("price", 0),
+                "pnl": None,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "signal_type": "tradingview",
+            })
+    except Exception as e:
+        logger.warning("TradingView webhook trade ingestion failed: %s", e)
+    return {"ok": True}

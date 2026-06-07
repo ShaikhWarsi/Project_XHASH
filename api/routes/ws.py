@@ -14,22 +14,14 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/ws", tags=["websocket"])
 
-POPULAR_SYMBOLS = [
-    "SPY","QQQ","DIA","IWM","AAPL","MSFT","GOOGL","AMZN","NVDA","META","TSLA",
-    "BTC-USD","ETH-USD","BRK-B","JPM","V","JNJ","WMT","PG","MA","UNH","HD",
-    "DIS","NFLX","ADBE","CRM","INTC","AMD","IBM","CSCO","ORCL","QCOM","TXN",
-    "AVGO","MU","ABNB","UBER","PYPL","SNAP","SQQQ","TQQQ","SOXL","LABU","XBI",
-    "IYR","XLF","XLE","XLK","XLV","XLI","XLP","XLU","XLB","XLRE",
-    "ARKK","PLTR","COIN","MSTR","HOOD","RBLX","UPST","AFRM","SOFI","DASH",
-    "LULU","NKE","SBUX","MCD","BA","GE","CAT","F","GM","AAL","DAL","UAL",
-    "CCL","NCLH","RCL","AMC","GME","BB","BBBY","GS","MS","C","BAC","WFC",
-]
+from .market_data_constants import POPULAR_SYMBOLS as _POPULAR_SYMBOL_DICT
+POPULAR_SYMBOLS = [s["symbol"] for s in _POPULAR_SYMBOL_DICT]
 
 _price_cache: dict[str, float] = {}
 _price_cache_lock = asyncio.Lock()
 _cache_last_refresh = 0.0
 _is_refreshing = False
-_CACHE_TTL = 30.0
+_CACHE_TTL = float(os.environ.get("WS_PRICE_CACHE_TTL", "60.0"))
 _price_history: dict[str, list[float]] = {}
 _volume_cache: dict[str, int] = {}
 
@@ -44,22 +36,26 @@ async def _refresh_price_cache(symbols: list[str] | None = None):
     symbols = symbols or POPULAR_SYMBOLS
     prices = {}
     try:
-        df = await asyncio.to_thread(
-            lambda: yf.download(" ".join(symbols), period="1d", group_by="ticker", progress=False)
-        )
-        if df.empty:
-            return
-        for sym in symbols:
-            try:
-                if isinstance(df.columns, pd.MultiIndex) and sym in df.columns.levels[0]:
-                    price = float(df[sym]["Close"].iloc[-1])
-                elif sym in df.columns:
-                    price = float(df[sym].iloc[-1]) if hasattr(df[sym], "iloc") else float(df[sym])
-                else:
-                    continue
-                prices[sym] = price
-            except Exception:
-                pass
+        _CHUNK_SIZE = 30
+        for i in range(0, len(symbols), _CHUNK_SIZE):
+            chunk = symbols[i:i + _CHUNK_SIZE]
+            df = await asyncio.to_thread(
+                lambda s=chunk: yf.download(s, period="1d", group_by="ticker", progress=False)
+            )
+            if df.empty:
+                continue
+            for sym in chunk:
+                try:
+                    if isinstance(df.columns, pd.MultiIndex) and sym in df.columns.levels[0]:
+                        price = float(df[sym]["Close"].iloc[-1])
+                    elif sym in df.columns:
+                        price_val = df[sym].iloc[-1] if hasattr(df[sym], "iloc") else float(df[sym])
+                        price = float(price_val) if not isinstance(price_val, float) else price_val
+                    else:
+                        continue
+                    prices[sym] = price
+                except Exception:
+                    pass
     except Exception as e:
         logger.warning("Batch price refresh failed: %s", e)
     finally:
@@ -72,13 +68,13 @@ async def _refresh_price_cache(symbols: list[str] | None = None):
 
 @router.websocket("/prices")
 async def ws_prices(websocket: WebSocket, symbols: str = ""):
-    await manager.connect("prices", websocket)
+    mc = await manager.connect("prices", websocket)
     tracked = [s.upper().strip() for s in symbols.split(",") if s.strip()] or POPULAR_SYMBOLS
     try:
-        _ws_max_iter = 1000000
-        for _ in range(_ws_max_iter):
+        while True:
             try:
-                await asyncio.wait_for(websocket.receive_text(), timeout=5.0)
+                msg = await asyncio.wait_for(websocket.receive_text(), timeout=5.0)
+                if msg == '{"type":"pong"}': mc.last_pong = time.time(); continue
             except asyncio.TimeoutError:
                 pass
             await _refresh_price_cache(tracked)
@@ -110,22 +106,22 @@ async def ws_prices(websocket: WebSocket, symbols: str = ""):
                     "data": data,
                     "timestamp": time.time()
                 })
-        logger.warning("ws_prices hit max iterations")
     except WebSocketDisconnect:
-        await manager.disconnect("prices", websocket)
+        pass
     except Exception as e:
         logger.warning("ws_prices error: %s", e)
-        await manager.disconnect("prices", websocket)
+    finally:
+        await manager.disconnect(mc)
 
 
 @router.websocket("/portfolio")
 async def ws_portfolio(websocket: WebSocket):
-    await manager.connect("portfolio", websocket)
+    mc = await manager.connect("portfolio", websocket)
     try:
-        _ws_max_iter = 1000000
-        for _ in range(_ws_max_iter):
+        while True:
             try:
-                await asyncio.wait_for(websocket.receive_text(), timeout=5.0)
+                msg = await asyncio.wait_for(websocket.receive_text(), timeout=5.0)
+                if msg == '{"type":"pong"}': mc.last_pong = time.time(); continue
             except asyncio.TimeoutError:
                 pass
             snapshot = await app_state.async_snapshot()
@@ -134,22 +130,23 @@ async def ws_portfolio(websocket: WebSocket):
                 "data": snapshot,
                 "timestamp": time.time()
             })
-        logger.warning("ws_portfolio hit max iterations")
+
     except WebSocketDisconnect:
-        await manager.disconnect("portfolio", websocket)
+        pass
     except Exception as e:
         logger.warning("ws_portfolio error: %s", e)
-        await manager.disconnect("portfolio", websocket)
+    finally:
+        await manager.disconnect(mc)
 
 
 @router.websocket("/orders")
 async def ws_orders(websocket: WebSocket):
-    await manager.connect("orders", websocket)
+    mc = await manager.connect("orders", websocket)
     try:
-        _ws_max_iter = 1000000
-        for _ in range(_ws_max_iter):
+        while True:
             try:
-                await asyncio.wait_for(websocket.receive_text(), timeout=1.0)
+                msg = await asyncio.wait_for(websocket.receive_text(), timeout=1.0)
+                if msg == '{"type":"pong"}': mc.last_pong = time.time(); continue
             except asyncio.TimeoutError:
                 pass
             orders = await app_state.async_get_open_orders() if app_state and hasattr(app_state, 'async_get_open_orders') else []
@@ -158,22 +155,23 @@ async def ws_orders(websocket: WebSocket):
                 "data": orders,
                 "timestamp": time.time()
             })
-        logger.warning("ws_orders hit max iterations")
+
     except WebSocketDisconnect:
-        await manager.disconnect("orders", websocket)
+        pass
     except Exception as e:
         logger.warning("ws_orders error: %s", e)
-        await manager.disconnect("orders", websocket)
+    finally:
+        await manager.disconnect(mc)
 
 
 @router.websocket("/orderbook/{symbol}")
 async def ws_orderbook(websocket: WebSocket, symbol: str):
-    await manager.connect(f"orderbook:{symbol}", websocket)
+    mc = await manager.connect(f"orderbook:{symbol}", websocket)
     try:
-        _ws_max_iter = 1000000
-        for _ in range(_ws_max_iter):
+        while True:
             try:
-                await asyncio.wait_for(websocket.receive_text(), timeout=0.5)
+                msg = await asyncio.wait_for(websocket.receive_text(), timeout=0.5)
+                if msg == '{"type":"pong"}': mc.last_pong = time.time(); continue
             except asyncio.TimeoutError:
                 pass
             if DEV_MODE:
@@ -185,61 +183,59 @@ async def ws_orderbook(websocket: WebSocket, symbol: str):
                 asks = []
                 bid_total = 0
                 ask_total = 0
+                level_size = max(200, int(base_price * 0.8))
                 for i in range(12):
-                    bid_size = random.uniform(200, 5000)
-                    ask_size = random.uniform(200, 5000)
+                    decay = 1.0 - (i * 0.06)
+                    bid_size = level_size * max(0.2, decay)
+                    ask_size = level_size * max(0.2, decay)
                     bid_total += bid_size
                     ask_total += ask_size
                     bids.append([round(base_price - (i + 1) * spread, 2), round(bid_size, 1)])
                     asks.append([round(base_price + (i + 1) * spread, 2), round(ask_size, 1)])
                 await websocket.send_json({
                     "type": "orderbook",
-                    "data": {"symbol": symbol, "bids": bids, "asks": asks, "basePrice": base_price, "_simulated": True},
+                    "data": {"symbol": symbol, "bids": bids, "asks": asks, "basePrice": base_price, "_source": "simulated"},
                     "timestamp": time.time()
                 })
             else:
                 await websocket.send_json({
                     "type": "orderbook",
-                    "data": {"symbol": symbol, "bids": [], "asks": [], "basePrice": 0, "_simulated": False},
+                    "data": {"symbol": symbol, "bids": [], "asks": [], "basePrice": 0, "_source": "production"},
                     "timestamp": time.time()
                 })
-        logger.warning("ws_orderbook hit max iterations")
+
     except WebSocketDisconnect:
-        await manager.disconnect(f"orderbook:{symbol}", websocket)
+        pass
     except Exception as e:
         logger.warning("ws_orderbook error: %s", e)
-        await manager.disconnect(f"orderbook:{symbol}", websocket)
+    finally:
+        await manager.disconnect(mc)
 
 
 @router.websocket("/trades/{symbol}")
 async def ws_trades(websocket: WebSocket, symbol: str):
-    await manager.connect(f"trades:{symbol}", websocket)
+    mc = await manager.connect(f"trades:{symbol}", websocket)
     try:
-        _ws_max_iter = 1000000
-        for _ in range(_ws_max_iter):
+        while True:
             try:
-                await asyncio.wait_for(websocket.receive_text(), timeout=1.5)
+                msg = await asyncio.wait_for(websocket.receive_text(), timeout=1.5)
+                if msg == '{"type":"pong"}': mc.last_pong = time.time(); continue
             except asyncio.TimeoutError:
                 pass
             if DEV_MODE:
                 await _refresh_price_cache()
                 async with _price_cache_lock:
                     base_price = _price_cache.get(symbol.upper(), 100)
-                trade_count = random.randint(1, 5)
-                trades = []
-                for _ in range(trade_count):
-                    side = random.choice(["buy", "sell"])
-                    offset = base_price * random.uniform(-0.002, 0.002)
-                    trades.append({
-                        "price": round(base_price + offset, 2),
-                        "size": round(random.uniform(100, 2000), 1),
-                        "time": time.strftime("%H:%M:%S"),
-                        "side": side,
-                        "_simulated": True,
-                    })
+                trade = {
+                    "price": round(base_price, 2),
+                    "size": round(base_price * 0.5, 1),
+                    "time": time.strftime("%H:%M:%S"),
+                    "side": "buy" if time.time() % 2 < 1 else "sell",
+                    "_source": "simulated",
+                }
                 await websocket.send_json({
                     "type": "trades",
-                    "data": trades,
+                    "data": [trade],
                     "timestamp": time.time()
                 })
             else:
@@ -247,49 +243,50 @@ async def ws_trades(websocket: WebSocket, symbol: str):
                     "type": "trades",
                     "data": [],
                     "timestamp": time.time(),
-                    "_simulated": False,
+                    "_source": "production",
                 })
-        logger.warning("ws_trades hit max iterations")
+
     except WebSocketDisconnect:
-        await manager.disconnect(f"trades:{symbol}", websocket)
+        pass
     except Exception as e:
         logger.warning("ws_trades error: %s", e)
-        await manager.disconnect(f"trades:{symbol}", websocket)
+    finally:
+        await manager.disconnect(mc)
 
 
 @router.websocket("/signals")
 async def ws_social_signals(websocket: WebSocket):
-    await manager.connect("signals", websocket)
+    mc = await manager.connect("signals", websocket)
     try:
-        _ws_max_iter = 1000000
-        for _ in range(_ws_max_iter):
+        while True:
             data = await asyncio.wait_for(websocket.receive_json(), timeout=60)
             if data.get("type") == "signal":
                 broadcast = {
                     "type": "signal",
                     "data": data.get("data", {}),
                 }
-                for conn in manager.connections.get("signals", []):
+                for conn in manager.get_connections("signals"):
                     try:
-                        await conn.send_json(broadcast)
+                        await conn.ws.send_json(broadcast)
                     except Exception as e:
                         logger.warning("ws_social_signals broadcast error: %s", e)
-        logger.warning("ws_social_signals hit max iterations")
+
     except (WebSocketDisconnect, asyncio.TimeoutError):
-        await manager.disconnect("signals", websocket)
+        pass
     except Exception as e:
         logger.warning("ws_social_signals error: %s", e)
-        await manager.disconnect("signals", websocket)
+    finally:
+        await manager.disconnect(mc)
 
 
 @router.websocket("/motd")
 async def ws_motd(websocket: WebSocket):
-    await manager.connect("motd", websocket)
+    mc = await manager.connect("motd", websocket)
     try:
-        _ws_max_iter = 1000000
-        for _ in range(_ws_max_iter):
+        while True:
             try:
-                await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
+                msg = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
+                if msg == '{"type":"pong"}': mc.last_pong = time.time(); continue
             except asyncio.TimeoutError:
                 pass
             motd = get_motd()
@@ -298,22 +295,23 @@ async def ws_motd(websocket: WebSocket):
                 "data": motd,
                 "timestamp": time.time(),
             })
-        logger.warning("ws_motd hit max iterations")
+
     except WebSocketDisconnect:
-        await manager.disconnect("motd", websocket)
+        pass
     except Exception as e:
         logger.warning("ws_motd error: %s", e)
-        await manager.disconnect("motd", websocket)
+    finally:
+        await manager.disconnect(mc)
 
 
 @router.websocket("/news")
 async def ws_news(websocket: WebSocket):
-    await manager.connect("news", websocket)
+    mc = await manager.connect("news", websocket)
     try:
-        _ws_max_iter = 1000000
-        for _ in range(_ws_max_iter):
+        while True:
             try:
-                await asyncio.wait_for(websocket.receive_text(), timeout=60.0)
+                msg = await asyncio.wait_for(websocket.receive_text(), timeout=60.0)
+                if msg == '{"type":"pong"}': mc.last_pong = time.time(); continue
             except asyncio.TimeoutError:
                 pass
             await manager.broadcast("news", {
@@ -321,22 +319,23 @@ async def ws_news(websocket: WebSocket):
                 "data": {"items": []},
                 "timestamp": time.time(),
             })
-        logger.warning("ws_news hit max iterations")
+
     except WebSocketDisconnect:
-        await manager.disconnect("news", websocket)
+        pass
     except Exception as e:
         logger.warning("ws_news error: %s", e)
-        await manager.disconnect("news", websocket)
+    finally:
+        await manager.disconnect(mc)
 
 
 @router.websocket("/calendar")
 async def ws_calendar(websocket: WebSocket):
-    await manager.connect("calendar", websocket)
+    mc = await manager.connect("calendar", websocket)
     try:
-        _ws_max_iter = 1000000
-        for _ in range(_ws_max_iter):
+        while True:
             try:
-                await asyncio.wait_for(websocket.receive_text(), timeout=60.0)
+                msg = await asyncio.wait_for(websocket.receive_text(), timeout=60.0)
+                if msg == '{"type":"pong"}': mc.last_pong = time.time(); continue
             except asyncio.TimeoutError:
                 pass
             await manager.broadcast("calendar", {
@@ -344,9 +343,10 @@ async def ws_calendar(websocket: WebSocket):
                 "data": {},
                 "timestamp": time.time(),
             })
-        logger.warning("ws_calendar hit max iterations")
+
     except WebSocketDisconnect:
-        await manager.disconnect("calendar", websocket)
+        pass
     except Exception as e:
         logger.warning("ws_calendar error: %s", e)
-        await manager.disconnect("calendar", websocket)
+    finally:
+        await manager.disconnect(mc)

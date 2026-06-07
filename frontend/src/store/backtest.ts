@@ -24,6 +24,8 @@ interface BacktestStore {
     engine_type: string
     leverage: number
     agents: string[]
+    entryConditions: string
+    exitConditions: string
   }
   setConfig: (config: Partial<BacktestStore['config']>) => void
   run: () => Promise<void>
@@ -48,6 +50,8 @@ export const useBacktestStore = create<BacktestStore>()(
         engine_type: 'default',
         leverage: 1.0,
         agents: ['buffett', 'burry', 'druckenmiller'],
+        entryConditions: '',
+        exitConditions: '',
       },
 
       setConfig: (partial) => set((s) => ({ config: { ...s.config, ...partial } })),
@@ -74,6 +78,8 @@ export const useBacktestStore = create<BacktestStore>()(
             strategy: config.strategy,
             engine_type: config.engine_type,
             agents: config.agents,
+            entryConditions: config.entryConditions || undefined,
+            exitConditions: config.exitConditions || undefined,
           }
           const engineDefault = ENGINE_DEFAULT_LEVERAGE[config.engine_type] ?? 1.0
           if (config.leverage !== engineDefault) body.leverage = config.leverage

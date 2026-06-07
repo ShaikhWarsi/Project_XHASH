@@ -2,6 +2,16 @@ import { useEffect, useCallback } from 'react'
 
 const MOD: 'metaKey' | 'ctrlKey' = navigator.platform.startsWith('Mac') ? 'metaKey' : 'ctrlKey'
 
+function _inModalTarget(el: EventTarget | null): boolean {
+  let node = el as HTMLElement | null
+  while (node) {
+    if (node.hasAttribute?.('data-no-hotkeys')) return true
+    if (node.closest?.('[data-no-hotkeys]')) return true
+    node = node.parentElement
+  }
+  return false
+}
+
 type Binding = {
   key: string
   ctrl?: boolean
@@ -16,6 +26,7 @@ export function useKeyboard(bindings: Binding[], enabled = true) {
     if (!enabled) return
     const items = stableBindings()
     const handler = (e: KeyboardEvent) => {
+      if (_inModalTarget(e.target)) return
       for (const b of items) {
         const ctrlOk = b.ctrl ? e[MOD] : !e[MOD]
         const shiftOk = b.shift ? e.shiftKey : !e.shiftKey

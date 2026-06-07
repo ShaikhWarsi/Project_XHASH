@@ -102,16 +102,16 @@ export default function OrderBook({ symbol = '', levels = 12 }: OrderBookProps) 
           No L2 depth available — waiting for real-time feed
         </div>
       )}
-      {!usingWsData && bids.length === 0 && (
-        <div style={{ padding: '20px 8px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 10 }}>
-          Connect to a live data source to view order book depth
-        </div>
-      )}
       <div style={{ padding: '6px 10px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ ...FONT_DATA, fontWeight: 600, color: 'var(--text-primary)' }}>
           ORDER BOOK {symbol && `— ${symbol}`}
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 4, ...FONT_SM }}>
+          {!wsConnected && (
+            <span style={{ background: 'rgba(234,179,8,0.15)', color: 'var(--accent-yellow)', padding: '0 4px', borderRadius: 2, fontSize: 8, fontWeight: 700, letterSpacing: '0.5px' }}>
+              DEMO
+            </span>
+          )}
           <span style={{ width: 6, height: 6, background: statusColor }} />
           <span style={{ color: 'var(--text-muted)' }}>{statusLabel}</span>
         </span>

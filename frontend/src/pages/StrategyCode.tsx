@@ -193,6 +193,9 @@ export default function StrategyCode() {
   const [templates, setTemplates] = useState<{ name: string; description: string }[]>([])
   const [loadingTemplates, setLoadingTemplates] = useState(false)
   const [monacoReady, setMonacoReady] = useState(false)
+  const [runSymbol, setRunSymbol] = useState('AAPL')
+  const [runStart, setRunStart] = useState('2024-01-01')
+  const [runEnd, setRunEnd] = useState('2024-12-31')
   const editorRef = useRef<any>(null)
   const monacoRef = useRef<any>(null)
 
@@ -303,9 +306,9 @@ export default function StrategyCode() {
     try {
       const { data } = await api.post('/finscript/evaluate', {
         code,
-        symbol: 'AAPL',
-        start: '2024-01-01',
-        end: '2024-12-31',
+        symbol: runSymbol,
+        start: runStart,
+        end: runEnd,
       })
       setOutput(JSON.stringify(data, null, 2))
       const monaco = monacoRef.current
@@ -462,6 +465,13 @@ export default function StrategyCode() {
             <LayoutGrid size={12} /> GALLERY
           </button>
         </div>
+        <input value={runSymbol} onChange={(e) => setRunSymbol(e.target.value.toUpperCase())}
+          style={{ width: 72, ...FONT, fontSize: 11, background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '3px 6px', outline: 'none' }}
+          placeholder="Symbol" />
+        <input type="date" value={runStart} onChange={(e) => setRunStart(e.target.value)}
+          style={{ width: 110, ...FONT, fontSize: 10, background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '3px 6px', outline: 'none' }} />
+        <input type="date" value={runEnd} onChange={(e) => setRunEnd(e.target.value)}
+          style={{ width: 110, ...FONT, fontSize: 10, background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '3px 6px', outline: 'none' }} />
         <button onClick={compileCode} disabled={running}
           style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--accent-purple)', color: '#fff', border: 'none', ...FONT, fontWeight: 600, padding: '3px 10px', cursor: running ? 'not-allowed' : 'pointer', opacity: running ? 0.5 : 1 }}>
           <FileCode size={12} /> {running ? '...' : 'COMPILE'}

@@ -58,7 +58,7 @@ async def get_technical_analysis(request: TARequest):
         request.symbol, interval=request.interval,
         period_days=request.period_days, indicators=str(sorted(request.indicators.items())),
     )
-    cached = get_chart_html(cache_key)
+    cached = await get_chart_html(cache_key)
     if cached:
         return json.loads(cached)
 
@@ -82,7 +82,7 @@ async def get_technical_analysis(request: TARequest):
             "symbol": request.symbol,
         }
 
-        set_chart_html(cache_key, json.dumps(response_data))
+        await set_chart_html(cache_key, json.dumps(response_data))
         return response_data
     except Exception as e:
         logger.exception("Error generating TA chart")
@@ -105,7 +105,7 @@ async def get_technical_analysis_get(
     cache_key = get_chart_cache_key(
         symbol, interval=interval, period_days=period_days, indicators=str(sorted(ind_dict.items())),
     )
-    cached = get_chart_html(cache_key)
+    cached = await get_chart_html(cache_key)
     if cached:
         return json.loads(cached)
 
@@ -127,7 +127,7 @@ async def get_technical_analysis_get(
             "figure_json": fig.to_plotly_json(),
             "symbol": symbol,
         }
-        set_chart_html(cache_key, json.dumps(response_data))
+        await set_chart_html(cache_key, json.dumps(response_data))
         return response_data
     except Exception as e:
         logger.exception("Error generating TA chart")

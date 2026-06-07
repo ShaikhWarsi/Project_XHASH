@@ -2,9 +2,22 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
+
+_AGENT_REGISTRY: Optional[dict] = None
+
+
+def _get_registry():
+    global _AGENT_REGISTRY
+    if _AGENT_REGISTRY is None:
+        try:
+            from api.services.agent_service import AGENT_REGISTRY
+            _AGENT_REGISTRY = AGENT_REGISTRY
+        except ImportError:
+            _AGENT_REGISTRY = {}
+    return _AGENT_REGISTRY
 
 
 @dataclass
@@ -132,6 +145,10 @@ class DebateService:
         return float(100 - (100 / (1 + rs.iloc[-1]))) if rs.iloc[-1] != float("inf") else 50.0
 
     async def _generate_argument(self, agent: str, stance: str, price_data: dict, counter: list[str] | None = None) -> DebateArgument:
+        registry = _get_registry()
+        agent_info = registry.get(agent, {})
+        agent_display = agent_info.get("name", agent.replace("_", " ").title())
+        agent_style = agent_info.get("investing_style", "")
         p = price_data.get("price", 100)
         v = price_data.get("volume", 1_000_000)
         sma20 = price_data.get("sma_20", p)
@@ -149,19 +166,19 @@ class DebateService:
         evidence.append(f"{pct_from_high:.1f}% from 52w high, {pct_from_low:.1f}% from 52w low")
         if stance == "bull":
             conf = min(0.95, max(0.3, (rsi / 100) if rsi < 70 else (100 - rsi) / 100))
-            thesis = f"{agent.upper()}: Bullish — price momentum and technicals supportive"
+            thesis = f"{agent_display}: Bullish — {agent_style or 'price momentum and technicals supportive'}"
             if counter:
                 thesis += f" | Rebuttal: {'; '.join(counter[:2])}"
         elif stance == "bear":
             conf = min(0.95, max(0.3, (100 - rsi) / 100 if rsi > 30 else rsi / 100))
-            thesis = f"{agent.upper()}: Bearish — overbought conditions and mean reversion risk"
+            thesis = f"{agent_display}: Bearish — {agent_style or 'overbought conditions and mean reversion risk'}"
             if counter:
                 thesis += f" | Rebuttal: {'; '.join(counter[:2])}"
         else:
             conf = 0.5
-            thesis = f"{agent.upper()}: Neutral — mixed signals, awaiting clearer direction"
+            thesis = f"{agent_display}: Neutral — mixed signals, awaiting clearer direction"
         return DebateArgument(
-            agent_name=agent,
+            agent_name=agent_display,
             stance=stance,
             thesis=thesis,
             confidence=round(conf, 2),

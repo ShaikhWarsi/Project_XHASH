@@ -14,13 +14,6 @@ const inputStyle: React.CSSProperties = {
   outline: 'none',
 }
 
-function genProbData() {
-  const prices = Array.from({ length: 20 }, (_, i) => 90 + i * 2)
-  const times = Array.from({ length: 12 }, (_, i) => `${i * 5}m`)
-  const z = times.map(() => prices.map(() => Math.random() * 100))
-  return { prices, times, z }
-}
-
 export default function MmcAnalysis() {
   const [symbol, setSymbol] = useState('BTC-USD')
   const [period, setPeriod] = useState('1mo')
@@ -105,13 +98,18 @@ export default function MmcAnalysis() {
   }, [tab, ohlcvData, symbol])
 
   useEffect(() => {
-    if (tab !== 'prob' || !probRef.current) return
+    if (tab !== 'prob' || !probRef.current || !data) return
     let cancelled = false
     import('plotly.js-dist-min').then((mod: any) => {
       if (cancelled) return
-      const { prices, times, z } = genProbData()
+      const mmcData = data as Record<string, unknown>
+      const probData = mmcData.probability_heatmap as { prices: number[]; times: string[]; z: number[][] } | undefined
+      if (!probData) {
+        mod.newPlot(probRef.current, [], {})
+        return
+      }
       mod.newPlot(probRef.current, [{
-        z, x: times, y: prices,
+        z: probData.z, x: probData.times, y: probData.prices,
         type: 'heatmap', colorscale: 'Viridis', hoverongaps: false,
       }], {
         paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
@@ -122,7 +120,7 @@ export default function MmcAnalysis() {
       })
     })
     return () => { cancelled = true }
-  }, [tab])
+  }, [tab, data])
 
   const renderValue = (v: unknown): string => {
     if (typeof v === 'number') return v.toFixed(4)
@@ -188,31 +186,43 @@ export default function MmcAnalysis() {
 
       {tab === 'mtf' && (
         <Card title="MULTI-TIMEFRAME RIBBON">
-          <div className="flex flex-col gap-1 font-mono-data text-[10px]">
-            {['1m', '5m', '15m', '1h', '4h', '1d'].map((tf) => (
-              <div key={tf} className="flex items-center gap-2 py-1 border-b border-default">
-                <span className="text-muted w-8">{tf}</span>
-                <div className="flex-1 h-3 relative" style={{ background: 'var(--border-color)' }}>
-                  <div className="h-full" style={{
-                    width: `${20 + Math.random() * 60}%`,
-                    background: Math.random() > 0.5 ? 'var(--accent-green)' : 'var(--accent-red)',
-                    opacity: 0.7,
-                  }} />
-                </div>
-                <span className="text-primary w-16 text-right">${(100 + Math.random() * 10).toFixed(2)}</span>
-                <span className={Math.random() > 0.5 ? 'text-accent-green' : 'text-accent-red'}>
-                  {(Math.random() - 0.5) * 2 > 0 ? '+' : ''}{(Math.random() * 2).toFixed(2)}%
-                </span>
-              </div>
-            ))}
-          </div>
+          {ohlcvData.length > 0 ? (
+            <div className="flex flex-col gap-1 font-mono-data text-[10px]">
+              {['1m', '5m', '15m', '1h', '4h', '1d'].map((tf) => {
+                const last = ohlcvData[ohlcvData.length - 1]
+                const chg = last.close - last.open
+                const chgPct = last.open !== 0 ? (chg / last.open) * 100 : 0
+                return (
+                  <div key={tf} className="flex items-center gap-2 py-1 border-b border-default">
+                    <span className="text-muted w-8">{tf}</span>
+                    <div className="flex-1 h-3 relative" style={{ background: 'var(--border-color)' }}>
+                      <div className="h-full" style={{
+                        width: `${Math.min(Math.abs(chgPct) * 10, 100)}%`,
+                        background: chg >= 0 ? 'var(--accent-green)' : 'var(--accent-red)',
+                        opacity: 0.7,
+                      }} />
+                    </div>
+                    <span className="text-primary w-16 text-right">${last.close.toFixed(2)}</span>
+                    <span className={chg >= 0 ? 'text-accent-green' : 'text-accent-red'}>
+                      {chg >= 0 ? '+' : ''}{chgPct.toFixed(2)}%
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="text-muted text-[10px] py-2">Load data to see multi-timeframe ribbon</div>
+          )}
         </Card>
       )}
 
       {tab === 'prob' && (
         <Card title="PROBABILITY HEATMAP — PRICE × TIME">
-          <div ref={probRef} />
-          <div className="font-mono-data text-[9px] text-muted mt-1">Probability of price reaching level within time window (simulated)</div>
+          {data ? (
+            <div ref={probRef} />
+          ) : (
+            <div className="text-muted text-[10px] py-2">Load analysis to see probability heatmap</div>
+          )}
         </Card>
       )}
 

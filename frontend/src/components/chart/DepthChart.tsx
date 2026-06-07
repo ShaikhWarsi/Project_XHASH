@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { memo, useEffect, useRef } from 'react'
 import { createChart, AreaSeries, LineSeries, LineType, type IChartApi, type ISeriesApi } from 'lightweight-charts'
 import type { BarData } from '../../api/types'
 
@@ -44,7 +44,7 @@ function generateDepthData(data: BarData[]): { bids: DepthLevel[]; asks: DepthLe
   return { bids, asks, midPrice: mid }
 }
 
-export default function DepthChart({ symbol, data, onClose }: DepthChartProps) {
+function DepthChart({ symbol, data, onClose }: DepthChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
 
@@ -214,3 +214,5 @@ export default function DepthChart({ symbol, data, onClose }: DepthChartProps) {
     </div>
   )
 }
+
+export default memo(DepthChart)

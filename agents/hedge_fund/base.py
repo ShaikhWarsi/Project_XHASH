@@ -77,3 +77,19 @@ class PersonaAgent(TradingAgent):
         if df is None or len(df) == 0:
             return None
         return float(df["close"].iloc[-1])
+
+    def _safe_complete(self, prompt: str, fallback: str = "neutral", max_retries: int = 2) -> str:
+        for attempt in range(max_retries):
+            try:
+                from llm.client import LLMClient
+                client = LLMClient()
+                import asyncio
+                result = asyncio.run(client.generate(prompt, temperature=0.1, max_tokens=1024))
+                if result:
+                    return result
+            except Exception as e:
+                logger.warning("_safe_complete attempt %d/%d failed: %s", attempt + 1, max_retries, e)
+                if attempt < max_retries - 1:
+                    import time
+                    time.sleep(1)
+        return fallback

@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import os
 import time
+from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -50,19 +53,37 @@ _paper_async_lock = asyncio.Lock()
 
 _wins = 0
 _losses = 0
+_price_cache: dict[str, tuple[float, float]] = {}
+_PRICE_CACHE_TTL = 15.0
+
+if os.environ.get("WARN_MULTI_WORKER", "1") == "1":
+    import multiprocessing
+    logger.warning("PAPER: Using in-memory _paper dict. Set WARN_MULTI_WORKER=0 to suppress. "
+                   "Deploy with --workers 1 or add Redis-backed storage for multi-worker safety.")
 
 
 async def _update_prices():
     import yfinance as yf
+    now = time.time()
     try:
         symbols = list({p["symbol"] for p in _paper["positions"]})
         if not symbols:
             symbols = ["SPY", "QQQ", "AAPL"]
-        for s in symbols[:5]:
-            ticker = yf.Ticker(s)
-            df = await asyncio.to_thread(lambda t=ticker: t.history(period="1d"))
-            if not df.empty:
-                _paper["lastPrices"][s] = float(df["Close"].iloc[-1])
+        symbols = symbols[:5]
+        stale = [s for s in symbols if s not in _price_cache or now - _price_cache[s][1] > _PRICE_CACHE_TTL]
+        for s in stale:
+            try:
+                ticker = yf.Ticker(s)
+                df = await asyncio.to_thread(lambda t=ticker: t.history(period="1d"))
+                if not df.empty:
+                    price = float(df["Close"].iloc[-1])
+                    _price_cache[s] = (price, now)
+            except Exception:
+                continue
+        for s in symbols:
+            cached = _price_cache.get(s)
+            if cached:
+                _paper["lastPrices"][s] = cached[0]
     except Exception:
         pass
 
@@ -84,8 +105,9 @@ def _recalculate():
     _paper["equity"] = round(_paper["balance"] + total_pnl, 2)
     _paper["buyingPower"] = round(_paper["equity"] * 2, 2) if _paper["equity"] > 0 else 0
     _paper["totalReturn"] = round((_paper["equity"] - 100000) / 100000 * 100, 2)
-    if _paper["totalTrades"] > 0:
-        _paper["winRate"] = round(_wins / _paper["totalTrades"] * 100, 1)
+    denominator = _wins + _losses
+    if denominator > 0:
+        _paper["winRate"] = round(_wins / denominator * 100, 1)
 
 
 class PlaceOrderRequest(BaseModel):
@@ -94,6 +116,31 @@ class PlaceOrderRequest(BaseModel):
     type: str = "MARKET"
     quantity: float
     price: float | None = None
+
+
+def _write_audit_log(req: PlaceOrderRequest, request: Request):
+    try:
+        from .audit_routes import _audit_logs
+        entry = {
+            "action": "PAPER_ORDER",
+            "entity_type": "order",
+            "entity_id": "",
+            "details": {
+                "user": "paper",
+                "symbol": req.symbol.upper(),
+                "side": req.side,
+                "quantity": req.quantity,
+                "price": req.price,
+                "source": "UI",
+                "request_id": getattr(request.state, "request_id", ""),
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+        _audit_logs.append(entry)
+        if len(_audit_logs) > 5000:
+            _audit_logs[:len(_audit_logs) - 5000] = []
+    except Exception:
+        pass
 
 
 @router.get("/paper/account")
@@ -137,7 +184,7 @@ async def reset_paper():
 
 
 @router.post("/paper/order")
-async def place_paper_order(req: PlaceOrderRequest):
+async def place_paper_order(req: PlaceOrderRequest, request: Request):
     global _wins, _losses
     async with _paper_async_lock:
         if not _paper["isRunning"]:
@@ -147,7 +194,6 @@ async def place_paper_order(req: PlaceOrderRequest):
         trade_id = f"paper_{int(time.time() * 1000)}"
         trade = PaperTrade(id=trade_id, symbol=req.symbol, side=req.side, type=req.type, quantity=req.quantity, price=price, timestamp=time.time()).model_dump()
         _paper["trades"].append(trade)
-        _paper["totalTrades"] += 1
         cost = price * req.quantity
 
         if req.side in ("BUY", "COVER"):
@@ -171,11 +217,14 @@ async def place_paper_order(req: PlaceOrderRequest):
             trade["pnl"] = round(pnl, 2)
             if pnl >= 0: _wins += 1
             else: _losses += 1
+            _paper["totalTrades"] += 1
             if pos["quantity"] <= 0:
                 _paper["positions"] = [p for p in _paper["positions"] if p["symbol"] != req.symbol or p["side"] != pos["side"]]
 
     async with _paper_async_lock:
         _recalculate()
+
+    _write_audit_log(req, request)
     return {"success": True, "trade": trade, "account": _paper}
 
 
@@ -187,10 +236,14 @@ async def get_paper_positions():
 
 
 @router.get("/paper/trades")
-async def get_paper_trades():
-    return {"trades": _paper["trades"]}
+async def get_paper_trades(limit: int = Query(default=100, ge=1, le=500), offset: int = Query(default=0, ge=0)):
+    trades = _paper["trades"]
+    total = len(trades)
+    return {"trades": trades[offset:offset + limit], "total": total, "limit": limit, "offset": offset}
 
 
 @router.get("/paper/history")
-async def get_paper_history():
-    return {"history": _paper.get("trades", [])}
+async def get_paper_history(limit: int = Query(default=100, ge=1, le=500), offset: int = Query(default=0, ge=0)):
+    trades = _paper.get("trades", [])
+    total = len(trades)
+    return {"history": trades[offset:offset + limit], "total": total, "limit": limit, "offset": offset}

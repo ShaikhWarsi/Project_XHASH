@@ -140,9 +140,9 @@ export default function StrategyBuilder({ onRunBacktest }: StrategyBuilderProps)
   const loadStrategy = (strategy: Strategy) => {
     setName(strategy.name)
     setDescription(strategy.description)
-    setEntryConditions(strategy.entryConditions)
-    setExitConditions(strategy.exitConditions)
-    setTickers(strategy.tickers.join(', '))
+    setEntryConditions(strategy.entryConditions.map((c) => ({ ...c, id: `entry_${Date.now()}_${Math.random().toString(36).slice(2, 6)}` })))
+    setExitConditions(strategy.exitConditions.map((c) => ({ ...c, id: `exit_${Date.now()}_${Math.random().toString(36).slice(2, 6)}` })))
+    setTickers([...strategy.tickers].join(', '))
     setTimeframe(strategy.timeframe)
     addToast(`Loaded strategy "${strategy.name}"`, 'info')
   }

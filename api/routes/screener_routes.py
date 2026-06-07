@@ -191,6 +191,12 @@ async def get_screener_presets():
     }
 
 
+_DELISTED_TICKERS: set[str] = {
+    "LEH", "FNM", "FRE", "WMI", "WM", "NTDOY", "BBBYQ", "SIRI",
+    "CHTR", "HTZ", "HTZQ", "JCP", "SEARS", "SHLD", "SHLDQ",
+}
+
+
 @router.get("/scan")
 async def scan_symbols(
     symbols: str = Query(..., description="Comma-separated symbols"),
@@ -205,10 +211,17 @@ async def scan_symbols(
     macd_bullish: bool | None = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
+    exclude_delisted: bool = Query(True, description="Filter out known delisted/bankrupt tickers"),
 ):
-    symbol_list = [s.strip() for s in symbols.split(",") if s.strip()]
+    symbol_list = [s.strip().upper() for s in symbols.split(",") if s.strip()]
     if not symbol_list:
         raise HTTPException(status_code=400, detail="No symbols provided")
+    if exclude_delisted:
+        filtered = [s for s in symbol_list if s not in _DELISTED_TICKERS]
+        removed = [s for s in symbol_list if s in _DELISTED_TICKERS]
+        if removed:
+            logger.info("Excluded delisted tickers: %s", removed)
+        symbol_list = filtered
 
     filters: dict[str, Any] = {}
     if preset and preset in SCREENER_PRESETS:

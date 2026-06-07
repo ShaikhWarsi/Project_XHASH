@@ -1,10 +1,18 @@
 from __future__ import annotations
 
+import warnings
+
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Callable
+
+warnings.warn(
+    "core.events is deprecated. Use core.async_events (AsyncEventBus) instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 
 class EventType(Enum):

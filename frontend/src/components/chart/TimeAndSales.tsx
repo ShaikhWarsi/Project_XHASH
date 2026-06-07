@@ -22,7 +22,7 @@ export default function TimeAndSales({ basePrice, symbol, onClose }: TimeAndSale
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const wsUrl = symbol ? `/ws/trades/${symbol.toUpperCase()}` : ''
-  const { lastData } = useWebSocket<{ type: string; data: { price: number; size: number; time: string; side: string }[] }>(wsUrl, { maxRetries: 3, retryDelay: 5000 })
+  const { lastData, connected: wsConnected } = useWebSocket<{ type: string; data: { price: number; size: number; time: string; side: string }[] }>(wsUrl, { maxRetries: 3, retryDelay: 5000 })
 
   useEffect(() => {
     if (lastData?.type === 'trades' && lastData?.data && Array.isArray(lastData.data)) {
@@ -74,20 +74,27 @@ export default function TimeAndSales({ basePrice, symbol, onClose }: TimeAndSale
         }}
       >
         <span>TIME &amp; SALES</span>
-        <button
-          onClick={onClose}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#8892a6',
-            cursor: 'pointer',
-            fontSize: '10px',
-            padding: 0,
-            lineHeight: 1,
-          }}
-        >
-          &#x2715;
-        </button>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {!wsConnected && (
+            <span style={{ background: 'rgba(234,179,8,0.15)', color: '#eab308', padding: '0 4px', borderRadius: 2, fontSize: 8, fontWeight: 700, letterSpacing: '0.5px' }}>
+              SIMULATED
+            </span>
+          )}
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#8892a6',
+              cursor: 'pointer',
+              fontSize: '10px',
+              padding: 0,
+              lineHeight: 1,
+            }}
+          >
+            &#x2715;
+          </button>
+        </span>
       </div>
       <div style={{
         display: 'flex', gap: 2, padding: '2px 6px', borderBottom: '1px solid #1a2744', flexShrink: 0,

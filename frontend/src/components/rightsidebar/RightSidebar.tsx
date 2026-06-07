@@ -1,14 +1,16 @@
 import { useState } from 'react'
-import { X, Newspaper, CalendarDays, MessageSquare, PanelRightClose, PanelRightOpen, Brain, TrendingUp } from 'lucide-react'
+import { X, Newspaper, CalendarDays, MessageSquare, PanelRightClose, PanelRightOpen, Brain, TrendingUp, Bell } from 'lucide-react'
 import NewsPanel from './NewsPanel'
 import CalendarPanel from './CalendarPanel'
 import ChatPanel from './ChatPanel'
+import AlertsPanel from '../AlertsPanel'
 import NewsCoMovement from '../NewsCoMovement'
 import EarningsSummary from '../EarningsSummary'
 
 const TABS = [
   { id: 'news', label: 'News', icon: Newspaper },
   { id: 'calendar', label: 'Calendar', icon: CalendarDays },
+  { id: 'alerts', label: 'Alerts', icon: Bell },
   { id: 'chat', label: 'Chat', icon: MessageSquare },
   { id: 'comovement', label: 'Co-Move', icon: Brain },
   { id: 'earnings', label: 'Earnings', icon: TrendingUp },
@@ -83,6 +85,7 @@ export default function RightSidebar({ open, onToggle }: RightSidebarProps) {
         <div className="flex-1 overflow-y-auto">
           {activeTab === 'news' && <NewsPanel />}
           {activeTab === 'calendar' && <CalendarPanel />}
+          {activeTab === 'alerts' && <AlertsPanel />}
           {activeTab === 'chat' && <ChatPanel />}
           {activeTab === 'comovement' && <NewsCoMovement />}
           {activeTab === 'earnings' && <EarningsSummary />}

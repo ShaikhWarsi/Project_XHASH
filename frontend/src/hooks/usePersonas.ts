@@ -19,7 +19,7 @@ export function usePersonas(): { personas: Persona[]; loading: boolean } {
 
   useEffect(() => {
     let cancelled = false
-    api.get('/api/agent/personas').then((res: any) => {
+    api.get('/agent/v1/personas').then((res: any) => {
       if (cancelled) return
       if (res.data && Array.isArray(res.data.personas)) {
         setPersonas(res.data.personas.map((p: any, i: number) => ({

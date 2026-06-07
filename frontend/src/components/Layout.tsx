@@ -2,10 +2,13 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import { Menu, Plus, FlaskConical, Activity, Bell, BarChart3 } from 'lucide-react'
 import Sidebar from './Sidebar'
+import MobileLayout from './MobileLayout'
 import MarketTickerBar from './MarketTickerBar'
 import CommandPalette from './CommandPalette'
 import KeyboardShortcutListener from './KeyboardShortcuts'
 import FunctionKeyRibbon from './FunctionKeyRibbon'
+import GoCommandBar from './GoCommandBar'
+import TimeOfDayBar from './TimeOfDayBar'
 import StatusStrip from './StatusStrip'
 import GlobalSymbolSearch from './GlobalSymbolSearch'
 import BreakingNewsBanner from './BreakingNewsBanner'
@@ -104,51 +107,144 @@ function TerminalLayout() {
     }
   }, [isMobile])
 
-  return (
-    <div
-      className="flex h-screen"
+  const quickCreateLayout = showQuickCreate ? (
+    <div className="flex h-screen"
       style={{ background: 'var(--bg-primary)' }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {!distractionFree && <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />}
+      {isMobile ? (
+        <MobileLayout>
+          <ErrorBoundary category="page">
+            <Outlet />
+          </ErrorBoundary>
+        </MobileLayout>
+      ) : (
+        <div style={{ display: 'contents' }}>
+          {!distractionFree && <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />}
+          <div className="flex-1 flex flex-col min-w-0">
+            {!distractionFree && <StatusStrip />}
+            {!distractionFree && <MenuBar />}
+            {!distractionFree && <FunctionKeyRibbon />}
+            {!distractionFree && <GoCommandBar />}
+            {!distractionFree && <MarketTickerBar />}
+            {!distractionFree && <TimeOfDayBar />}
+            {!distractionFree && <MotdBanner />}
+            {!distractionFree && showNews && <BreakingNewsBanner />}
+            {!distractionFree && <OfflineBanner />}
+            {!distractionFree && <FavoritesBar />}
+            {!distractionFree && <TabBar />}
+            <main
+              className="flex-1 overflow-y-auto"
+              style={{
+                background: 'var(--bg-primary)',
+                padding: 'var(--space-4)',
+              }}
+            >
+              {!distractionFree && (
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowQuickCreate(!showQuickCreate)}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-sm cursor-pointer font-mono text-[10px] font-bold"
+                      style={{
+                        background: 'var(--accent-cyan)',
+                        border: 'none',
+                        color: '#000',
+                      }}
+                      aria-label="Quick create"
+                    >
+                      <Plus size={14} />
+                      New
+                    </button>
+                    {showQuickCreate && (
+                      <div
+                        className="absolute top-full left-0 mt-1 z-40 overflow-hidden rounded-md"
+                        style={{
+                          background: 'var(--bg-card)',
+                          border: '1px solid var(--border-color)',
+                          minWidth: 160,
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                        }}
+                      >
+                        {quickActions.map((action) => (
+                          <button
+                            key={action.label}
+                            onClick={() => {
+                              setShowQuickCreate(false)
+                              navigate(action.path)
+                            }}
+                            className="flex items-center gap-2 w-full px-3 py-1.5 text-[10px] font-mono text-left cursor-pointer"
+                            style={{
+                              color: 'var(--text-primary)',
+                              background: 'none',
+                              border: 'none',
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
+                            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                          >
+                            <action.icon size={12} style={{ color: 'var(--text-muted)' }} />
+                            {action.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              {!distractionFree && <Breadcrumbs />}
+              <div style={{ animation: 'page-fade-in 0.2s ease' }}>
+                <ErrorBoundary category="page">
+                  <Outlet />
+                </ErrorBoundary>
+              </div>
+            </main>
+            {!distractionFree && <StatusBar />}
+          </div>
+          {!distractionFree && <RightSidebar open={rightSidebarOpen} onToggle={() => setRightSidebarOpen((v) => !v)} />}
+        </div>
+      )}
+      {distractionFree && (
+        <button
+          onClick={toggleDistractionFree}
+          title="Exit distraction-free mode (Ctrl+Shift+D)"
+          className="fixed top-2 right-2 z-50 text-[9px] px-2 py-1 rounded-sm opacity-50 hover:opacity-100 transition-opacity cursor-pointer"
+          style={{
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border-color)',
+            color: 'var(--text-primary)',
+          }}
+        >
+          Exit Focus
+        </button>
+      )}
+    </div>
+  ) : null
+
+  const content = (
+    <>
+      {!distractionFree && <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} isMobile={isMobile} />}
       <div className="flex-1 flex flex-col min-w-0">
-        {!distractionFree && <StatusStrip />}
-        {!distractionFree && <MenuBar />}
-        {!distractionFree && <FunctionKeyRibbon />}
-        {!distractionFree && <MarketTickerBar />}
-        {!distractionFree && <MotdBanner />}
-        {!distractionFree && showNews && <BreakingNewsBanner />}
-        {!distractionFree && <OfflineBanner />}
-        {!distractionFree && <FavoritesBar />}
-        {!distractionFree && <TabBar />}
+        {!distractionFree && isMobile ? null : <StatusStrip />}
+        {!distractionFree && isMobile ? null : <MenuBar />}
+        {!distractionFree && isMobile ? null : <FunctionKeyRibbon />}
+        {!distractionFree && isMobile ? null : <GoCommandBar />}
+        {!distractionFree && isMobile ? null : <MarketTickerBar />}
+        {!distractionFree && isMobile ? null : <TimeOfDayBar />}
+        {!distractionFree && isMobile ? null : <MotdBanner />}
+        {!distractionFree && isMobile ? null : showNews && <BreakingNewsBanner />}
+        {!distractionFree && isMobile ? null : <OfflineBanner />}
+        {!distractionFree && isMobile ? null : <FavoritesBar />}
+        {!distractionFree && isMobile ? null : <TabBar />}
         <main
           className="flex-1 overflow-y-auto"
           style={{
             background: 'var(--bg-primary)',
-            padding: 'var(--space-4)',
+            padding: isMobile ? 'var(--space-2)' : 'var(--space-4)',
           }}
         >
-          {!distractionFree && (
+          {!distractionFree && !isMobile && (
             <div className="flex items-center gap-2 mb-2">
-              {isMobile && (
-                <button
-                  onClick={toggleSidebar}
-                  className="flex items-center gap-1 shrink-0 px-3 rounded-md cursor-pointer"
-                  style={{
-                    background: 'var(--bg-card)',
-                    border: '1px solid var(--border-color)',
-                    color: 'var(--text-secondary)',
-                    minHeight: 36,
-                    minWidth: 44,
-                    fontSize: 13,
-                  }}
-                  aria-label="Open sidebar"
-                >
-                  <Menu size={18} />
-                  Menu
-                </button>
-              )}
               <div className="relative">
                 <button
                   onClick={() => setShowQuickCreate(!showQuickCreate)}
@@ -163,38 +259,7 @@ function TerminalLayout() {
                   <Plus size={14} />
                   New
                 </button>
-                {showQuickCreate && (
-                  <div
-                    className="absolute top-full left-0 mt-1 z-40 overflow-hidden rounded-md"
-                    style={{
-                      background: 'var(--bg-card)',
-                      border: '1px solid var(--border-color)',
-                      minWidth: 160,
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                    }}
-                  >
-                    {quickActions.map((action) => (
-                      <button
-                        key={action.label}
-                        onClick={() => {
-                          setShowQuickCreate(false)
-                          navigate(action.path)
-                        }}
-                        className="flex items-center gap-2 w-full px-3 py-1.5 text-[10px] font-mono text-left cursor-pointer"
-                        style={{
-                          color: 'var(--text-primary)',
-                          background: 'none',
-                          border: 'none',
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                      >
-                        <action.icon size={12} style={{ color: 'var(--text-muted)' }} />
-                        {action.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                {quickCreateLayout}
               </div>
             </div>
           )}
@@ -208,7 +273,6 @@ function TerminalLayout() {
         {!distractionFree && <StatusBar />}
       </div>
       {!distractionFree && <RightSidebar open={rightSidebarOpen} onToggle={() => setRightSidebarOpen((v) => !v)} />}
-
       {distractionFree && (
         <button
           onClick={toggleDistractionFree}
@@ -227,8 +291,10 @@ function TerminalLayout() {
       <GlobalSymbolSearch />
       <KeyboardShortcutListener />
       {helpOverlay}
-    </div>
+    </>
   )
+
+  return content
 }
 
 export default function Layout() {

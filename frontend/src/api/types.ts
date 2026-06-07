@@ -16,6 +16,7 @@ export interface Position {
   unrealized_pnl: number
   realized_pnl: number
   market_value: number
+  daily_pnl?: number
 }
 
 export interface QuantSignal {

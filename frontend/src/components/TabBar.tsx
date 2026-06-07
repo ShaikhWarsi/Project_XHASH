@@ -115,6 +115,7 @@ export default function TabBar() {
   return (
     <div
       ref={scrollRef}
+      role="tablist"
       style={{
         display: 'flex',
         overflowX: 'auto',
@@ -137,12 +138,15 @@ export default function TabBar() {
         return (
           <div
             key={tab.id}
+            role="tab"
+            aria-selected={isActive}
             data-active={isActive}
             className="tab-item"
             draggable
             onDragStart={() => handleDragStart(tab.id)}
             onDragOver={(e) => handleDragOver(e, tab.id)}
             onDrop={handleDrop}
+            tabIndex={isActive ? 0 : -1}
             style={{
               display: 'flex',
               alignItems: 'center',

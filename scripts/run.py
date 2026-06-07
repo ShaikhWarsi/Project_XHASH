@@ -32,24 +32,35 @@ def fetch_data(tickers: list[str], start: datetime, end: datetime) -> dict[str, 
     return data
 
 
+SLIPPAGE_PCT = 0.0005
+COMMISSION_PCT = 0.001
+
+
+def _apply_costs(price: float, side: str) -> float:
+    slippage = price * SLIPPAGE_PCT
+    return price + slippage if side == "BUY" else price - slippage
+
+
 def sma_cross_strategy(bars, portfolio):
     from core.enums import OrderSide, OrderType
     from core.types import Order
 
     orders = []
     for symbol, df in bars.items():
-        if len(df) < 50:
+        if len(df) < 51:
             continue
         close = df["close"]
-        sma_20 = close.tail(20).mean()
-        sma_50 = close.tail(50).mean()
+        # Exclude current bar to eliminate lookahead bias
+        sma_20 = close.iloc[-21:-1].mean()
+        sma_50 = close.iloc[-51:-1].mean()
         last_close = close.iloc[-1]
-
         pos = portfolio.positions.get(symbol)
+        entry_price = _apply_costs(last_close, "BUY")
+        exit_price = _apply_costs(last_close, "SELL")
         if last_close > sma_20 and sma_20 > sma_50 and (pos is None or pos.quantity == 0):
-            orders.append(Order(symbol=symbol, side=OrderSide.BUY, quantity=10, order_type=OrderType.MARKET, price=last_close))
+            orders.append(Order(symbol=symbol, side=OrderSide.BUY, quantity=10, order_type=OrderType.MARKET, price=entry_price))
         elif last_close < sma_20 and pos is not None and pos.quantity > 0:
-            orders.append(Order(symbol=symbol, side=OrderSide.SELL, quantity=pos.quantity, order_type=OrderType.MARKET, price=last_close))
+            orders.append(Order(symbol=symbol, side=OrderSide.SELL, quantity=pos.quantity, order_type=OrderType.MARKET, price=exit_price))
     return orders
 
 
@@ -59,16 +70,18 @@ def momentum_strategy(bars, portfolio):
 
     orders = []
     for symbol, df in bars.items():
-        if len(df) < 20:
+        if len(df) < 21:
             continue
         close = df["close"]
         returns = close.pct_change(5).iloc[-1] if len(close) > 5 else 0
         last_close = close.iloc[-1]
         pos = portfolio.positions.get(symbol)
+        entry_price = _apply_costs(last_close, "BUY")
+        exit_price = _apply_costs(last_close, "SELL")
         if returns > 0.02 and (pos is None or pos.quantity == 0):
-            orders.append(Order(symbol=symbol, side=OrderSide.BUY, quantity=10, order_type=OrderType.MARKET, price=last_close))
+            orders.append(Order(symbol=symbol, side=OrderSide.BUY, quantity=10, order_type=OrderType.MARKET, price=entry_price))
         elif returns < -0.02 and pos is not None and pos.quantity > 0:
-            orders.append(Order(symbol=symbol, side=OrderSide.SELL, quantity=pos.quantity, order_type=OrderType.MARKET, price=last_close))
+            orders.append(Order(symbol=symbol, side=OrderSide.SELL, quantity=pos.quantity, order_type=OrderType.MARKET, price=exit_price))
     return orders
 
 
@@ -78,17 +91,21 @@ def mean_reversion_strategy(bars, portfolio):
 
     orders = []
     for symbol, df in bars.items():
-        if len(df) < 20:
+        if len(df) < 21:
             continue
         close = df["close"]
-        sma = close.tail(20).mean()
-        std = close.tail(20).std()
+        # Exclude current bar to eliminate lookahead bias
+        lookback = close.iloc[-21:-1]
+        sma = lookback.mean()
+        std = lookback.std()
         last_close = close.iloc[-1]
         pos = portfolio.positions.get(symbol)
+        entry_price = _apply_costs(last_close, "BUY")
+        exit_price = _apply_costs(last_close, "SELL")
         if last_close < sma - 1.5 * std and (pos is None or pos.quantity == 0):
-            orders.append(Order(symbol=symbol, side=OrderSide.BUY, quantity=10, order_type=OrderType.MARKET, price=last_close))
+            orders.append(Order(symbol=symbol, side=OrderSide.BUY, quantity=10, order_type=OrderType.MARKET, price=entry_price))
         elif last_close > sma + 1.5 * std and pos is not None and pos.quantity > 0:
-            orders.append(Order(symbol=symbol, side=OrderSide.SELL, quantity=pos.quantity, order_type=OrderType.MARKET, price=last_close))
+            orders.append(Order(symbol=symbol, side=OrderSide.SELL, quantity=pos.quantity, order_type=OrderType.MARKET, price=exit_price))
     return orders
 
 

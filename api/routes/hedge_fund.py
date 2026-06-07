@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
+import threading
+import time
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -95,6 +98,9 @@ async def run_hedge_fund(request_data: HedgeFundRequest, request: Request):
                     signals=None,
                 )
 
+                if await request.is_disconnected():
+                    return
+
                 event_data = {"decisions": result, "agent_count": len(agents)}
                 if _simulated_fallback:
                     event_data["_simulated"] = True
@@ -110,6 +116,43 @@ async def run_hedge_fund(request_data: HedgeFundRequest, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+_BACKTEST_CACHE: dict[str, dict] = {}
+_BACKTEST_CACHE_LOCK = threading.Lock()
+_BACKTEST_MAX_CALLS = int(os.environ.get("BACKTEST_MAX_LLM_CALLS", "100"))
+_BACKTEST_CALL_COUNT: int = 0
+_BACKTEST_CALL_LOCK = threading.Lock()
+
+
+def _backtest_cache_key(ticker: str, date_str: str) -> str:
+    import hashlib
+    return hashlib.md5(f"{ticker}:{date_str}".encode()).hexdigest()
+
+
+def _backtest_cache_get(ticker: str, date_str: str) -> Optional[dict]:
+    key = _backtest_cache_key(ticker, date_str)
+    with _BACKTEST_CACHE_LOCK:
+        return _BACKTEST_CACHE.get(key)
+
+
+def _backtest_cache_set(ticker: str, date_str: str, result: dict):
+    key = _backtest_cache_key(ticker, date_str)
+    with _BACKTEST_CACHE_LOCK:
+        _BACKTEST_CACHE[key] = result
+        if len(_BACKTEST_CACHE) > 5000:
+            oldest = sorted(_BACKTEST_CACHE.keys(), key=lambda k: _BACKTEST_CACHE[k].get("_ts", 0))[:500]
+            for k in oldest:
+                del _BACKTEST_CACHE[k]
+
+
+def _backtest_budget_ok() -> bool:
+    global _BACKTEST_CALL_COUNT
+    with _BACKTEST_CALL_LOCK:
+        if _BACKTEST_CALL_COUNT >= _BACKTEST_MAX_CALLS:
+            return False
+        _BACKTEST_CALL_COUNT += 1
+    return True
+
+
 @router.post(
     "/backtest",
     responses={
@@ -121,9 +164,12 @@ async def run_hedge_fund(request_data: HedgeFundRequest, request: Request):
 async def backtest_hedge_fund(request_data: BacktestRequest, request: Request):
     try:
         async def event_generator():
+            global _BACKTEST_CALL_COUNT
+            _BACKTEST_CALL_COUNT = 0
             yield StartEvent().to_sse()
 
             try:
+                import hashlib
                 import pandas as pd
                 from datetime import datetime, timedelta
 
@@ -142,14 +188,35 @@ async def backtest_hedge_fund(request_data: BacktestRequest, request: Request):
                 )
 
                 total_dates = len(dates)
+                cached_hits = 0
                 yield ProgressUpdateEvent(agent="backtest", ticker=None, status=f"Starting backtest over {total_dates} trading days").to_sse()
 
+                _BATCH_INTERVAL = 5
                 for i, current_date in enumerate(dates):
                     if await request.is_disconnected():
                         break
 
                     date_str = current_date.strftime("%Y-%m-%d")
                     yield ProgressUpdateEvent(agent="backtest", ticker=None, status=f"Processing {date_str} ({i+1}/{total_dates})").to_sse()
+
+                    if i % _BATCH_INTERVAL != 0:
+                        continue
+
+                    all_cached = True
+                    for t in request_data.tickers:
+                        cached = _backtest_cache_get(t, date_str)
+                        if cached is None:
+                            all_cached = False
+                            break
+
+                    if all_cached:
+                        cached_hits += 1
+                        continue
+
+                    if not _backtest_budget_ok():
+                        logger.warning("Backtest LLM budget exhausted at date %s", date_str)
+                        yield ProgressUpdateEvent(agent="backtest", ticker=None, status=f"Budget exhausted at {date_str}").to_sse()
+                        break
 
                     result = await asyncio.to_thread(
                         orchestrator.deliberate,
@@ -158,9 +225,16 @@ async def backtest_hedge_fund(request_data: BacktestRequest, request: Request):
                         signals=None,
                     )
 
+                    for t in request_data.tickers:
+                        ticker_result = result.get(t, {})
+                        ticker_result["_ts"] = time.time()
+                        _backtest_cache_set(t, date_str, ticker_result)
+
                 yield CompleteEvent(data={
                     "status": "completed",
                     "total_days": total_dates,
+                    "cached_hits": cached_hits,
+                    "llm_calls_made": _BACKTEST_CALL_COUNT,
                     "final_portfolio": portfolio.to_dict() if hasattr(portfolio, 'to_dict') else {},
                 }).to_sse()
 

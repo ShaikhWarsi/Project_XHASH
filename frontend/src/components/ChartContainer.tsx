@@ -1,7 +1,23 @@
-import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react'
+import { memo, useEffect, useRef, useState, useCallback, useMemo, type ReactNode } from 'react'
 import { createChart, CandlestickSeries, LineSeries, AreaSeries, type IChartApi, type ISeriesApi, ColorType } from 'lightweight-charts'
 import { Maximize2, Minimize2, MessageSquare } from 'lucide-react'
 import ChartAnnotations, { type ChartAnnotation } from './ChartAnnotations'
+
+let _cachedChartStyles: Record<string, string> | null = null
+function getChartCSSVars(): Record<string, string> {
+  if (_cachedChartStyles) return _cachedChartStyles
+  const styles = getComputedStyle(document.documentElement)
+  _cachedChartStyles = {
+    bgColor: styles.getPropertyValue('--chart-bg').trim() || '#0a0e14',
+    textColor: styles.getPropertyValue('--chart-text').trim() || '#d1d4dc',
+    gridColor: styles.getPropertyValue('--chart-grid').trim() || '#2a2d3e',
+    borderColor: styles.getPropertyValue('--chart-border').trim() || '#2a2d3e',
+    candleUp: styles.getPropertyValue('--chart-candle-up').trim() || '#22c55e',
+    candleDown: styles.getPropertyValue('--chart-candle-down').trim() || '#ef4444',
+    lineColor: styles.getPropertyValue('--chart-line').trim() || '#3b82f6',
+  }
+  return _cachedChartStyles
+}
 
 interface ChartContainerProps {
   options?: Record<string, any>
@@ -13,7 +29,7 @@ interface ChartContainerProps {
   onCrosshairMove?: (params: any) => void
 }
 
-export default function ChartContainer({
+function ChartContainerInner({
   options,
   type = 'candlestick',
   data = [],
@@ -25,13 +41,18 @@ export default function ChartContainer({
   const chartRef = useRef<HTMLDivElement>(null)
   const chartApiRef = useRef<IChartApi | null>(null)
   const seriesRef = useRef<ISeriesApi<any> | null>(null)
+  const optionsRef = useRef(options)
+  optionsRef.current = options
   const [isExpanded, setIsExpanded] = useState(false)
   const [windowHeight, setWindowHeight] = useState(0)
   const [showAnnotations, setShowAnnotations] = useState(false)
   const [annotations, setAnnotations] = useState<ChartAnnotation[]>([])
   const [crosshairTime, setCrosshairTime] = useState<string | number | null>(null)
+  const crosshairThrottleRef = useRef(0)
   const onCrosshairMoveRef = useRef(onCrosshairMove)
   onCrosshairMoveRef.current = onCrosshairMove
+  const crosshairTimeRef = useRef(crosshairTime)
+  crosshairTimeRef.current = crosshairTime
 
   useEffect(() => {
     setWindowHeight(window.innerHeight)
@@ -52,14 +73,7 @@ export default function ChartContainer({
 
   useEffect(() => {
     if (!chartRef.current) return
-    const styles = getComputedStyle(document.documentElement)
-    const bgColor = styles.getPropertyValue('--chart-bg').trim() || '#0a0e14'
-    const textColor = styles.getPropertyValue('--chart-text').trim() || '#d1d4dc'
-    const gridColor = styles.getPropertyValue('--chart-grid').trim() || '#2a2d3e'
-    const borderColor = styles.getPropertyValue('--chart-border').trim() || '#2a2d3e'
-    const candleUp = styles.getPropertyValue('--chart-candle-up').trim() || '#22c55e'
-    const candleDown = styles.getPropertyValue('--chart-candle-down').trim() || '#ef4444'
-    const lineColor = styles.getPropertyValue('--chart-line').trim() || '#3b82f6'
+    const { bgColor, textColor, gridColor, borderColor, candleUp, candleDown, lineColor } = getChartCSSVars()
     const chart = createChart(chartRef.current, {
       height: isExpanded ? windowHeight - 100 : height,
       layout: {
@@ -72,12 +86,19 @@ export default function ChartContainer({
       },
       rightPriceScale: { borderColor },
       timeScale: { borderColor, timeVisible: true, secondsVisible: false },
-      crosshair: { mode: 0, vertLine: { color: '#3b82f6', width: 1, labelBackgroundColor: '#3b82f6' }, horzLine: { color: '#3b82f6', width: 1, labelBackgroundColor: '#3b82f6' } },
+      crosshair: { mode: 0, vertLine: { color: lineColor, width: 1, labelBackgroundColor: lineColor }, horzLine: { color: lineColor, width: 1, labelBackgroundColor: lineColor } },
     })
     chartApiRef.current = chart
 
     chart.subscribeCrosshairMove((params) => {
-      if (params.time) setCrosshairTime(params.time as any)
+      // Throttle state updates to 30Hz
+      const now = performance.now()
+      if (now - crosshairThrottleRef.current >= 1000 / 30) {
+        crosshairThrottleRef.current = now
+        if (params.time && params.time !== crosshairTimeRef.current) {
+          setCrosshairTime(params.time as any)
+        }
+      }
       onCrosshairMoveRef.current?.(params)
     })
 
@@ -89,14 +110,14 @@ export default function ChartContainer({
         borderDownColor: candleDown,
         wickUpColor: candleUp,
         wickDownColor: candleDown,
-        ...options,
+        ...optionsRef.current,
       } as any)
       seriesRef.current = series
     } else if (type === 'line') {
       const series = chart.addSeries(LineSeries, {
         color: lineColor,
         lineWidth: 2,
-        ...options,
+        ...optionsRef.current,
       } as any)
       seriesRef.current = series
     } else if (type === 'area') {
@@ -104,7 +125,7 @@ export default function ChartContainer({
         lineColor,
         topColor: lineColor + '40',
         bottomColor: lineColor + '05',
-        ...options,
+        ...optionsRef.current,
       } as any)
       seriesRef.current = series
     }
@@ -115,27 +136,34 @@ export default function ChartContainer({
       chartApiRef.current = null
       seriesRef.current = null
     }
-  }, [type, height, isExpanded, windowHeight, options])
+  }, [type, height, isExpanded, windowHeight])
 
-  const seenSetRef = useRef<Set<any>>(new Set())
-
-  useEffect(() => {
-    if (seriesRef.current && data.length > 0) {
-      const seen = seenSetRef.current
-      const deduped: any[] = []
-      for (const item of data) {
-        const key = item.time
-        if (!seen.has(key)) {
-          seen.add(key)
-          deduped.push(item)
-        }
-      }
-      if (deduped.length > 0) {
-        seriesRef.current.setData(data)
-        chartApiRef.current?.timeScale().fitContent()
+  const dataHashRef = useRef('')
+  const dedupedData = useMemo(() => {
+    const seen = new Set<string>()
+    const deduped: any[] = []
+    for (const item of data) {
+      const key = String(item.time)
+      if (!seen.has(key)) {
+        seen.add(key)
+        deduped.push(item)
       }
     }
+    const hash = deduped.map((d: any) => d.time).join(',')
+    if (hash === dataHashRef.current) return deduped
+    dataHashRef.current = hash
+    return deduped
   }, [data])
+
+  const dataAppliedRef = useRef<string>('')
+  useEffect(() => {
+    if (!seriesRef.current || dedupedData.length === 0) return
+    const hash = dedupedData.map((d: any) => d.time).join(',')
+    if (hash === dataAppliedRef.current) return
+    dataAppliedRef.current = hash
+    seriesRef.current.setData(dedupedData)
+    chartApiRef.current?.timeScale().fitContent()
+  }, [dedupedData])
 
   useEffect(() => {
     if (!seriesRef.current) return
@@ -235,7 +263,10 @@ export default function ChartContainer({
   )
 }
 
-export function getSeries(chart: IChartApi | null) {
+export const ChartContainer = memo(ChartContainerInner)
+export default ChartContainer
+
+export function getSeries(chart: IChartApi | null): ISeriesApi<any> | null {
   if (!chart) return null
-  return chart
+  return (chart as any)._series?.[0] ?? null
 }

@@ -59,6 +59,7 @@ export default function RLTrainer() {
     try { return JSON.parse(localStorage.getItem('rl_checkpoints') || '[]') } catch { return [] }
   })
   const [deployMsg, setDeployMsg] = useState('')
+  const [csvData, setCsvData] = useState('')
 
   const loadHistorical = useCallback(async () => {
     setHistLoading(true)
@@ -198,6 +199,57 @@ export default function RLTrainer() {
             </ErrorBoundary>
           </div>
         )}
+      </Card>
+
+      <Card title="CSV Paste (Custom Data)">
+        <textarea
+          value={csvData}
+          onChange={(e) => setCsvData(e.target.value)}
+          rows={4}
+          style={{ ...inputStyle, fontFamily: "'JetBrains Mono', monospace", fontSize: 10, resize: 'vertical' }}
+          placeholder={'Paste CSV: date,open,high,low,close,volume\n2024-01-01,150.0,152.0,149.0,151.0,10000\n...'}
+        />
+        <button onClick={() => {
+          try {
+            const lines = csvData.trim().split('\n')
+            if (lines.length < 2) return
+            const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
+            const dateIdx = headers.indexOf('date')
+            const oIdx = headers.indexOf('open')
+            const hIdx = headers.indexOf('high')
+            const lIdx = headers.indexOf('low')
+            const cIdx = headers.indexOf('close')
+            const vIdx = headers.indexOf('volume')
+            if (cIdx < 0) { setError('CSV must have a "close" column'); return }
+            const bars: BarData[] = lines.slice(1).map(line => {
+              const cols = line.split(',')
+              const time = dateIdx >= 0 ? Math.floor(new Date(cols[dateIdx]).getTime() / 1000) : Math.floor(Date.now() / 1000)
+              return {
+                time: time as any,
+                open: oIdx >= 0 ? Number(cols[oIdx]) : 0,
+                high: hIdx >= 0 ? Number(cols[hIdx]) : 0,
+                low: lIdx >= 0 ? Number(cols[lIdx]) : 0,
+                close: Number(cols[cIdx]),
+                volume: vIdx >= 0 ? Number(cols[vIdx]) : 0,
+              }
+            }).filter(b => !isNaN(b.close))
+            if (bars.length === 0) { setError('No valid bars parsed from CSV'); return }
+            setHistoricalData(bars)
+            setError('')
+            addToast(`Loaded ${bars.length} bars from CSV`, 'success')
+          } catch (e: any) {
+            setError(`CSV parse failed: ${e.message}`)
+          }
+        }}
+          style={{
+            marginTop: 6, padding: '4px 12px', borderRadius: 'var(--radius-sm)', fontSize: 10,
+            background: 'var(--accent-cyan)', color: '#000', border: 'none', cursor: 'pointer',
+          }}>
+          Load CSV
+        </button>
+        <div className="mt-2 text-[10px] text-muted">
+          Overrides symbol load above. CSV must have headers: date,open,high,low,close,volume.
+        </div>
       </Card>
 
       <Card title="Training Configuration">

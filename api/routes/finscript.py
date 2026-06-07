@@ -4,7 +4,7 @@ import asyncio
 import importlib.resources
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/finscript", tags=["finscript"])
@@ -57,7 +57,7 @@ class EvaluateRequest(BaseModel):
 @router.post("/evaluate")
 async def evaluate_finscript(req: EvaluateRequest):
     try:
-        from finscript import execute as finscript_execute
+        from finscript import execute_sandboxed as finscript_execute
         import pandas as pd
         import yfinance as yf
 
@@ -75,3 +75,60 @@ async def evaluate_finscript(req: EvaluateRequest):
         raise HTTPException(status_code=503, detail=f"Missing dependency: {e}")
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+class ExportRequest(BaseModel):
+    code: str
+    target: str = "pine_script"
+    strategy_name: str = "ExportedStrategy"
+    ticker: str = "AAPL"
+
+
+@router.post("/export")
+async def export_finscript(req: ExportRequest):
+    try:
+        from finscript import parse, PineScriptExporter, MT5Exporter
+        from finscript.lexer import Lexer
+        from finscript.parser import Parser
+        lexer = Lexer(req.code)
+        tokens = lexer.tokenize()
+        parser = Parser(tokens)
+        program = parser.parse()
+        indicators = []
+        entry_conditions = []
+        exit_conditions = []
+        for stmt in program.statements:
+            from finscript.ast import BuyStmt, SellStmt, PlotStmt
+            if isinstance(stmt, BuyStmt):
+                entry_conditions.append(f"buy signal at {stmt.quantity}")
+            elif isinstance(stmt, SellStmt):
+                exit_conditions.append(f"sell signal at {stmt.quantity}")
+            elif isinstance(stmt, PlotStmt):
+                indicators.append({"name": "unknown", "params": {}})
+        if req.target == "pine_script":
+            exporter = PineScriptExporter()
+            result = exporter.export(
+                strategy_name=req.strategy_name,
+                indicators=indicators,
+                entry_conditions=entry_conditions,
+                exit_conditions=exit_conditions,
+                ticker=req.ticker,
+            )
+            return {"target": "pine_script", "code": result, "format": "pinescript"}
+        elif req.target == "mt5":
+            exporter = MT5Exporter()
+            result = exporter.export(req.strategy_name, indicators, entry_conditions, exit_conditions)
+            return {"target": "mt5", "code": result, "format": "mq5"}
+        else:
+            raise HTTPException(status_code=400, detail=f"Unknown target '{req.target}'. Supported: pine_script, mt5")
+    except ImportError as e:
+        raise HTTPException(status_code=503, detail=f"Missing dependency: {e}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/export/formats")
+async def list_export_formats():
+    return {"formats": ["pine_script", "mt5"]}

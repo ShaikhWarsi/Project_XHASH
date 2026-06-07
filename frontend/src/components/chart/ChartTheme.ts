@@ -109,6 +109,11 @@ export function getStoredTheme(): ThemeName {
 export function storeTheme(theme: ThemeName): void {
   try {
     localStorage.setItem(THEME_STORAGE_KEY, theme)
+    fetch('/api/user/preferences/theme', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ theme }),
+    }).catch(() => {})
   } catch {}
 }
 

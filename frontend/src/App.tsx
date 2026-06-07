@@ -1,5 +1,6 @@
 import { lazy, Suspense, type ReactNode } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import Layout from './components/Layout'
 import ErrorBoundary from './components/ErrorBoundary'
 import ToastContainer from './components/Toast'
@@ -9,6 +10,17 @@ import { WorkspaceProvider } from './contexts/WorkspaceContext'
 import { AudioAlertProvider } from './contexts/AudioAlertContext'
 import { InterfaceModeProvider } from './contexts/InterfaceModeContext'
 import { WebSocketProvider } from './contexts/WebSocketProvider'
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      gcTime: 300_000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+})
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const ChartPage = lazy(() => import('./pages/Chart'))
@@ -90,6 +102,27 @@ const LiveTapePage = lazy(() => import('./pages/LiveTapePage'))
 const AltDataPage = lazy(() => import('./components/AltDataPage'))
 const EventsAnalytics = lazy(() => import('./components/EventsAnalytics'))
 const PromptToTradePage = lazy(() => import('./pages/PromptToTradePage'))
+const AIStrategyGenerator = lazy(() => import('./pages/AIStrategyGenerator'))
+const AIIndicatorGenerator = lazy(() => import('./pages/AIIndicatorGenerator'))
+const StrategyHealthCheck = lazy(() => import('./pages/StrategyHealthCheck'))
+const AutoTagTrades = lazy(() => import('./pages/AutoTagTrades'))
+const ExplainPnL = lazy(() => import('./pages/ExplainPnL'))
+const PromptLibrary = lazy(() => import('./pages/PromptLibrary'))
+const AILeaderboard = lazy(() => import('./pages/AILeaderboard'))
+const ExplainableStops = lazy(() => import('./pages/ExplainableStops'))
+const TradeCoach = lazy(() => import('./pages/TradeCoach'))
+const AIBriefingPage = lazy(() => import('./pages/AIBriefingPage'))
+const AIRiskReport = lazy(() => import('./pages/AIRiskReport'))
+const ReasoningTrace = lazy(() => import('./pages/ReasoningTrace'))
+const DisagreementDetector = lazy(() => import('./pages/DisagreementDetector'))
+const MonteCarlo = lazy(() => import('./pages/MonteCarlo'))
+const WalkForward = lazy(() => import('./pages/WalkForward'))
+const ScenarioAnalysis = lazy(() => import('./pages/ScenarioAnalysis'))
+const Renaissance = lazy(() => import('./pages/Renaissance'))
+const MemoryLog = lazy(() => import('./pages/MemoryLog'))
+const Calibration = lazy(() => import('./pages/Calibration'))
+const Reflection = lazy(() => import('./pages/Reflection'))
+const WallClock = lazy(() => import('./pages/WallClock'))
 
 import Skeleton from './components/Skeleton'
 
@@ -118,6 +151,7 @@ function LazyPage({ children, category = 'page' }: { children: ReactNode; catego
 
 export default function App() {
   return (
+    <QueryClientProvider client={queryClient}>
     <BrowserRouter>
       <InterfaceModeProvider>
       <WebSocketProvider>
@@ -210,14 +244,36 @@ export default function App() {
                   <Route path="/research/alt-data" element={<LazyPage><AltDataPage /></LazyPage>} />
                   <Route path="/alerts" element={<LazyPage><AlertsPage /></LazyPage>} />
                   <Route path="/ai/prompt-to-trade" element={<LazyPage><PromptToTradePage /></LazyPage>} />
+                  <Route path="/ai/strategy-generator" element={<LazyPage><AIStrategyGenerator /></LazyPage>} />
+                  <Route path="/ai/indicator-generator" element={<LazyPage><AIIndicatorGenerator /></LazyPage>} />
+                  <Route path="/ai/strategy-health" element={<LazyPage><StrategyHealthCheck /></LazyPage>} />
+                  <Route path="/ai/auto-tag-trades" element={<LazyPage><AutoTagTrades /></LazyPage>} />
+                  <Route path="/ai/explain-pnl" element={<LazyPage><ExplainPnL /></LazyPage>} />
+                  <Route path="/ai/prompt-library" element={<LazyPage><PromptLibrary /></LazyPage>} />
+                  <Route path="/ai/leaderboard" element={<LazyPage><AILeaderboard /></LazyPage>} />
+                  <Route path="/ai/explain-stops" element={<LazyPage><ExplainableStops /></LazyPage>} />
+                  <Route path="/ai/briefing" element={<LazyPage><AIBriefingPage /></LazyPage>} />
+                  <Route path="/ai/trade-coach" element={<LazyPage><TradeCoach /></LazyPage>} />
+                  <Route path="/ai/risk-report" element={<LazyPage><AIRiskReport /></LazyPage>} />
+                  <Route path="/ai/reasoning-trace" element={<LazyPage><ReasoningTrace /></LazyPage>} />
+                  <Route path="/ai/disagreement-detector" element={<LazyPage><DisagreementDetector /></LazyPage>} />
+                  <Route path="/research/monte-carlo" element={<LazyPage><MonteCarlo /></LazyPage>} />
+                  <Route path="/research/walkforward" element={<LazyPage><WalkForward /></LazyPage>} />
+                  <Route path="/research/scenario" element={<LazyPage><ScenarioAnalysis /></LazyPage>} />
+                  <Route path="/research/renaissance" element={<LazyPage><Renaissance /></LazyPage>} />
+                  <Route path="/research/memory-log" element={<LazyPage><MemoryLog /></LazyPage>} />
+                  <Route path="/settings/calibration" element={<LazyPage><Calibration /></LazyPage>} />
+                  <Route path="/settings/reflection" element={<LazyPage><Reflection /></LazyPage>} />
+                  <Route path="/settings/wall-clock" element={<LazyPage><WallClock /></LazyPage>} />
                 </Route>
               </Routes>
             </AudioAlertProvider>
           </WorkspaceProvider>
         </EventBusProvider>
       </LivePricesProvider>
-      </WebSocketProvider>
-      </InterfaceModeProvider>
-    </BrowserRouter>
+    </WebSocketProvider>
+  </InterfaceModeProvider>
+</BrowserRouter>
+</QueryClientProvider>
   )
 }

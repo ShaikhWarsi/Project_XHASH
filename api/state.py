@@ -16,16 +16,27 @@ logger = logging.getLogger(__name__)
 
 
 _sync_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+_shared_loop: asyncio.AbstractEventLoop | None = None
+
+
+def _init_shared_loop():
+    global _shared_loop
+    if _shared_loop is None:
+        _shared_loop = asyncio.new_event_loop()
+        _sync_executor.submit(asyncio.set_event_loop, _shared_loop)
+
 
 def _sync_run(coro):
-    """Safely run a coroutine from synchronous code without event loop conflicts."""
+    """Run a coroutine from sync code, reusing a single shared loop."""
     try:
-        asyncio.get_running_loop()
+        loop = asyncio.get_running_loop()
     except RuntimeError:
-        return asyncio.run(coro)
-    return _sync_executor.submit(asyncio.run, coro).result()
+        _init_shared_loop()
+        return asyncio.run_coroutine_threadsafe(coro, _shared_loop).result()
+    future = asyncio.run_coroutine_threadsafe(coro, loop)
+    return future.result()
 
-MAX_HISTORY_SIZE = 10000
+MAX_HISTORY_SIZE = 500
 
 
 class AppState:
@@ -105,6 +116,8 @@ class AppState:
     async def async_add_trade(self, trade: dict):
         async with self._lock:
             self._trades.append(deepcopy(trade))
+            if len(self._trades) > MAX_HISTORY_SIZE:
+                self._trades = self._trades[-MAX_HISTORY_SIZE:]
 
     async def async_snapshot(self) -> dict:
         async with self._lock:
@@ -112,7 +125,9 @@ class AppState:
             m = self._metrics
             orders = list(self._open_orders)
             att = self._attribution
-            sig = self._signals.to_dict() if self._signals else {}
+            sig_ref = self._signals
+
+        sig = sig_ref.to_dict() if sig_ref else {}
 
         return {
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -221,20 +236,32 @@ app_state = AppState()
 
 
 async def seed_demo_data():
-    """Populate AppState with realistic demo data for development."""
+    """Populate AppState with relevant demo data for development. Each restart generates consistent data."""
     from datetime import timedelta
+    import random
+    random.seed(42)
     now = datetime.now(timezone.utc)
 
     # --- Positions ---
-    positions = {
-        "AAPL": Position(symbol="AAPL", quantity=150, side=OrderSide.BUY, entry_price=198.50, current_price=205.30, unrealized_pnl=1020.0, realized_pnl=0.0),
-        "MSFT": Position(symbol="MSFT", quantity=80, side=OrderSide.BUY, entry_price=425.20, current_price=438.90, unrealized_pnl=1096.0, realized_pnl=0.0),
-        "GOOGL": Position(symbol="GOOGL", quantity=60, side=OrderSide.BUY, entry_price=172.80, current_price=181.50, unrealized_pnl=522.0, realized_pnl=0.0),
-        "NVDA": Position(symbol="NVDA", quantity=40, side=OrderSide.BUY, entry_price=795.00, current_price=856.20, unrealized_pnl=2448.0, realized_pnl=0.0),
-        "TSLA": Position(symbol="TSLA", quantity=50, side=OrderSide.BUY, entry_price=242.60, current_price=238.10, unrealized_pnl=-225.0, realized_pnl=0.0),
-        "SPY": Position(symbol="SPY", quantity=30, side=OrderSide.BUY, entry_price=532.00, current_price=539.40, unrealized_pnl=222.0, realized_pnl=0.0),
-    }
-    total_value = 84500.0 + sum(p.quantity * p.current_price for p in positions.values())
+    _demo_symbols = [
+        ("AAPL", 198.50, 205.30, 150),
+        ("MSFT", 425.20, 438.90, 80),
+        ("GOOGL", 172.80, 181.50, 60),
+        ("NVDA", 795.00, 856.20, 40),
+        ("TSLA", 242.60, 238.10, 50),
+        ("SPY", 532.00, 539.40, 30),
+        ("AMZN", 185.00, 191.20, 45),
+        ("META", 485.00, 502.30, 35),
+    ]
+    positions = {}
+    for sym, entry, curr, qty in _demo_symbols:
+        pnl = round((curr - entry) * qty, 2)
+        positions[sym] = Position(
+            symbol=sym, quantity=qty, side=OrderSide.BUY,
+            entry_price=entry, current_price=curr,
+            unrealized_pnl=pnl, realized_pnl=0.0,
+        )
+    total_value = 84500.0 + sum(pos.quantity * pos.current_price for pos in positions.values())
     portfolio = PortfolioState(
         cash=84500.0,
         positions=positions,
@@ -317,12 +344,13 @@ async def seed_demo_data():
     ]
 
     # --- Portfolio History (equity curve, 90 data points) ---
-    import random
-    random.seed(42)
     history = []
+    _drift = 0.0003
+    _vol = 0.008
     base_value = 98000.0
     for i in range(90):
-        base_value *= (1 + random.uniform(-0.015, 0.018))
+        daily_ret = _drift + _vol * (0.5 if (i % 7 < 5) else -0.3)
+        base_value *= (1 + daily_ret)
         history.append({
             "timestamp": (now - timedelta(days=90 - i)).isoformat(),
             "total_value": round(base_value, 2),

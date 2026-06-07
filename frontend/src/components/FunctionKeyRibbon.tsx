@@ -7,19 +7,19 @@ interface FnKey {
   color?: string
 }
 
-const FN_KEYS: { key: string; label: string; path?: string; color?: string }[] = [
-  { key: 'F1', label: 'BUY', color: 'var(--accent-green)' },
-  { key: 'F2', label: 'SELL', color: 'var(--accent-red)' },
-  { key: 'F3', label: 'FLAT', color: 'var(--accent-yellow)' },
-  { key: 'F4', label: 'CANCEL ALL', color: 'var(--accent-orange)' },
-  { key: 'F5', label: 'NEW ORDER', color: 'var(--accent-blue)' },
-  { key: 'F6', label: 'CHART', path: '/markets/chart' },
-  { key: 'F7', label: 'OPTIONS', path: '/markets/options' },
-  { key: 'F8', label: 'NEWS', path: '/research/geo' },
-  { key: 'F9', label: 'MESSAGE', path: '/ai/llm' },
-  { key: 'F10', label: 'HELP' },
-  { key: 'F11', label: 'ALERTS', path: '/alerts' },
-  { key: 'F12', label: 'SETTINGS', path: '/settings' },
+const FN_KEYS: { key: string; label: string; path?: string; color?: string; action?: string }[] = [
+  { key: 'F1', label: 'HELP', action: 'help' },
+  { key: 'F2', label: 'SEARCH', action: 'search' },
+  { key: 'F3', label: 'CHART', path: '/markets/chart' },
+  { key: 'F4', label: 'BUY', path: '/trading/paper-trading?side=buy', color: 'var(--accent-green)' },
+  { key: 'F5', label: 'SELL', path: '/trading/paper-trading?side=sell', color: 'var(--accent-red)' },
+  { key: 'F6', label: 'FLAT', path: '/trading/orders' },
+  { key: 'F7', label: 'CANCEL', path: '/trading/orders' },
+  { key: 'F8', label: 'ORDER', path: '/trading/orders' },
+  { key: 'F9', label: 'PORTFOLIO', path: '/trading/portfolio' },
+  { key: 'F10', label: 'SETTINGS', path: '/settings' },
+  { key: 'F11', label: 'FULLSCREEN', action: 'fullscreen' },
+  { key: 'F12', label: 'CMD PALETTE', action: 'command-palette' },
 ]
 
 export default function FunctionKeyRibbon() {
@@ -28,18 +28,15 @@ export default function FunctionKeyRibbon() {
   const handleAction = (item: typeof FN_KEYS[number]) => {
     if (item.path) {
       navigate(item.path)
-    } else if (item.key === 'F1') {
-      navigate('/trading/paper-trading')
-    } else if (item.key === 'F2') {
-      navigate('/trading/paper-trading')
-    } else if (item.key === 'F3') {
-      navigate('/trading/orders')
-    } else if (item.key === 'F4') {
-      navigate('/trading/orders')
-    } else if (item.key === 'F5') {
-      navigate('/trading/orders')
-    } else if (item.key === 'F10') {
+    } else if (item.action === 'help') {
       window.dispatchEvent(new CustomEvent('opencode:help'))
+    } else if (item.action === 'search') {
+      window.dispatchEvent(new KeyboardEvent('keydown', { ctrlKey: true, key: '.' }))
+    } else if (item.action === 'fullscreen') {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen()
+      else document.exitFullscreen()
+    } else if (item.action === 'command-palette') {
+      window.dispatchEvent(new CustomEvent('opencode:command-palette'))
     }
   }
 

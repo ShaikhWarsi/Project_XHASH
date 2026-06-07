@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
+import ProgressBar from '../components/ProgressBar'
 import { runHyperoptOptimize, runHyperoptFull, fetchHyperoptSpace } from '../api/hyperopt'
 import type { HyperoptResult, FullOptimizeResult } from '../api/hyperopt'
 import { useToastStore } from '../store/toast'
@@ -9,6 +10,7 @@ import { useToastStore } from '../store/toast'
 interface Trial {
   params: Record<string, number>
   score: number
+  iteration?: number
 }
 
 interface ExtendedHyperoptResult extends HyperoptResult {
@@ -22,26 +24,6 @@ interface ExtendedFullOptimizeResult extends FullOptimizeResult {
 type Tab = 'standard' | 'full'
 
 /* ── Helpers ── */
-
-function generateMockTrials(bestParams: Record<string, unknown>, nTrials: number, bestScore: number): Trial[] {
-  const trials: Trial[] = []
-  const names = Object.keys(bestParams)
-  const base: Record<string, number> = {}
-  for (const [k, v] of Object.entries(bestParams)) base[k] = Number(v)
-  for (let i = 0; i < nTrials; i++) {
-    const params: Record<string, number> = {}
-    for (const k of names) {
-      const b = base[k] ?? 1
-      const spread = Math.max(Math.abs(b) * 0.5, 0.1)
-      params[k] = b + (Math.random() - 0.5) * spread * 2
-    }
-    const dist = Math.random()
-    const score = bestScore * (0.2 + 0.8 * Math.pow(dist, 0.5))
-    trials.push({ params, score })
-  }
-  trials.sort(() => Math.random() - 0.5)
-  return trials
-}
 
 function interpColor(t: number): string {
   const r = t < 0.5 ? 255 : Math.round(255 - (t - 0.5) * 2 * 255)
@@ -234,6 +216,78 @@ function EDFPlot({ trials }: { trials: Trial[] }) {
   )
 }
 
+/* ── Loss curve chart ── */
+function LossCurveChart({ trials }: { trials: Trial[] }) {
+  const W = 600, H = 240, PAD = 50
+  const sorted = useMemo(() => [...trials].sort((a, b) => (a.iteration ?? 0) - (b.iteration ?? 0)), [trials])
+  const bestSoFar = useMemo(() => {
+    let best = -Infinity
+    return sorted.map((t) => { best = Math.max(best, t.score); return best })
+  }, [sorted])
+  const scores = sorted.map((t) => t.score)
+  const maxScore = Math.max(...scores, 0.0001)
+  const minScore = Math.min(...scores, 0)
+  const range = Math.max(maxScore - minScore, 0.0001)
+  const xStep = sorted.length > 1 ? (W - 2 * PAD) / (sorted.length - 1) : W - 2 * PAD
+
+  return (
+    <svg width={W} height={H} style={{ display: 'block', margin: '0 auto' }}>
+      {sorted.map((t, i) => {
+        const x = PAD + i * xStep
+        const rawY = H - PAD - ((t.score - minScore) / range) * (H - 2 * PAD)
+        return <circle key={i} cx={x} cy={rawY} r={1.5} fill="rgba(255,255,255,0.25)" />
+      })}
+      {bestSoFar.length > 1 && bestSoFar.slice(1).map((b, i) => {
+        const prev = bestSoFar[i]
+        const x1 = PAD + i * xStep
+        const y1 = H - PAD - ((prev - minScore) / range) * (H - 2 * PAD)
+        const x2 = PAD + (i + 1) * xStep
+        const y2 = H - PAD - ((b - minScore) / range) * (H - 2 * PAD)
+        return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--accent-green)" strokeWidth={1.5} />
+      })}
+      <text x={W / 2} y={H - 4} textAnchor="middle" fill="var(--text-muted)" fontSize={8} fontFamily="'JetBrains Mono', monospace">Iteration</text>
+      <text x={8} y={H / 2} textAnchor="middle" fill="var(--text-muted)" fontSize={8} fontFamily="'JetBrains Mono', monospace" transform={`rotate(-90, 8, ${H / 2})`}>Score</text>
+      <text x={W / 2} y={PAD - 8} textAnchor="middle" fill="var(--accent-green)" fontSize={9} fontFamily="'JetBrains Mono', monospace">Loss Curve (dots = trials, line = best so far)</text>
+    </svg>
+  )
+}
+
+/* ── Parameter importance chart ── */
+function ParamImportance({ trials, paramNames }: { trials: Trial[]; paramNames: string[] }) {
+  const importances = useMemo(() => {
+    const totalR2 = trials.reduce((s, t) => s + t.score, 0) / Math.max(trials.length, 1)
+    const totalVar = trials.reduce((s, t) => s + (t.score - totalR2) ** 2, 0)
+    return paramNames.map((name) => {
+      const vals = trials.map((t) => t.params[name] ?? 0)
+      const meanV = vals.reduce((s, v) => s + v, 0) / vals.length
+      const num = trials.reduce((s, t, i) => s + ((t.params[name] ?? 0) - meanV) * (t.score - totalR2), 0)
+      const den = trials.reduce((s, v) => s + (v - meanV) ** 2, 0)
+      const slope = den > 0 ? num / den : 0
+      const r2 = totalVar > 0 ? (num ** 2 / den) / totalVar : 0
+      return { name, importance: Math.abs(r2), r2, slope }
+    }).sort((a, b) => b.importance - a.importance)
+  }, [trials, paramNames])
+
+  const W = 400, H = 30 * importances.length + 40, BAR_H = 20, GAP = 4
+  const maxImp = Math.max(...importances.map((i) => i.importance), 0.0001)
+
+  return (
+    <svg width={W} height={H} style={{ display: 'block', margin: '0 auto' }}>
+      {importances.map((imp, i) => {
+        const y = 20 + i * (BAR_H + GAP)
+        const barW = (imp.importance / maxImp) * (W - 100)
+        return (
+          <g key={imp.name}>
+            <text x={4} y={y + BAR_H / 2 + 3} fill="var(--text-muted)" fontSize={9} fontFamily="'JetBrains Mono', monospace">{imp.name}</text>
+            <rect x={80} y={y} width={Math.max(barW, 2)} height={BAR_H} fill={imp.r2 > 0 ? 'var(--accent-green)' : 'var(--accent-red)'} rx={2} />
+            <text x={85 + barW} y={y + BAR_H / 2 + 3} fill="var(--text-secondary)" fontSize={8} fontFamily="'JetBrains Mono', monospace">{(imp.importance * 100).toFixed(0)}%</text>
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
+
 /* ── Main component ── */
 export default function HyperoptPage() {
   const addToast = useToastStore((s) => s.addToast)
@@ -282,8 +336,8 @@ export default function HyperoptPage() {
   const trials = useMemo(() => {
     if (!result) return []
     if (extResult?.trials && extResult.trials.length > 0) return extResult.trials
-    return generateMockTrials(result.best_params, nTrials, bestScore)
-  }, [result, extResult, nTrials, bestScore])
+    return []
+  }, [result, extResult])
 
   const topTrials = useMemo(() => [...trials].sort((a, b) => b.score - a.score).slice(0, 10), [trials])
   const baselineScore = useMemo(() => {
@@ -336,6 +390,12 @@ export default function HyperoptPage() {
         </div>
       </Card>
 
+      {loading && (
+        <div className="px-4 py-2">
+          <ProgressBar value={nTrials} max={nTrials * 2} label="Hyperparameter optimization" height={3} />
+        </div>
+      )}
+
       {result && (
         <>
           {/* Best params summary (existing) */}
@@ -380,7 +440,24 @@ export default function HyperoptPage() {
                 ))}
               </div>
             </div>
+            <div className="mt-2 flex items-center gap-1 px-2 py-1 rounded-sm" style={{ background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.2)', fontSize: 9, fontFamily: "'JetBrains Mono', monospace", color: 'var(--accent-yellow)' }}>
+              ⓘ Best score is from in-sample optimization. Performance on unseen data may differ. No hold-out validation was applied.
+            </div>
           </Card>
+
+          {/* Loss curve (#213) */}
+          {trials.length > 1 && (
+            <Card title="LOSS CURVE">
+              <LossCurveChart trials={trials} />
+            </Card>
+          )}
+
+          {/* Parameter importance (#214) */}
+          {paramNames.length > 1 && trials.length > 1 && (
+            <Card title="PARAMETER IMPORTANCE">
+              <ParamImportance trials={trials} paramNames={paramNames} />
+            </Card>
+          )}
 
           {/* Parallel-coordinate plot (#208) */}
           {paramNames.length > 0 && trials.length > 1 && (

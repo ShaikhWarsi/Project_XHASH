@@ -1,11 +1,11 @@
-import { useEffect, useRef } from 'react'
+import { memo, useEffect, useRef } from 'react'
 
 interface OpenBBChartProps {
   figureJSON: any
   style?: React.CSSProperties
 }
 
-export default function OpenBBChart({ figureJSON, style }: OpenBBChartProps) {
+function OpenBBChartInner({ figureJSON, style }: OpenBBChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const plotlyRef = useRef<any>(null)
 
@@ -57,3 +57,6 @@ export default function OpenBBChart({ figureJSON, style }: OpenBBChartProps) {
     <div ref={containerRef} style={{ width: '100%', height: '100%', ...style }} />
   )
 }
+
+const OpenBBChart = memo(OpenBBChartInner)
+export default OpenBBChart

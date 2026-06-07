@@ -75,7 +75,7 @@ const initialState = {
   error: '',
   chartStyle: 'candle' as ChartStyleType,
   showDelta: false,
-  showVolumeProfile: false,
+  showVolumeProfile: true,
   activeTool: null as ToolType | null,
   indicators: [] as IndicatorConfig[],
   comparisonSymbols: [] as string[],

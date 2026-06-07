@@ -30,25 +30,52 @@ export default function SignalsStream() {
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const params = new URLSearchParams()
-    if (filterSymbol) params.set('symbols', filterSymbol)
-    if (filterEngine) params.set('engines', filterEngine)
-    const base = import.meta.env.VITE_API_BASE ?? '/api'
-    const url = `${base}/signals/stream?${params.toString()}`
-    const es = new EventSource(url)
-    esRef.current = es
+    let retries = 0
+    const maxRetries = 20
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+    let closed = false
+    let currentEs: EventSource | null = null
 
-    es.onopen = () => setConnected(true)
-    es.onerror = () => { setConnected(false); setError('Connection lost') }
-    es.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data) as StreamEvent
-        setEvents((prev) => [data, ...prev].slice(0, 200))
-        setError('')
-      } catch { /* ignore parse errors */ }
+    const connect = () => {
+      const params = new URLSearchParams()
+      if (filterSymbol) params.set('symbols', filterSymbol)
+      if (filterEngine) params.set('engines', filterEngine)
+      const base = import.meta.env.VITE_API_BASE ?? '/api'
+      const url = `${base}/signals/stream?${params.toString()}`
+      const es = new EventSource(url)
+      currentEs = es
+      esRef.current = es
+
+      es.onopen = () => { setConnected(true); setError(''); retries = 0 }
+      es.onerror = () => {
+        setConnected(false); setError('Connection lost')
+        es.close()
+        currentEs = null
+        if (closed || retries >= maxRetries) return
+        retries++
+        const delay = Math.min(1000 * 2 ** retries, 30_000)
+        reconnectTimer = setTimeout(() => {
+          if (!closed) connect()
+        }, delay)
+      }
+      es.onmessage = (e) => {
+        if (closed) return
+        try {
+          const data = JSON.parse(e.data) as StreamEvent
+          setEvents((prev) => [data, ...prev].slice(0, 200))
+          setError('')
+        } catch { /* ignore parse errors */ }
+      }
     }
+    connect()
 
-    return () => { es.close(); esRef.current = null }
+    return () => {
+      closed = true
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      reconnectTimer = null
+      if (currentEs) { currentEs.close(); currentEs = null }
+      if (esRef.current) { esRef.current.close(); esRef.current = null }
+    }
   }, [filterSymbol, filterEngine])
 
   const latestEvent = events[0]

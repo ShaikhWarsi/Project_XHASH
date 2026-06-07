@@ -69,23 +69,27 @@ export default function AdvancedCharts() {
   const [showSymbolPicker, setShowSymbolPicker] = useState(false)
   const [candleData, setCandleData] = useState<CandleWithVolume[]>([])
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState('')
   const [chartType, setChartType] = useState<AlternativeChartType | 'candlestick'>('candlestick')
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('layers')
 
   useEffect(() => {
     const abort = new AbortController()
     setLoading(true)
+    setFetchError('')
     fetchOHLCV(symbol, '1d', '6mo')
       .then((bars) => {
         if (!abort.signal.aborted) {
           if (bars && bars.length > 0) {
             setCandleData(barsToCandles(bars))
+          } else {
+            setFetchError('No data returned for ' + symbol)
           }
           setLoading(false)
         }
       })
       .catch((err) => {
-        if (!abort.signal.aborted) { console.warn('[AdvancedCharts] fetchOHLCV failed:', err); setLoading(false) }
+        if (!abort.signal.aborted) { setFetchError('Failed to load data: ' + ((err as Error).message || 'Unknown error')); setLoading(false) }
       })
     return () => abort.abort()
   }, [symbol])
@@ -432,8 +436,8 @@ export default function AdvancedCharts() {
         <div ref={containerRef} style={{ width: '100%', height: '100%', minHeight: 400, position: 'relative' }}>
           <canvas ref={canvasRef} style={{ display: 'none', position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} />
         </div>
-        <div style={{ padding: '4px 8px', fontSize: 9, color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', background: 'var(--bg-card)' }}>
-          {candleData.length === 0 ? (loading ? 'Loading...' : 'No data available') : `${chartType.toUpperCase()} chart — ${symbol}`}
+        <div style={{ padding: '4px 8px', fontSize: 9, color: fetchError ? 'var(--accent-red)' : 'var(--text-muted)', borderTop: '1px solid var(--border-color)', background: 'var(--bg-card)' }}>
+          {fetchError || (candleData.length === 0 ? (loading ? 'Loading...' : 'No data available') : `${chartType.toUpperCase()} chart — ${symbol}`)}
         </div>
       </div>
     </div>

@@ -10,16 +10,22 @@ export abstract class DrawingTool {
   protected pendingPointIndex = -1
   protected isHovered = false
   protected isSelected = false
+  protected static _themeAccent = '#3b82f6'
+
+  static setThemeAccent(accent: string) {
+    DrawingTool._themeAccent = accent
+  }
 
   constructor(id: string, type: ToolType, points: PricePoint[] = [], style?: Partial<DrawingStyle>) {
     this.id = id
     this.type = type
     this.points = points
+    const accent = DrawingTool._themeAccent
     this.style = {
-      color: style?.color || '#3b82f6',
+      color: style?.color || accent,
       width: style?.width ?? 2,
       opacity: style?.opacity ?? 1,
-      fillColor: style?.fillColor || '#3b82f6',
+      fillColor: style?.fillColor || accent,
       fillOpacity: style?.fillOpacity ?? 0.15,
       textColor: style?.textColor || '#e8eaed',
       fontSize: style?.fontSize ?? 11,

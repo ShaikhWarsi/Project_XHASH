@@ -18,3 +18,10 @@ from .providers_routes import router as providers_router
 from .mcp_routes import router as mcp_router
 from .workflow_routes import router as workflow_router
 from .hyperopt_routes import router as hyperopt_router
+from .monte_carlo_routes import router as monte_carlo_router
+from .walkforward_routes import router as walkforward_router
+from .scenario_routes import router as scenario_router
+from .memory_routes import router as memory_router
+from .calibration_routes import router as calibration_router
+from .reflection_routes import router as reflection_router
+from .wall_clock_routes import router as wall_clock_router

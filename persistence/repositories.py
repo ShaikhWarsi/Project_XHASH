@@ -38,14 +38,15 @@ class TradeRepository:
         return list(result.scalars().all())
 
     @staticmethod
-    async def get_performance_summary(session: AsyncSession) -> dict:
-        result = await session.execute(
-            select(
-                func.count(Trade.id).label("total_trades"),
-                func.sum(Trade.pnl).label("total_pnl"),
-                func.avg(Trade.pnl).label("avg_pnl"),
-            )
+    async def get_performance_summary(session: AsyncSession, since: Optional[datetime] = None) -> dict:
+        stmt = select(
+            func.count(Trade.id).label("total_trades"),
+            func.sum(Trade.pnl).label("total_pnl"),
+            func.avg(Trade.pnl).label("avg_pnl"),
         )
+        if since:
+            stmt = stmt.where(Trade.timestamp >= since)
+        result = await session.execute(stmt)
         row = result.one()
         return {
             "total_trades": row.total_trades or 0,
@@ -212,13 +213,25 @@ class AlertRepository:
 
 
 class BacktestRepository:
+    _MAX_EQUITY_POINTS = 1000
+
+    @staticmethod
+    def _compress_curve(equity_curve: list) -> list:
+        if len(equity_curve) <= BacktestRepository._MAX_EQUITY_POINTS:
+            return equity_curve
+        n = len(equity_curve)
+        step = n // BacktestRepository._MAX_EQUITY_POINTS
+        sampled = [equity_curve[i] for i in range(0, n, step)]
+        sampled.append(equity_curve[-1])
+        return sampled
 
     @staticmethod
     async def save_run(session: AsyncSession, config: dict, metrics: dict, equity_curve: list) -> BacktestRun:
+        compressed = BacktestRepository._compress_curve(equity_curve)
         run = BacktestRun(
             config_json=json.dumps(config),
             metrics_json=json.dumps(metrics),
-            equity_curve_json=json.dumps(equity_curve),
+            equity_curve_json=json.dumps(compressed),
             total_return=metrics.get("total_return", 0.0),
             sharpe_ratio=metrics.get("sharpe_ratio", 0.0),
             max_drawdown=metrics.get("max_drawdown", 0.0),

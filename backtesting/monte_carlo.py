@@ -16,13 +16,21 @@ class MonteCarloResult:
     mean_max_dd: float = 0.0
     pct_positive: float = 0.0
     var_95: float = 0.0
+    median_return: float = 0.0
+    p5_return: float = 0.0
+    p95_return: float = 0.0
 
 
 class MonteCarloEngine:
-    """Monte Carlo simulation for backtest significance testing."""
+    """Monte Carlo simulation with 21-day block bootstrap.
 
-    def __init__(self, n_simulations: int = 1000, seed: Optional[int] = None):
+    Resamples 21-day blocks of returns (not single days) to preserve
+    autocorrelation structure. Uses n_simulations * 21 days of resampled data.
+    """
+
+    def __init__(self, n_simulations: int = 10000, block_size: int = 21, seed: Optional[int] = None):
         self.n_simulations = n_simulations
+        self.block_size = block_size
         self.rng = np.random.default_rng(seed)
 
     def run(
@@ -30,14 +38,22 @@ class MonteCarloEngine:
         base_result: BacktestResult,
         returns: np.ndarray,
     ) -> MonteCarloResult:
-        """Run Monte Carlo by shuffling returns."""
+        """Run Monte Carlo by resampling 21-day return blocks."""
         if len(returns) < 2:
             return MonteCarloResult()
 
         simulations: list[BacktestResult] = []
+        n_blocks = max(1, len(returns) // self.block_size)
 
         for _ in range(self.n_simulations):
-            shuffled = self.rng.permutation(returns)
+            sampled_blocks = self.rng.integers(0, n_blocks, size=n_blocks)
+            block_rets = []
+            for b in sampled_blocks:
+                start = b * self.block_size
+                end = min(start + self.block_size, len(returns))
+                block_rets.extend(returns[start:end])
+            shuffled = np.array(block_rets[:len(returns)])
+
             eq = np.cumprod(1 + shuffled) * base_result.equity_curve[0] if base_result.equity_curve else np.cumprod(1 + shuffled) * 1_000_000
 
             total_return = (eq[-1] / eq[0]) - 1 if eq[0] > 0 else 0.0
@@ -60,14 +76,15 @@ class MonteCarloEngine:
             ))
 
         returns_list = [r.total_return for r in simulations]
-        sharpes = [r.sharpe_ratio for r in simulations]
-        dds = [r.max_drawdown for r in simulations]
 
         return MonteCarloResult(
             simulations=simulations,
             mean_return=float(np.mean(returns_list)),
-            mean_sharpe=float(np.mean(sharpes)),
-            mean_max_dd=float(np.mean(dds)),
+            mean_sharpe=float(np.mean([r.sharpe_ratio for r in simulations])),
+            mean_max_dd=float(np.mean([r.max_drawdown for r in simulations])),
             pct_positive=float(np.sum(np.array(returns_list) > 0) / len(returns_list)),
             var_95=float(np.percentile(returns_list, 5)),
+            median_return=float(np.median(returns_list)),
+            p5_return=float(np.percentile(returns_list, 5)),
+            p95_return=float(np.percentile(returns_list, 95)),
         )

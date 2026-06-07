@@ -243,6 +243,7 @@ export default function DataTable<T extends { id?: string }>({
 
       {/* Header */}
       <div
+        role="row"
         style={{
           display: 'grid', gridTemplateColumns: colGrid,
           borderBottom: '1px solid var(--border-color)',
@@ -255,7 +256,11 @@ export default function DataTable<T extends { id?: string }>({
         {activeCols.map((c) => (
           <div
             key={c.key}
+            role="columnheader"
+            aria-sort={sortKey === c.key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+            tabIndex={c.sortable ? 0 : undefined}
             onClick={() => c.sortable && toggleSort(c.key)}
+            onKeyDown={(e) => { if (c.sortable && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); toggleSort(c.key) } }}
             style={{
               padding: compact ? '2px 6px' : '4px 8px', textAlign: c.align || 'left',
               cursor: c.sortable ? 'pointer' : 'default',
@@ -280,15 +285,18 @@ export default function DataTable<T extends { id?: string }>({
       </div>
 
       {/* Body */}
-      <div ref={containerRef} onScroll={handleScroll} style={{ overflowY: 'auto', maxHeight: rowHeight * visibleRows, position: 'relative' }}>
-        <div style={{ height: totalHeight, position: 'relative' }}>
+      <div ref={containerRef} onScroll={handleScroll} role="region" aria-label="Table body" style={{ overflowY: 'auto', maxHeight: rowHeight * visibleRows, position: 'relative' }}>
+        <div role="presentation" style={{ height: totalHeight, position: 'relative' }}>
           {filtered.slice(startIdx, endIdx).map((item, i) => {
             const rowIdx = startIdx + i
             const isEven = rowIdx % 2 === 0
             return (
             <div
               key={(item as any).id || rowIdx}
+              role="row"
+              tabIndex={onRowClick ? 0 : undefined}
               onClick={() => onRowClick?.(item)}
+              onKeyDown={(e) => { if (onRowClick && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onRowClick(item) } }}
               style={{
                 position: 'absolute', top: rowIdx * rowHeight, left: 0, right: 0,
                 height: rowHeight, display: 'grid', gridTemplateColumns: colGrid,
@@ -302,7 +310,7 @@ export default function DataTable<T extends { id?: string }>({
               onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = isEven ? 'var(--bg-card)' : 'color-mix(in srgb, var(--bg-card) 98%, var(--accent-cyan) 2%)' }}
             >
               {activeCols.map((c) => (
-                <div key={c.key} style={{ padding: compact ? '1px 6px' : '2px 8px', textAlign: c.align || 'left', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div key={c.key} role="gridcell" style={{ padding: compact ? '1px 6px' : '2px 8px', textAlign: c.align || 'left', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {c.render(item)}
                 </div>
               ))}
@@ -311,7 +319,7 @@ export default function DataTable<T extends { id?: string }>({
           })}
         </div>
         {filtered.length === 0 && (
-          <div style={{ padding: compact ? 12 : 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: compact ? 9 : 10 }}>
+          <div style={{ padding: compact ? 12 : 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: compact ? 9 : 10 }} role="status">
             {search || Object.keys(filterValues).length ? 'No matching results' : emptyMessage}
           </div>
         )}

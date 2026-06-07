@@ -1,5 +1,7 @@
-import { useMemo } from 'react'
+import { memo, useMemo, useState } from 'react'
 import type { BarData } from '../../api/types'
+
+type VpMode = 'session' | 'anchored' | 'fixed'
 
 interface VolumeBucket {
   priceLow: number
@@ -71,9 +73,15 @@ function computeVolumeProfile(data: BarData[], bucketCount = 30): { buckets: Vol
   return { buckets, poc, maxVol }
 }
 
-export default function VolumeProfile({ data, onClose }: VolumeProfileProps) {
+function VolumeProfile({ data, onClose }: VolumeProfileProps) {
+  const [vpMode, setVpMode] = useState<VpMode>('session')
   const { buckets, poc, maxVol } = useMemo(() => computeVolumeProfile(data), [data])
   const isEmpty = data.length === 0 || buckets.length === 0
+  const MODES: { key: VpMode; label: string }[] = [
+    { key: 'session', label: 'Session' },
+    { key: 'anchored', label: 'Anchored' },
+    { key: 'fixed', label: 'Fixed' },
+  ]
 
   return (
     <div
@@ -127,6 +135,37 @@ export default function VolumeProfile({ data, onClose }: VolumeProfileProps) {
             &#x2715;
           </button>
         )}
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          gap: 1,
+          padding: '2px 4px',
+          borderBottom: '1px solid var(--border-color)',
+          flexShrink: 0,
+        }}
+      >
+        {MODES.map((m) => (
+          <button
+            key={m.key}
+            onClick={() => setVpMode(m.key)}
+            style={{
+              flex: 1,
+              background: vpMode === m.key ? 'var(--accent-cyan)' : 'transparent',
+              border: 'none',
+              color: vpMode === m.key ? '#000' : 'var(--text-muted)',
+              cursor: 'pointer',
+              fontSize: 7,
+              fontWeight: vpMode === m.key ? 700 : 400,
+              padding: '2px 0',
+              borderRadius: 2,
+              fontFamily: "'JetBrains Mono', monospace",
+              transition: 'background 0.15s, color 0.15s',
+            }}
+          >
+            {m.label}
+          </button>
+        ))}
       </div>
       {isEmpty ? (
         <div
@@ -217,3 +256,5 @@ export default function VolumeProfile({ data, onClose }: VolumeProfileProps) {
     </div>
   )
 }
+
+export default memo(VolumeProfile)

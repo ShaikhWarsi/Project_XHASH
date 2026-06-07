@@ -1,115 +1,100 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import Card from './ui/Card'
+import Badge from './ui/Badge'
 import { coMovementGet } from '../api/llm'
+import { Newspaper, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 
 export default function NewsCoMovement() {
   const [headline, setHeadline] = useState('')
-  const [tickersText, setTickersText] = useState('')
-  const [results, setResults] = useState<any[] | null>(null)
+  const [tickersInput, setTickersInput] = useState('AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA')
+  const [priceChangesInput, setPriceChangesInput] = useState('')
+  const [result, setResult] = useState<{ co_movements: any[]; source: string } | null>(null)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState('')
 
-  const handleAnalyze = async () => {
+  const handleAnalyze = useCallback(async () => {
     if (!headline.trim()) return
-    const tickers = tickersText.split(',').map((t) => t.trim().toUpperCase()).filter(Boolean)
-    if (tickers.length === 0) return
-
     setLoading(true)
-    setError(null)
-    setResults(null)
-
-    const priceChanges: Record<string, number> = {}
-    for (const t of tickers) {
-      priceChanges[t] = Math.round((Math.random() * 6 - 3) * 100) / 100
-    }
-
+    setError('')
+    setResult(null)
     try {
-      const res = await coMovementGet(headline, tickers, priceChanges)
-      setResults(res.co_movements)
-    } catch (err: any) {
-      setError(err.message)
+      const tickers = tickersInput.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
+      const pc: Record<string, number> = {}
+      if (priceChangesInput.trim()) {
+        priceChangesInput.split(',').forEach(pair => {
+          const [t, v] = pair.split(':').map(s => s.trim())
+          if (t && v) pc[t.toUpperCase()] = parseFloat(v) || 0
+        })
+      }
+      tickers.forEach(t => { if (!(t in pc)) pc[t] = 0 })
+      const res = await coMovementGet(headline, tickers, pc)
+      setResult(res)
+    } catch (e: unknown) {
+      setError((e as Error).message)
     }
     setLoading(false)
-  }
+  }, [headline, tickersInput, priceChangesInput])
 
   return (
-    <Card title="News Co-Movement" className="font-mono-data">
+    <Card title="NEWS CO-MOVEMENT">
+      <div className="text-xs text-muted mb-2">
+        Analyze which tickers are moving in response to a news headline.
+      </div>
       <div className="space-y-2">
         <div>
-          <label className="text-[9px] text-muted block mb-0.5">Headline</label>
-          <input
-            value={headline}
-            onChange={(e) => setHeadline(e.target.value)}
-            placeholder="e.g. Apple reports record Q4 earnings..."
-            className="w-full bg-input border border-input text-primary font-mono-data text-[10px] px-2 py-1 outline-none"
-          />
+          <label className="block text-[10px] text-muted mb-0.5">Headline</label>
+          <input value={headline} onChange={(e) => setHeadline(e.target.value)}
+            className="w-full bg-[var(--bg-hover)] border border-[var(--input-border)] rounded-md px-2 py-1.5 text-sm text-primary outline-none"
+            placeholder="e.g. Fed holds rates steady, signals two cuts in 2024" />
         </div>
-        <div>
-          <label className="text-[9px] text-muted block mb-0.5">Tickers (comma-separated)</label>
-          <input
-            value={tickersText}
-            onChange={(e) => setTickersText(e.target.value)}
-            placeholder="e.g. AAPL, MSFT, GOOGL, NVDA"
-            className="w-full bg-input border border-input text-primary font-mono-data text-[10px] px-2 py-1 outline-none"
-          />
-        </div>
-        <button
-          onClick={handleAnalyze}
-          disabled={loading || !headline.trim() || !tickersText.trim()}
-          className="text-white border-none font-mono-data text-[10px] font-semibold px-3 py-1 rounded-sm w-full"
-          style={{
-            background: 'var(--accent-blue)',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            opacity: loading ? 0.6 : 1,
-          }}
-        >
-          {loading ? 'Analyzing...' : 'Analyze Co-Movement'}
-        </button>
-
-        {error && <div className="text-down text-[10px]">{error}</div>}
-
-        {results && results.length > 0 && (
+        <div className="grid grid-cols-2 gap-2">
           <div>
-            <div className="text-[9px] text-muted mb-1 font-semibold tracking-wider uppercase">Correlated Movers</div>
-            <div className="space-y-1">
-              {results.map((r: any, i: number) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between px-2 py-1 rounded-sm"
-                  style={{ background: 'var(--bg-hover)' }}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-bold text-primary">{r.ticker}</span>
-                    <span
-                      className="text-[9px] font-mono-data px-1 rounded-sm"
-                      style={{
-                        background: r.co_move_direction === 'up' ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)',
-                        color: r.co_move_direction === 'up' ? 'var(--accent-green)' : 'var(--accent-red)',
-                      }}
-                    >
-                      {r.co_move_direction === 'up' ? '↑' : '↓'} {r.co_move_direction}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[9px] text-muted">
-                      {(r.confidence * 100).toFixed(0)}% confidence
-                    </span>
+            <label className="block text-[10px] text-muted mb-0.5">Tickers (comma-separated)</label>
+            <input value={tickersInput} onChange={(e) => setTickersInput(e.target.value.toUpperCase())}
+              className="w-full bg-[var(--bg-hover)] border border-[var(--input-border)] rounded-md px-2 py-1.5 text-sm text-primary outline-none" />
+          </div>
+          <div>
+            <label className="block text-[10px] text-muted mb-0.5">Price Changes (TICKER:%,...)</label>
+            <input value={priceChangesInput} onChange={(e) => setPriceChangesInput(e.target.value)}
+              className="w-full bg-[var(--bg-hover)] border border-[var(--input-border)] rounded-md px-2 py-1.5 text-sm text-primary outline-none"
+              placeholder="AAPL:2.3,MSFT:-0.5" />
+          </div>
+        </div>
+        <button onClick={handleAnalyze} disabled={loading || !headline.trim()}
+          className="flex items-center gap-1 px-3 py-1.5 rounded text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer disabled:opacity-50">
+          <Newspaper size={14} /> {loading ? 'Analyzing...' : 'Analyze Co-Movement'}
+        </button>
+      </div>
+
+      {error && <div className="text-accent-red text-xs mt-2">{error}</div>}
+
+      {result && (
+        <div className="mt-3">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[10px] text-muted">Source: {result.source}</span>
+            {result.source === 'llm' && <Badge label="AI" variant="info" />}
+          </div>
+          {result.co_movements.length === 0 ? (
+            <div className="text-xs text-muted">No significant co-movements detected.</div>
+          ) : (
+            <div className="space-y-1.5">
+              {result.co_movements.map((m: any, i: number) => (
+                <div key={i} className="flex items-center gap-2 bg-[var(--bg-hover)] border border-default rounded px-2 py-1.5">
+                  <span className="font-mono font-bold text-xs text-primary w-16">{m.ticker}</span>
+                  {m.co_move_direction === 'up' ? <TrendingUp size={14} className="text-accent-green" /> : m.co_move_direction === 'down' ? <TrendingDown size={14} className="text-accent-red" /> : <Minus size={14} className="text-muted" />}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-1">
+                      <div className="h-1.5 rounded-full" style={{ width: `${m.confidence * 100}%`, background: m.confidence > 0.7 ? 'var(--accent-green)' : m.confidence > 0.3 ? 'var(--accent-yellow)' : 'var(--text-muted)' }} />
+                      <span className="text-[9px] text-muted">{Math.round(m.confidence * 100)}%</span>
+                    </div>
+                    <div className="text-[9px] text-muted">{m.reasoning}</div>
                   </div>
                 </div>
               ))}
             </div>
-            {results.length > 0 && (
-              <div className="mt-1.5 text-[9px] text-muted italic leading-tight">
-                {results[0]?.reasoning}
-              </div>
-            )}
-          </div>
-        )}
-
-        {results && results.length === 0 && (
-          <div className="text-[10px] text-muted text-center py-2">No significant co-movement detected</div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </Card>
   )
 }

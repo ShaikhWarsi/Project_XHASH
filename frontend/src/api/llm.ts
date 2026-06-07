@@ -132,6 +132,104 @@ export async function inspectPattern(symbol: string, pattern: any, priceDataSumm
   return res
 }
 
+export async function strategyHealthCheck(strategyName: string, strategyCode: string, recentPerformance: any[], currentRegime: string): Promise<any> {
+  const res = await fetch('/api/ai/strategy-health', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ strategy_name: strategyName, strategy_code: strategyCode, recent_performance: recentPerformance, current_regime: currentRegime }),
+  })
+  if (!res.ok) throw new Error('Strategy health check failed')
+  return res.json()
+}
+
+export async function autoTagTrades(trades: any[]): Promise<{ tagged_trades: any[] }> {
+  const res = await fetch('/api/ai/auto-tag-trades', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ trades }),
+  })
+  if (!res.ok) throw new Error('Auto-tag trades failed')
+  return res.json()
+}
+
+export async function explainPnL(period: string, trades: any[], portfolioValueHistory: any[], marketRegime: string, topPerformers: string[], worstPerformers: string[]): Promise<any> {
+  const res = await fetch('/api/ai/explain-pnl', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ period, trades, portfolio_value_history: portfolioValueHistory, market_regime: marketRegime, top_performers: topPerformers, worst_performers: worstPerformers }),
+  })
+  if (!res.ok) throw new Error('P&L explanation failed')
+  return res.json()
+}
+
+export async function listPrompts(): Promise<{ prompts: any[]; total: number }> {
+  const res = await fetch('/api/ai/prompts')
+  if (!res.ok) throw new Error('Failed to list prompts')
+  return res.json()
+}
+
+export async function createPrompt(data: any): Promise<any> {
+  const res = await fetch('/api/ai/prompts', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error('Failed to create prompt')
+  return res.json()
+}
+
+export async function updatePrompt(id: string, data: any): Promise<any> {
+  const res = await fetch(`/api/ai/prompts/${id}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error('Failed to update prompt')
+  return res.json()
+}
+
+export async function deletePrompt(id: string): Promise<void> {
+  const res = await fetch(`/api/ai/prompts/${id}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error('Failed to delete prompt')
+}
+
+export async function clonePrompt(id: string): Promise<any> {
+  const res = await fetch(`/api/ai/prompts/${id}/clone`, { method: 'POST' })
+  if (!res.ok) throw new Error('Failed to clone prompt')
+  return res.json()
+}
+
+export async function compareLeaderboard(aiTrades: any[], humanTrades: any[], period: string): Promise<any> {
+  const res = await fetch('/api/ai/leaderboard/compare', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ai_trades: aiTrades, human_trades: humanTrades, period }),
+  })
+  if (!res.ok) throw new Error('Leaderboard comparison failed')
+  return res.json()
+}
+
+export async function explainStop(data: any): Promise<any> {
+  const res = await fetch('/api/ai/explain-stop', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error('Stop explanation failed')
+  return res.json()
+}
+
+export async function tradeCoach(trade: any, recentTrades: any[]): Promise<any> {
+  const res = await fetch('/api/ai/trade-coach', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ trade, recent_trades: recentTrades }),
+  })
+  if (!res.ok) throw new Error('Trade coaching failed')
+  return res.json()
+}
+
+export async function generateRiskReport(email: string | null, period: string, portfolioData: any, trades: any[], marketRegime: string): Promise<any> {
+  const res = await fetch('/api/ai/risk-report', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, period, portfolio_data: portfolioData, trades, market_regime: marketRegime }),
+  })
+  if (!res.ok) throw new Error('Risk report generation failed')
+  return res.json()
+}
+
 export async function llmQuery(query: string, messageHistory?: { role: string; content: string }[]): Promise<{ response: string; context_used: string[] }> {
   const res = await fetch('/api/llm/query', {
     method: 'POST',

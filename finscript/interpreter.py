@@ -2,11 +2,16 @@ from __future__ import annotations
 
 import logging
 import math
+import signal
+import time
 from typing import Any, Optional
 
 import pandas as pd
 
 logger = logging.getLogger(__name__)
+
+_MAX_EXECUTION_SECONDS = 30
+_MAX_STMT_COUNT = 100_000
 
 from .ast import (
     ArrayExpr, AssignStmt, BinaryExpr, BinOp, BoolExpr, BreakStmt, BuyStmt,
@@ -24,17 +29,22 @@ NAN = float("nan")
 # ── RCE sandbox blocklist ──────────────────────
 _BLOCKED_NAMES: set[str] = {
     "os", "sys", "subprocess", "shutil", "pathlib",
-    "eval", "exec", "compile", "open",
-    "__import__", "__builtins__", "__builtin__",
-    "__class__", "__base__", "__subclasses__", "__init__",
-    "__globals__", "__code__", "__closure__", "__dict__",
-    "getattr", "setattr", "delattr", "hasattr",
-    "globals", "locals", "vars", "dir",
+    "eval", "exec", "compile", "open", "__import__",
+    "__builtins__", "__builtin__", "__class__", "__base__",
+    "__subclasses__", "__init__", "__globals__", "__code__",
+    "__closure__", "__dict__", "getattr", "setattr", "delattr",
+    "hasattr", "globals", "locals", "vars", "dir",
+    "ctypes", "socket", "requests", "urllib", "http",
+    "multiprocessing", "threading", "asyncio", "signal",
+    "tempfile", "pickle", "marshal", "shelve", "dbm",
+    "importlib", "pkgutil", "pkg_resources", "site",
+    "platform", "resource", "fcntl", "termios",
 }
 _BLOCKED_METHODS: set[str] = {
     "__import__", "__builtins__", "__class__",
     "__base__", "__subclasses__", "__init__",
     "__globals__", "__code__", "__closure__",
+    "__reduce__", "__reduce_ex__", "__format__",
 }
 
 
@@ -74,7 +84,8 @@ class Interpreter:
                 self.runtime.set_data(symbol, df)
 
     def execute(self, program: Program) -> dict[str, Any]:
-        self.globals["bar_index"] = lambda: self.runtime.bar_index()
+        _deadline = time.monotonic() + _MAX_EXECUTION_SECONDS
+        _stmt_count = 0
         self.globals["sma"] = lambda s=None, p=14: self.runtime.sma(s, int(p))
         self.globals["ema"] = lambda s=None, p=14: self.runtime.ema(s, int(p))
         self.globals["rma"] = lambda s=None, p=14: self.runtime.rma(s, int(p))
@@ -132,9 +143,24 @@ class Interpreter:
 
         try:
             for stmt in program.statements:
+                _stmt_count += 1
+                if _stmt_count > _MAX_STMT_COUNT:
+                    raise InterpreterError(f"Execution exceeded max statement count ({_MAX_STMT_COUNT})")
+                if time.monotonic() > _deadline:
+                    raise InterpreterError(f"Execution timed out after {_MAX_EXECUTION_SECONDS}s")
                 self._execute_stmt(stmt)
         except ReturnException:
             pass
+        except Exception as e:
+            logger.exception("FinScript execution crashed: %s", e)
+            return {
+                "signals": self.signals,
+                "plots": self.plots,
+                "alerts": self.alerts,
+                "strategy": self.strategy_state,
+                "globals": {k: v for k, v in self.globals.items() if not callable(v) and not k.startswith("_")},
+                "error": str(e),
+            }
 
         return {
             "signals": self.signals,

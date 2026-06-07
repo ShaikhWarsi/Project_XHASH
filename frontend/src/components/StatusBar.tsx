@@ -4,6 +4,7 @@ import { useConnectionStore } from '../store/connection'
 import { usePortfolioStore } from '../store/portfolio'
 import { api } from '../api/client'
 import AIBriefing from './AIBriefing'
+import VoiceCommandButton from './VoiceCommandButton'
 import { Sun, Moon, Monitor, ChevronDown, ChevronUp, Activity, Cpu, MemoryStick, Signal, Wifi, Layers, ScrollText } from 'lucide-react'
 
 interface StatusInfo {
@@ -250,6 +251,7 @@ export default function StatusBar() {
             <ScrollText size={10} />
             <span>BRIEF</span>
           </button>
+          <VoiceCommandButton />
           <button
             onClick={cycleTheme}
             className="flex items-center gap-1"

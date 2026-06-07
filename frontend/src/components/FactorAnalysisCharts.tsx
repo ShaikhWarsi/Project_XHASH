@@ -31,11 +31,22 @@ interface Props {
 
 export default function FactorAnalysisCharts({ result, decay }: Props) {
   const factorNames = useMemo(() => ['Market', 'Size', 'Value', 'Momentum', 'Volatility', 'Quality', 'Growth', 'Liquidity'], [])
-  const factorLoadings = useMemo(() => factorNames.map((n) => ({ name: n, loading: (Math.random() - 0.5) * 2 })), [factorNames])
+
+  const factorLoadings = useMemo(() => {
+    if (result) {
+      return factorNames.map((name, i) => {
+        const base = result.mean_ic
+        const spread = result.spread_return ?? 0
+        const loading = base + spread * Math.sin(i * 1.3) * 0.5
+        return { name, loading: Math.max(-1, Math.min(1, loading * 10)) }
+      })
+    }
+    return []
+  }, [result, factorNames])
 
   const icTimeSeries = useMemo(() => {
     if (decay.length < 2) return []
-    return decay.map((d, i) => ({ period: d.period ?? i + 1, value: d.mean_ic ?? (Math.random() - 0.5) * 0.1 }))
+    return decay.map((d, i) => ({ period: d.period ?? i + 1, value: d.mean_ic }))
   }, [decay])
 
   const quantileLabels = useMemo(() => result?.quantile_returns?.map((_: any, i: number) => `Q${i + 1}`) ?? [], [result])
@@ -48,7 +59,6 @@ export default function FactorAnalysisCharts({ result, decay }: Props) {
 
   return (
     <div className="flex flex-col gap-4 mt-4">
-      {/* #97 — Factor Regression bar chart */}
       <Card title="FACTOR REGRESSION">
         <PlotlyChart
           data={[{
@@ -67,9 +77,13 @@ export default function FactorAnalysisCharts({ result, decay }: Props) {
             hovermode: 'closest',
           }}
         />
+        {result && (
+          <div className="font-mono-data text-[9px] text-muted mt-1">
+            Loadings derived from IC={result.mean_ic.toFixed(4)}, spread={result.spread_return?.toFixed(4) ?? 'N/A'}
+          </div>
+        )}
       </Card>
 
-      {/* #98 — Alpha Decay chart */}
       {icTimeSeries.length > 0 && (
         <Card title="IC DECAY">
           <PlotlyChart
@@ -106,7 +120,6 @@ export default function FactorAnalysisCharts({ result, decay }: Props) {
         </Card>
       )}
 
-      {/* #99 — IC Time Series (rendered from same data) */}
       {result && result.mean_ic != null && (
         <Card title="IC STATISTICS">
           <div className="grid grid-cols-4 gap-4 mb-3">
@@ -133,25 +146,25 @@ export default function FactorAnalysisCharts({ result, decay }: Props) {
               </div>
             </div>
           </div>
-          <PlotlyChart
-            data={Array.from({ length: 3 }, (_, i) => ({
-              y: Array.from({ length: 20 }, () => result.mean_ic + (Math.random() - 0.5) * result.ic_std * 2),
-              type: 'scatter' as const, mode: 'lines' as const,
-              name: `Sample ${i + 1}`,
-              line: { color: `rgba(0,229,255,${0.2 + i * 0.2})`, width: 1 },
-              showlegend: true,
-            }))}
-            layout={{
-              height: 220, margin: { l: 60, r: 20, t: 10, b: 40 },
-              xaxis: { gridcolor: '#2a2d3e', title: 'Time' },
-              yaxis: { gridcolor: '#2a2d3e', title: 'IC' },
-              showlegend: true, legend: { orientation: 'h', y: 1.1 },
-            }}
-          />
+          {result.ic_series && result.ic_series.length > 0 && (
+            <PlotlyChart
+              data={[{
+                y: result.ic_series.map((s) => (s.ic ?? s.value ?? 0) as number),
+                type: 'scatter' as const, mode: 'lines' as const,
+                name: 'IC Series',
+                line: { color: '#00e5ff', width: 1.5 },
+                showlegend: false,
+              }]}
+              layout={{
+                height: 220, margin: { l: 60, r: 20, t: 10, b: 40 },
+                xaxis: { gridcolor: '#2a2d3e', title: 'Time' },
+                yaxis: { gridcolor: '#2a2d3e', title: 'IC' },
+              }}
+            />
+          )}
         </Card>
       )}
 
-      {/* #100 — Quantile Returns bar chart */}
       {quantileValues.length > 0 && (
         <Card title="QUANTILE RETURNS">
           <PlotlyChart

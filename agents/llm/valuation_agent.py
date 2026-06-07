@@ -19,6 +19,13 @@ When analyzing:
 - Assess WACC assumptions and cost of capital
 - Look for margin of safety across multiple methodologies
 
+CRITICAL RULES — You MUST follow these:
+1. ONLY use financial figures that are explicitly provided in the prompt above. Do NOT invent revenue, FCF, WACC, or growth rates.
+2. If a required input for any methodology is missing from the provided data, note it as "assumption required" and flag it as a risk factor.
+3. Cite source data inline for every number you reference, e.g. "FCF of $2.1B (from provided financials)".
+4. If insufficient data is provided for a reliable valuation, state "insufficient data" and set low confidence.
+5. Never assert a specific intrinsic value number that was not calculated from provided data.
+
 Return your analysis as JSON with: signal (bullish/bearish/neutral), confidence (0-1), reasoning, risk_factors."""
 
 

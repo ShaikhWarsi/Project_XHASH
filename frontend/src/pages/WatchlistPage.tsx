@@ -4,7 +4,7 @@ import { Star, Trash2, AlertCircle } from 'lucide-react'
 import Card from '../components/ui/Card'
 import StockSearch from '../components/StockSearch'
 import AlertsPanel from '../components/AlertsPanel'
-import { fetchWatchlist, removeFromWatchlist, fetchQuotes, fetchCompanyProfile } from '../api/client'
+import { fetchWatchlist, removeFromWatchlist, fetchQuotes } from '../api/client'
 import type { WatchlistItem } from '../api/types'
 import { useToastStore } from '../store/toast'
 
@@ -25,14 +25,10 @@ export default function WatchlistPage() {
         const quotes = await fetchQuotes(symbols)
         Object.assign(quoteMap, quotes)
       } catch { anyQuoteFailed = true }
-      const enriched = await Promise.all(
-        data.map(async (item) => {
-          const q = quoteMap[item.symbol]
-          let profile: Record<string, unknown> | undefined
-          try { profile = await fetchCompanyProfile(item.symbol) } catch { /* non-critical */ }
-          return { ...item, price: q?.c, change: q?.d, changePercent: q?.dp, profile }
-        })
-      )
+      const enriched = data.map((item) => {
+        const q = quoteMap[item.symbol]
+        return { ...item, price: q?.c, change: q?.d, changePercent: q?.dp }
+      })
       setItems(enriched)
       setQuoteError(anyQuoteFailed)
     } catch (err) { addToast('Failed to load watchlist', 'error') }

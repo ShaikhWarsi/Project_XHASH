@@ -68,6 +68,10 @@ async def close_db():
         _init_done = False
 
 
+def get_engine():
+    return _engine
+
+
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     global _init_done
     if not _init_done:

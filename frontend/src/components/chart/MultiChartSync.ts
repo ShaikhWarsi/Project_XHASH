@@ -22,6 +22,20 @@ export class MultiChartSync {
   private _currentIndex: number = 0
   private _totalLength: number = 0
   private _updating = false
+  private _linked = true
+
+  setLinked(linked: boolean): void {
+    this._linked = linked
+    if (!linked) {
+      for (const { chart } of this.charts.values()) {
+        try { (chart as any).crosshair().clearPosition() } catch {}
+      }
+    }
+  }
+
+  isLinked(): boolean {
+    return this._linked
+  }
 
   register(chart: ChartInstance, onSeek?: (index: number) => void): void {
     this.charts.set(chart.id, chart)
@@ -57,7 +71,7 @@ export class MultiChartSync {
   }
 
   syncCrosshairTime(time: Time | null): void {
-    if (this._updating) return
+    if (this._updating || !this._linked) return
     this._updating = true
     this._currentTime = time
     try {
@@ -76,6 +90,7 @@ export class MultiChartSync {
   }
 
   syncVisibleRange(timeScale: any): void {
+    if (!this._linked) return
     try {
       if (!timeScale || typeof timeScale.getVisibleRange !== 'function') return
       const range = timeScale.getVisibleRange()

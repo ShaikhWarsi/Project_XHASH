@@ -19,6 +19,8 @@
   .text-accent-yellow { color: var(--accent-yellow); }
   .border-accent { border-color: var(--accent-blue); }
   .bg-accent-subtle { background: var(--accent-blue); opacity: 0.12; }
+  .focus-ring { outline: 2px solid var(--accent-cyan); outline-offset: 2px; }
+  .focus-ring:focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 2px; }
   .shadow-widget { box-shadow: var(--widget-shadow); }
   .shadow-widget-hover { box-shadow: var(--widget-shadow-hover); }
   .glow-blue { box-shadow: var(--glow-blue); }
@@ -48,7 +50,7 @@
   --bg-sidebar: #1a1d2e;
   --text-primary: #e8eaed;
   --text-secondary: #9aa0a6;
-  --text-muted: #787c84;
+  --text-muted: #8b8f97;
   --accent-green: #22c55e;
   --accent-red: #ef4444;
   --accent-blue: #3b82f6;
@@ -137,7 +139,7 @@
   --bg-sidebar: #1a1d2e;
   --text-primary: #e8eaed;
   --text-secondary: #9aa0a6;
-  --text-muted: #787c84;
+  --text-muted: #8b8f97;
   --accent-green: #22c55e;
   --accent-red: #ef4444;
   --accent-blue: #3b82f6;
@@ -611,6 +613,24 @@ input, textarea, select {
 .accent-bar-purple { border-top: 2px solid var(--accent-purple) !important; }
 .accent-bar-yellow { border-top: 2px solid var(--accent-yellow) !important; }
 .accent-bar-orange { border-top: 2px solid var(--accent-orange) !important; }
+
+/* Focus-visible styles for keyboard accessibility */
+:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 1px;
+}
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible),
+[tabindex]:focus:not(:focus-visible) {
+  outline: none;
+}
+[role="tab"]:focus-visible,
+[role="button"]:focus-visible,
+[role="columnheader"]:focus-visible,
+[role="row"]:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: -1px;
+}
 
 /* Bloomberg-style inset shadow for depth */
 .widget-inset-shadow {

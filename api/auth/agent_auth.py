@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
-import threading
 import time
 from datetime import datetime, timezone
 from functools import wraps
@@ -30,13 +30,13 @@ logger = logging.getLogger(__name__)
 _REDACT_KEYS = {"password", "secret", "token", "apikey", "api_key", "authorization"}
 
 _rate_state: dict[int, list[float]] = {}
-_rate_lock = threading.Lock()
+_rate_lock = asyncio.Lock()
 
 
-def _check_rate_limit(token_id: int, limit_per_min: int) -> bool:
+async def _check_rate_limit(token_id: int, limit_per_min: int) -> bool:
     now = time.time()
     window_start = now - 60.0
-    with _rate_lock:
+    async with _rate_lock:
         bucket = [t for t in _rate_state.get(token_id, []) if t >= window_start]
         if len(bucket) >= max(1, int(limit_per_min)):
             _rate_state[token_id] = bucket
@@ -137,7 +137,7 @@ async def agent_required(
             },
         )
 
-    if not _check_rate_limit(row.id, token_data.rate_limit_per_min):
+    if not await _check_rate_limit(row.id, token_data.rate_limit_per_min):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail={

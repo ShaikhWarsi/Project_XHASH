@@ -42,38 +42,28 @@ function NumberInput({ label, value, onChange, step }: {
   )
 }
 
+function ResultCard({ result, loading, error }: { result: Record<string, unknown> | null; loading: boolean; error: string }) {
+  if (loading) return <div className="text-sm text-muted py-4">Calculating...</div>
+  if (error) return <div className="text-sm text-down py-4">{error}</div>
+  if (!result) return <div className="text-sm text-muted py-4">Enter values and calculate</div>
+  return (
+    <div className="space-y-1 text-sm max-h-96 overflow-y-auto">
+      {Object.entries(result).map(([k, v]) => (
+        <div key={k} className="flex justify-between py-1" style={{ borderBottom: '1px solid color-mix(in srgb, var(--border-color) 50%, transparent)' }}>
+          <span className="text-secondary capitalize">
+            {k.replace(/_/g, ' ')}
+          </span>
+          <span className="text-primary font-mono">
+            {typeof v === 'number' ? (Math.abs(v) > 1 ? v.toFixed(4) : v.toFixed(6)) : String(v)}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function CfaAnalytics() {
   const [tab, setTab] = useState<Tab>('wacc')
-  const [result, setResult] = useState<Record<string, unknown> | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-
-  const renderResult = () => {
-    if (loading) return <div className="text-sm text-muted py-4">Calculating...</div>
-    if (error) return <div className="text-sm text-down py-4">{error}</div>
-    if (!result) return <div className="text-sm text-muted py-4">Enter values and calculate</div>
-    return (
-      <div className="space-y-1 text-sm max-h-96 overflow-y-auto">
-        {Object.entries(result).map(([k, v]) => (
-          <div key={k} className="flex justify-between py-1" style={{ borderBottom: '1px solid color-mix(in srgb, var(--border-color) 50%, transparent)' }}>
-            <span className="text-secondary capitalize">
-              {k.replace(/_/g, ' ')}
-            </span>
-            <span className="text-primary font-mono">
-              {typeof v === 'number' ? (Math.abs(v) > 1 ? v.toFixed(4) : v.toFixed(6)) : String(v)}
-            </span>
-          </div>
-        ))}
-      </div>
-    )
-  }
-
-  const wrap = (fn: () => Promise<Record<string, unknown>>) => async () => {
-    setLoading(true); setError(''); setResult(null)
-    try { setResult(await fn()) }
-    catch (e: unknown) { setError((e as Error).message) }
-    setLoading(false)
-  }
 
   return (
     <div className="space-y-6">
@@ -85,7 +75,7 @@ export default function CfaAnalytics() {
         {TABS.map((t) => (
           <button
             key={t.key}
-            onClick={() => { setTab(t.key); setResult(null); setError('') }}
+            onClick={() => setTab(t.key)}
             className="px-3 py-1.5 rounded-md text-sm cursor-pointer"
             style={{
               background: tab === t.key ? 'color-mix(in srgb, var(--accent-blue) 15%, transparent)' : 'var(--bg-secondary)',
@@ -99,61 +89,19 @@ export default function CfaAnalytics() {
       </div>
 
       <Card title={TABS.find((t) => t.key === tab)?.label || ''}>
-        {tab === 'wacc' && <WaccForm onCalculate={wrap(cfa.calcWACC.bind(null, {
-          risk_free_rate: 0.04, market_risk_premium: 0.06, beta: 1.2,
-          cost_of_debt: 0.05, tax_rate: 0.21, market_value_equity: 1000000,
-          market_value_debt: 500000,
-        }))} />}
-        {tab === 'dcf' && <DcfForm onCalculate={wrap(() => cfa.calcDCF({
-          wacc_inputs: { risk_free_rate: 0.04, market_risk_premium: 0.06, beta: 1.2, cost_of_debt: 0.05, tax_rate: 0.21, market_value_equity: 1000000, market_value_debt: 500000 },
-          fcf_inputs: { year1: 50000, year2: 55000, year3: 60000, year4: 65000, year5: 70000 },
-          growth_rates: [0.1, 0.09, 0.08, 0.07, 0.06],
-          terminal_growth_rate: 0.03,
-          balance_sheet: { total_debt: 500000, cash: 200000 },
-          shares_outstanding: 1000000,
-        }))} />}
-        {tab === 'comps' && <CompsForm onCalculate={wrap(() => cfa.calcComps({
-          price: 150, shares_outstanding: 1000000, earnings: 500000,
-          ebitda: 800000, revenue: 2000000, book_value: 3000000,
-          debt: 500000, cash: 200000,
-        }))} />}
-        {tab === 'startup' && <StartupForm onCalculate={wrap(() => cfa.calcStartupBerkus({
-          idea_quality: 0.5, prototype: 0.5, team: 0.5,
-          strategic_relationships: 0.3, sales: 0.2, maximum_value: 5000000,
-        }))} />}
-        {tab === 'vc' && <VcForm onCalculate={wrap(() => cfa.calcStartupVC({
-          exit_value: 50000000, investment_amount: 5000000,
-          required_return_multiple: 10.0, dilution: 0.0,
-        }))} />}
-        {tab === 'bonds' && <BondsForm onCalculate={wrap(() => cfa.calcBondPrice({
-          ytm: 0.05, face_value: 1000, coupon_rate: 0.05,
-          years_to_maturity: 10, frequency: 2,
-        }))} />}
-        {tab === 'ytm' && <YtmForm onCalculate={wrap(() => cfa.calcBondYTM({
-          price: 950, face_value: 1000, coupon_rate: 0.05,
-          years_to_maturity: 10, frequency: 2,
-        }))} />}
-        {tab === 'options' && <OptionsForm onCalculate={wrap(() => cfa.calcOptionPrice({
-          spot_price: 100, strike_price: 105, time_to_expiry: 1,
-          risk_free_rate: 0.05, volatility: 0.2,
-        }))} />}
-        {tab === 'greeks' && <GreeksForm onCalculate={wrap(() => cfa.calcOptionGreeks({
-          spot_price: 100, strike_price: 105, time_to_expiry: 1,
-          risk_free_rate: 0.05, volatility: 0.2,
-        }))} />}
-        {tab === 'ratios' && <RatiosForm onCalculate={wrap(() => cfa.calcRatioAnalysis({
-          current_assets: 500000, current_liabilities: 200000,
-          total_assets: 1000000, total_liabilities: 600000,
-          total_equity: 400000, revenue: 800000, net_income: 100000,
-          ebit: 150000, interest_expense: 20000, cost_of_goods_sold: 400000,
-        }))} />}
-        {tab === 'dupont' && <DuPontForm onCalculate={wrap(() => cfa.calcDuPont({
-          net_income: 100000, revenue: 800000,
-          total_assets: 1000000, total_equity: 400000,
-        }))} />}
+        {tab === 'wacc' && <WaccForm />}
+        {tab === 'dcf' && <DcfForm />}
+        {tab === 'comps' && <CompsForm />}
+        {tab === 'startup' && <StartupForm />}
+        {tab === 'vc' && <VcForm />}
+        {tab === 'bonds' && <BondsForm />}
+        {tab === 'ytm' && <YtmForm />}
+        {tab === 'options' && <OptionsForm />}
+        {tab === 'greeks' && <GreeksForm />}
+        {tab === 'ratios' && <RatiosForm />}
+        {tab === 'dupont' && <DuPontForm />}
         {tab === 'precedent' && <PrecedentForm />}
         {tab === 'strategies' && <StrategiesForm />}
-        {tab !== 'precedent' && tab !== 'strategies' && renderResult()}
       </Card>
     </div>
   )
@@ -161,7 +109,7 @@ export default function CfaAnalytics() {
 
 /* ────────── DCF ────────── */
 
-function DcfForm({ onCalculate }: { onCalculate: () => void }) {
+function DcfForm() {
   const [fcf1, setFcf1] = useState(50000)
   const [fcf2, setFcf2] = useState(55000)
   const [fcf3, setFcf3] = useState(60000)
@@ -172,11 +120,26 @@ function DcfForm({ onCalculate }: { onCalculate: () => void }) {
   const [totalDebt, setTotalDebt] = useState(500000)
   const [cashEq, setCashEq] = useState(200000)
   const [shares, setShares] = useState(1000000)
+  const [result, setResult] = useState<Record<string, unknown> | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [calculated, setCalculated] = useState(false)
 
-  const handleCalc = () => {
+  const handleCalc = async () => {
     setCalculated(true)
-    onCalculate()
+    setLoading(true); setError(''); setResult(null)
+    try {
+      const res = await cfa.calcDCF({
+        wacc_inputs: { risk_free_rate: 0.04, market_risk_premium: 0.06, beta: 1.2, cost_of_debt: 0.05, tax_rate: 0.21, market_value_equity: 1000000, market_value_debt: 500000 },
+        fcf_inputs: { year1: fcf1, year2: fcf2, year3: fcf3, year4: fcf4, year5: fcf5 },
+        growth_rates: [0.1, 0.09, 0.08, 0.07, 0.06],
+        terminal_growth_rate: tg,
+        balance_sheet: { total_debt: totalDebt, cash: cashEq },
+        shares_outstanding: shares,
+      })
+      setResult(res)
+    } catch (e: unknown) { setError((e as Error).message) }
+    setLoading(false)
   }
 
   const fcf = [fcf1, fcf2, fcf3, fcf4, fcf5]
@@ -212,9 +175,11 @@ function DcfForm({ onCalculate }: { onCalculate: () => void }) {
         <NumberInput label="Cash & Equiv" value={cashEq} onChange={setCashEq} step={10000} />
         <NumberInput label="Shares Outstanding" value={shares} onChange={setShares} step={10000} />
       </div>
-      <button onClick={handleCalc} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate DCF</button>
+      <button onClick={handleCalc} disabled={loading} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate DCF</button>
 
-      {calculated && (
+      <ResultCard result={result} loading={loading} error={error} />
+
+      {calculated && result && (
         <div className="mt-4">
           <h4 className="text-sm font-bold text-primary mb-2">SENSITIVITY TABLE</h4>
           <p className="text-[10px] text-muted mb-2">Intrinsic value per share (WACC × Terminal Growth)</p>
@@ -261,7 +226,7 @@ function DcfForm({ onCalculate }: { onCalculate: () => void }) {
 
 /* ────────── WACC ────────── */
 
-function WaccForm({ onCalculate }: { onCalculate: () => void }) {
+function WaccForm() {
   const [rf, setRf] = useState(0.04)
   const [mrp, setMrp] = useState(0.06)
   const [beta, setBeta] = useState(1.2)
@@ -269,6 +234,17 @@ function WaccForm({ onCalculate }: { onCalculate: () => void }) {
   const [tax, setTax] = useState(0.21)
   const [mve, setMve] = useState(1000000)
   const [mvd, setMvd] = useState(500000)
+  const [result, setResult] = useState<Record<string, unknown> | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleCalc = async () => {
+    setLoading(true); setError(''); setResult(null)
+    try { setResult(await cfa.calcWACC({ risk_free_rate: rf, market_risk_premium: mrp, beta, cost_of_debt: cod, tax_rate: tax, market_value_equity: mve, market_value_debt: mvd })) }
+    catch (e: unknown) { setError((e as Error).message) }
+    setLoading(false)
+  }
+
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
@@ -280,14 +256,15 @@ function WaccForm({ onCalculate }: { onCalculate: () => void }) {
         <NumberInput label="Market Val Equity" value={mve} onChange={setMve} step={10000} />
         <NumberInput label="Market Val Debt" value={mvd} onChange={setMvd} step={10000} />
       </div>
-      <button onClick={onCalculate} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate WACC</button>
+      <button onClick={handleCalc} disabled={loading} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate WACC</button>
+      <ResultCard result={result} loading={loading} error={error} />
     </div>
   )
 }
 
 /* ────────── COMPS ────────── */
 
-function CompsForm({ onCalculate }: { onCalculate: () => void }) {
+function CompsForm() {
   const [price, setPrice] = useState(150)
   const [shares, setShares] = useState(1000000)
   const [earnings, setEarnings] = useState(500000)
@@ -296,6 +273,9 @@ function CompsForm({ onCalculate }: { onCalculate: () => void }) {
   const [bv, setBv] = useState(3000000)
   const [debt, setDebt] = useState(500000)
   const [cash, setCash] = useState(200000)
+  const [result, setResult] = useState<Record<string, unknown> | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const [tickerInput, setTickerInput] = useState('AAPL,MSFT,GOOGL')
   const [compsData, setCompsData] = useState<any[] | null>(null)
@@ -317,6 +297,13 @@ function CompsForm({ onCalculate }: { onCalculate: () => void }) {
     }
   }
 
+  const handleCalc = async () => {
+    setLoading(true); setError(''); setResult(null)
+    try { setResult(await cfa.calcComps({ price, shares_outstanding: shares, earnings, ebitda, revenue, book_value: bv, debt, cash })) }
+    catch (e: unknown) { setError((e as Error).message) }
+    setLoading(false)
+  }
+
   const medianEVEBITDA = compsData && compsData.length > 0
     ? compsData.map((c) => c.ev_ebitda).filter((v) => v != null && isFinite(v)).sort((a: number, b: number) => a - b)[Math.floor(compsData.filter((c) => c.ev_ebitda != null && isFinite(c.ev_ebitda)).length / 2)]
     : null
@@ -336,7 +323,8 @@ function CompsForm({ onCalculate }: { onCalculate: () => void }) {
         <NumberInput label="Total Debt" value={debt} onChange={setDebt} step={10000} />
         <NumberInput label="Cash" value={cash} onChange={setCash} step={10000} />
       </div>
-      <button onClick={onCalculate} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate Comps</button>
+      <button onClick={handleCalc} disabled={loading} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate Comps</button>
+      <ResultCard result={result} loading={loading} error={error} />
 
       <div className="border-t border-default pt-3 mt-4">
         <h4 className="text-sm font-bold text-primary mb-2">COMPARABLES</h4>
@@ -401,13 +389,24 @@ function CompsForm({ onCalculate }: { onCalculate: () => void }) {
 
 /* ────────── STARTUP ────────── */
 
-function StartupForm({ onCalculate }: { onCalculate: () => void }) {
+function StartupForm() {
   const [idea, setIdea] = useState(0.5)
   const [proto, setProto] = useState(0.5)
   const [team, setTeam] = useState(0.5)
   const [rels, setRels] = useState(0.3)
   const [sales, setSales] = useState(0.2)
   const [maxVal, setMaxVal] = useState(5000000)
+  const [result, setResult] = useState<Record<string, unknown> | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleCalc = async () => {
+    setLoading(true); setError(''); setResult(null)
+    try { setResult(await cfa.calcStartupBerkus({ idea_quality: idea, prototype: proto, team, strategic_relationships: rels, sales, maximum_value: maxVal })) }
+    catch (e: unknown) { setError((e as Error).message) }
+    setLoading(false)
+  }
+
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted">
@@ -421,18 +420,30 @@ function StartupForm({ onCalculate }: { onCalculate: () => void }) {
         <NumberInput label="Sales Traction" value={sales} onChange={setSales} />
         <NumberInput label="Max Value ($)" value={maxVal} onChange={setMaxVal} step={100000} />
       </div>
-      <button onClick={onCalculate} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate Berkus</button>
+      <button onClick={handleCalc} disabled={loading} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate Berkus</button>
+      <ResultCard result={result} loading={loading} error={error} />
     </div>
   )
 }
 
 /* ────────── VC ────────── */
 
-function VcForm({ onCalculate }: { onCalculate: () => void }) {
+function VcForm() {
   const [tv, setTv] = useState(50000000)
   const [inv, setInv] = useState(5000000)
   const [exit, setExit] = useState(5)
   const [target, setTarget] = useState(0.3)
+  const [result, setResult] = useState<Record<string, unknown> | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleCalc = async () => {
+    setLoading(true); setError(''); setResult(null)
+    try { setResult(await cfa.calcStartupVC({ exit_value: tv, investment_amount: inv, required_return_multiple: target, dilution: 0 })) }
+    catch (e: unknown) { setError((e as Error).message) }
+    setLoading(false)
+  }
+
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted">
@@ -444,22 +455,33 @@ function VcForm({ onCalculate }: { onCalculate: () => void }) {
         <NumberInput label="Exit Year" value={exit} onChange={setExit} />
         <NumberInput label="Target Return" value={target} onChange={setTarget} />
       </div>
-      <button onClick={onCalculate} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate VC Method</button>
+      <button onClick={handleCalc} disabled={loading} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate VC Method</button>
+      <ResultCard result={result} loading={loading} error={error} />
     </div>
   )
 }
 
 /* ────────── BONDS ────────── */
 
-function BondsForm({ onCalculate }: { onCalculate: () => void }) {
+function BondsForm() {
   const [ytm, setYtm] = useState(0.05)
   const [face, setFace] = useState(1000)
   const [coupon, setCoupon] = useState(0.05)
   const [years, setYears] = useState(10)
   const [freq, setFreq] = useState(2)
+  const [result, setResult] = useState<Record<string, unknown> | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [durationResult, setDurationResult] = useState<{
     macaulay: number; modified: number; convexity: number
   } | null>(null)
+
+  const handleCalc = async () => {
+    setLoading(true); setError(''); setResult(null)
+    try { setResult(await cfa.calcBondPrice({ ytm, face_value: face, coupon_rate: coupon, years_to_maturity: years, frequency: freq })) }
+    catch (e: unknown) { setError((e as Error).message) }
+    setLoading(false)
+  }
 
   const calcDuration = () => {
     const n = years * freq
@@ -502,9 +524,10 @@ function BondsForm({ onCalculate }: { onCalculate: () => void }) {
         <NumberInput label="Frequency" value={freq} onChange={setFreq} />
       </div>
       <div className="flex gap-2">
-        <button onClick={onCalculate} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate Bond Price</button>
+        <button onClick={handleCalc} disabled={loading} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate Bond Price</button>
         <button onClick={calcDuration} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-cyan)] text-black border-none cursor-pointer">Calculate Duration</button>
       </div>
+      <ResultCard result={result} loading={loading} error={error} />
 
       {durationResult && (
         <div className="border-t border-default pt-3 mt-2">
@@ -536,12 +559,23 @@ function BondsForm({ onCalculate }: { onCalculate: () => void }) {
 
 /* ────────── YTM ────────── */
 
-function YtmForm({ onCalculate }: { onCalculate: () => void }) {
+function YtmForm() {
   const [price, setPrice] = useState(950)
   const [face, setFace] = useState(1000)
   const [coupon, setCoupon] = useState(0.05)
   const [years, setYears] = useState(10)
   const [freq, setFreq] = useState(2)
+  const [result, setResult] = useState<Record<string, unknown> | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleCalc = async () => {
+    setLoading(true); setError(''); setResult(null)
+    try { setResult(await cfa.calcBondYTM({ price, face_value: face, coupon_rate: coupon, years_to_maturity: years, frequency: freq })) }
+    catch (e: unknown) { setError((e as Error).message) }
+    setLoading(false)
+  }
+
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted">
@@ -554,19 +588,31 @@ function YtmForm({ onCalculate }: { onCalculate: () => void }) {
         <NumberInput label="Years to Mat" value={years} onChange={setYears} />
         <NumberInput label="Frequency" value={freq} onChange={setFreq} />
       </div>
-      <button onClick={onCalculate} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate YTM</button>
+      <button onClick={handleCalc} disabled={loading} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate YTM</button>
+      <ResultCard result={result} loading={loading} error={error} />
     </div>
   )
 }
 
 /* ────────── OPTIONS ────────── */
 
-function OptionsForm({ onCalculate }: { onCalculate: () => void }) {
+function OptionsForm() {
   const [spot, setSpot] = useState(100)
   const [strike, setStrike] = useState(105)
   const [expiry, setExpiry] = useState(1)
   const [rf, setRf] = useState(0.05)
   const [vol, setVol] = useState(0.2)
+  const [result, setResult] = useState<Record<string, unknown> | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleCalc = async () => {
+    setLoading(true); setError(''); setResult(null)
+    try { setResult(await cfa.calcOptionPrice({ spot_price: spot, strike_price: strike, time_to_expiry: expiry, risk_free_rate: rf, volatility: vol })) }
+    catch (e: unknown) { setError((e as Error).message) }
+    setLoading(false)
+  }
+
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted">
@@ -579,19 +625,31 @@ function OptionsForm({ onCalculate }: { onCalculate: () => void }) {
         <NumberInput label="Risk Free Rate" value={rf} onChange={setRf} />
         <NumberInput label="Volatility" value={vol} onChange={setVol} />
       </div>
-      <button onClick={onCalculate} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate Option Price</button>
+      <button onClick={handleCalc} disabled={loading} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate Option Price</button>
+      <ResultCard result={result} loading={loading} error={error} />
     </div>
   )
 }
 
 /* ────────── GREEKS ────────── */
 
-function GreeksForm({ onCalculate }: { onCalculate: () => void }) {
+function GreeksForm() {
   const [spot, setSpot] = useState(100)
   const [strike, setStrike] = useState(105)
   const [expiry, setExpiry] = useState(1)
   const [rf, setRf] = useState(0.05)
   const [vol, setVol] = useState(0.2)
+  const [result, setResult] = useState<Record<string, unknown> | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleCalc = async () => {
+    setLoading(true); setError(''); setResult(null)
+    try { setResult(await cfa.calcOptionGreeks({ spot_price: spot, strike_price: strike, time_to_expiry: expiry, risk_free_rate: rf, volatility: vol })) }
+    catch (e: unknown) { setError((e as Error).message) }
+    setLoading(false)
+  }
+
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted">
@@ -604,23 +662,30 @@ function GreeksForm({ onCalculate }: { onCalculate: () => void }) {
         <NumberInput label="Risk Free Rate" value={rf} onChange={setRf} />
         <NumberInput label="Volatility" value={vol} onChange={setVol} />
       </div>
-      <button onClick={onCalculate} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate Greeks</button>
+      <button onClick={handleCalc} disabled={loading} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate Greeks</button>
+      <ResultCard result={result} loading={loading} error={error} />
     </div>
   )
 }
 
 /* ────────── DuPONT ────────── */
 
-function DuPontForm({ onCalculate }: { onCalculate: () => void }) {
+function DuPontForm() {
   const [ni, setNi] = useState(100000)
   const [rev, setRev] = useState(800000)
   const [ta, setTa] = useState(1000000)
   const [te, setTe] = useState(400000)
+  const [result, setResult] = useState<Record<string, unknown> | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [showViz, setShowViz] = useState(false)
 
-  const handleCalc = () => {
+  const handleCalc = async () => {
     setShowViz(true)
-    onCalculate()
+    setLoading(true); setError(''); setResult(null)
+    try { setResult(await cfa.calcDuPont({ net_income: ni, revenue: rev, total_assets: ta, total_equity: te })) }
+    catch (e: unknown) { setError((e as Error).message) }
+    setLoading(false)
   }
 
   const netMargin = ni / rev
@@ -640,9 +705,10 @@ function DuPontForm({ onCalculate }: { onCalculate: () => void }) {
         <NumberInput label="Total Assets" value={ta} onChange={setTa} step={10000} />
         <NumberInput label="Total Equity" value={te} onChange={setTe} step={10000} />
       </div>
-      <button onClick={handleCalc} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate DuPont</button>
+      <button onClick={handleCalc} disabled={loading} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate DuPont</button>
+      <ResultCard result={result} loading={loading} error={error} />
 
-      {showViz && (
+      {showViz && result && (
         <div className="border-t border-default pt-3 mt-2">
           <h4 className="text-sm font-bold text-primary mb-2">DuPont Decomposition</h4>
           <div className="mb-3">
@@ -700,7 +766,7 @@ function DuPontForm({ onCalculate }: { onCalculate: () => void }) {
 
 /* ────────── RATIOS ────────── */
 
-function RatiosForm({ onCalculate }: { onCalculate: () => void }) {
+function RatiosForm() {
   const [ca, setCa] = useState(500000)
   const [cl, setCl] = useState(200000)
   const [ta, setTa] = useState(1000000)
@@ -711,6 +777,17 @@ function RatiosForm({ onCalculate }: { onCalculate: () => void }) {
   const [ebit, setEbit] = useState(150000)
   const [ie, setIe] = useState(20000)
   const [cogs, setCogs] = useState(400000)
+  const [result, setResult] = useState<Record<string, unknown> | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleCalc = async () => {
+    setLoading(true); setError(''); setResult(null)
+    try { setResult(await cfa.calcRatioAnalysis({ current_assets: ca, current_liabilities: cl, total_assets: ta, total_liabilities: tl, total_equity: te, revenue: rev, net_income: ni, ebit, interest_expense: ie, cost_of_goods_sold: cogs })) }
+    catch (e: unknown) { setError((e as Error).message) }
+    setLoading(false)
+  }
+
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted">
@@ -728,7 +805,8 @@ function RatiosForm({ onCalculate }: { onCalculate: () => void }) {
         <NumberInput label="Interest Exp" value={ie} onChange={setIe} step={1000} />
         <NumberInput label="COGS" value={cogs} onChange={setCogs} step={10000} />
       </div>
-      <button onClick={onCalculate} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate Ratios</button>
+      <button onClick={handleCalc} disabled={loading} className="px-4 py-2 rounded-md text-sm font-medium bg-[var(--accent-blue)] text-white border-none cursor-pointer">Calculate Ratios</button>
+      <ResultCard result={result} loading={loading} error={error} />
     </div>
   )
 }

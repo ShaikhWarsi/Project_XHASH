@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 
 interface Agent {
   id: string
@@ -17,19 +18,28 @@ interface AgentState {
   setAgents: (agents: Agent[]) => void
 }
 
-export const useAgentStore = create<AgentState>((set) => ({
-  agents: [],
-  loading: false,
-  error: null,
-  load: async () => {
-    set({ loading: true, error: null })
-    try {
-      const res = await fetch('/api/agents')
-      const data = await res.json()
-      set({ agents: data.agents || [], loading: false })
-    } catch (err: any) {
-      set({ error: err.message, loading: false })
-    }
-  },
-  setAgents: (agents) => set({ agents }),
-}))
+export const useAgentStore = create<AgentState>()(
+  persist(
+    (set) => ({
+      agents: [],
+      loading: false,
+      error: null,
+      load: async () => {
+        set({ loading: true, error: null })
+        try {
+          const res = await fetch('/api/agents')
+          const data = await res.json()
+          set({ agents: data.agents || [], loading: false })
+        } catch (err: any) {
+          set({ error: err.message, loading: false })
+        }
+      },
+      setAgents: (agents) => set({ agents }),
+    }),
+    {
+      name: 'te-agents-storage',
+      version: 1,
+      migrate: (state: unknown) => state as Partial<AgentState>,
+    },
+  ),
+)

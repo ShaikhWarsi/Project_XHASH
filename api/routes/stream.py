@@ -20,6 +20,7 @@ _price_cache: dict[str, tuple[float, float]] = {}  # symbol -> (price, timestamp
 _price_cache_ttl = 30.0
 
 
+_yf_backoff: dict[str, float] = {}
 async def _refresh_data():
     """Batch-refresh portfolio prices using a single yfinance download call, with caching."""
     try:
@@ -30,6 +31,9 @@ async def _refresh_data():
         now = time.time()
         symbols_to_fetch = [s for s in symbols if s not in _price_cache or now - _price_cache[s][1] > _price_cache_ttl]
         if symbols_to_fetch:
+            backoff_expired = [s for s in symbols_to_fetch if s not in _yf_backoff or now - _yf_backoff[s] > 30]
+            if not backoff_expired:
+                return
             try:
                 df = await asyncio.to_thread(
                     lambda: yf.download(" ".join(symbols_to_fetch), period="1d", group_by="ticker", progress=False)
@@ -38,9 +42,10 @@ async def _refresh_data():
                 logger.warning("yfinance download failed for %s, deferring until cache expiry", symbols_to_fetch)
                 for sym in symbols_to_fetch:
                     _price_cache[sym] = (_price_cache.get(sym, (0, 0))[0], now)
+                    _yf_backoff[sym] = now
                 df = pd.DataFrame()
             if not df.empty:
-                for sym in symbols_to_fetch:
+                for sym in backoff_expired:
                     try:
                         if isinstance(df.columns, pd.MultiIndex) and sym in df.columns.levels[0]:
                             price = float(df[sym]["Close"].iloc[-1])

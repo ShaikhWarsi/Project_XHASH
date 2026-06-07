@@ -1,11 +1,36 @@
 from __future__ import annotations
 
+import logging
+import os
+import threading
+import time
 from typing import Optional
 
 import pandas as pd
 
 from agents.base import TradingAgent
 from core.types import AnalystSignal, PortfolioState, RiskLimits, SignalMatrix
+
+logger = logging.getLogger(__name__)
+
+_llm_semaphore = threading.Semaphore(int(os.environ.get("LLM_SEMAPHORE_SIZE", "4")))
+
+# ── LLM Budget ──────────────────────────────────────────────
+_LLM_DAILY_BUDGET = int(os.environ.get("LLM_DAILY_BUDGET", "200"))
+_llm_calls_today: list[float] = []
+_llm_budget_lock = threading.Lock()
+
+def _consume_llm_budget(calls: int = 1) -> bool:
+    """Returns True if budget remains, False if exhausted."""
+    now = time.time()
+    with _llm_budget_lock:
+        global _llm_calls_today
+        _llm_calls_today = [t for t in _llm_calls_today if now - t < 86400]
+        if len(_llm_calls_today) + calls > _LLM_DAILY_BUDGET:
+            return False
+        for _ in range(calls):
+            _llm_calls_today.append(now)
+    return True
 
 
 class HedgeFundOrchestrator:
@@ -16,10 +41,14 @@ class HedgeFundOrchestrator:
         persona_agents: list[TradingAgent],
         max_workers: int = 4,
         consensus_threshold: float = 0.15,
+        wall_time_budget: float = 60.0,
+        max_context_tokens: int = 32000,
     ):
         self.persona_agents = persona_agents
         self.max_workers = max_workers
         self.consensus_threshold = consensus_threshold
+        self.wall_time_budget = wall_time_budget
+        self.max_context_tokens = max_context_tokens
 
     def deliberate(
         self,
@@ -29,35 +58,58 @@ class HedgeFundOrchestrator:
         risk_limits: Optional[RiskLimits] = None,
         prices_df: Optional[dict[str, pd.DataFrame]] = None,
     ) -> dict[str, dict]:
-        """Run deliberation across all persona agents.
-
-        Returns per-ticker consensus with individual breakdowns.
-        """
         if risk_limits is None:
             risk_limits = RiskLimits()
 
+        start_time = time.time()
         all_signals: dict[str, dict[str, AnalystSignal]] = {}
 
         for agent in self.persona_agents:
-            try:
-                all_signals[agent.agent_id] = agent.analyze(
-                    tickers=tickers,
-                    portfolio=portfolio,
-                    signals=signals,
-                    risk_limits=risk_limits,
-                    prices_df=prices_df or {},
-                )
-            except Exception as e:
-                all_signals[agent.agent_id] = {
-                    t: AnalystSignal(
-                        agent=agent.agent_id,
-                        ticker=t,
-                        signal="neutral",
-                        confidence=0.0,
-                        reasoning=f"error: {e}",
+            elapsed = time.time() - start_time
+            if elapsed > self.wall_time_budget:
+                logger.warning("Wall time budget (%.1fs) exceeded — stopping after %s", self.wall_time_budget, agent.agent_id)
+                for t in tickers:
+                    sigs = all_signals.get(agent.agent_id, {})
+                    sigs[t] = AnalystSignal(
+                        agent=agent.agent_id, ticker=t,
+                        signal="neutral", confidence=0.0,
+                        reasoning="wall_time_budget_exceeded",
                     )
-                    for t in tickers
-                }
+                    all_signals[agent.agent_id] = sigs
+                continue
+
+            with _llm_semaphore:
+                try:
+                    budget_ok = _consume_llm_budget(calls=1)
+                    if not budget_ok:
+                        logger.warning("LLM daily budget exhausted — using fallback for %s", agent.agent_id)
+                        for t in tickers:
+                            s = all_signals.get(agent.agent_id, {})
+                            s[t] = AnalystSignal(
+                                agent=agent.agent_id, ticker=t,
+                                signal="neutral", confidence=0.0,
+                                reasoning="LLM budget exhausted — fallback",
+                            )
+                            all_signals[agent.agent_id] = s
+                        continue
+                    all_signals[agent.agent_id] = agent.analyze(
+                        tickers=tickers,
+                        portfolio=portfolio,
+                        signals=signals,
+                        risk_limits=risk_limits,
+                        prices_df=prices_df or {},
+                    )
+                except Exception as e:
+                    all_signals[agent.agent_id] = {
+                        t: AnalystSignal(
+                            agent=agent.agent_id,
+                            ticker=t,
+                            signal="neutral",
+                            confidence=0.0,
+                            reasoning=f"error: {e}",
+                        )
+                        for t in tickers
+                    }
 
         return self._build_consensus(tickers, all_signals)
 
