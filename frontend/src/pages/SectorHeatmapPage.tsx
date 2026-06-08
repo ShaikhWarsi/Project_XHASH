@@ -1,20 +1,53 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Card from '../components/ui/Card'
 import SectorAllocationChart from '../components/SectorAllocationChart'
-const MOCK_SECTORS = [
-  { name: 'Technology', exposure: 35, color: '#3b82f6', children: [{ name: 'Semiconductors', exposure: 12, color: '#60a5fa' }, { name: 'Software', exposure: 15, color: '#93c5fd' }, { name: 'Hardware', exposure: 8, color: '#bfdbfe' }] },
-  { name: 'Healthcare', exposure: 18, color: '#22c55e', children: [{ name: 'Pharma', exposure: 8, color: '#4ade80' }, { name: 'MedTech', exposure: 6, color: '#86efac' }, { name: 'Biotech', exposure: 4, color: '#bbf7d0' }] },
-  { name: 'Financials', exposure: 15, color: '#eab308', children: [{ name: 'Banks', exposure: 7, color: '#facc15' }, { name: 'Insurance', exposure: 5, color: '#fde047' }, { name: 'FinTech', exposure: 3, color: '#fef08a' }] },
-  { name: 'Energy', exposure: 12, color: '#f97316' },
-  { name: 'Consumer', exposure: 10, color: '#a855f7' },
-  { name: 'Real Estate', exposure: 6, color: '#ec4899' },
-  { name: 'Materials', exposure: 4, color: '#14b8a6' },
-]
+
+interface SectorData {
+  name: string
+  etf: string
+  change: number
+  color: string
+}
+
 export default function SectorHeatmapPage() {
+  const [sectors, setSectors] = useState<SectorData[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/calendar/sectors')
+      .then(r => r.json())
+      .then(data => { setSectors(Array.isArray(data) ? data : []); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  const chartData = sectors.map(s => ({
+    name: s.name,
+    exposure: Math.abs(s.change),
+    color: s.change >= 0 ? '#22c55e' : '#ef4444',
+    children: [],
+  }))
+
   return (
     <div className="flex flex-col gap-1.5">
       <Card title="SECTOR HEATMAP">
-        <SectorAllocationChart sectors={MOCK_SECTORS} size={400} />
+        {loading ? (
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 10 }}>Loading sectors...</div>
+        ) : (
+          <div style={{ padding: 12 }}>
+            <SectorAllocationChart sectors={chartData} size={400} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 6, marginTop: 12 }}>
+              {sectors.map(s => (
+                <div key={s.name} style={{ background: 'var(--bg-card, #151c23)', border: '1px solid var(--border-color, #1a2332)', borderRadius: 4, padding: 8 }}>
+                  <div style={{ color: 'var(--text-primary)', fontSize: 9, fontWeight: 600 }}>{s.name}</div>
+                  <div style={{ color: s.change >= 0 ? 'var(--accent-green)' : 'var(--accent-red)', fontSize: 11, fontWeight: 700, fontFamily: 'JetBrains Mono, monospace' }}>
+                    {s.change >= 0 ? '+' : ''}{s.change}%
+                  </div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: 7 }}>{s.etf}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   )

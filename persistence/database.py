@@ -50,6 +50,29 @@ def _run_alembic_upgrade(db_url: str):
         logger.exception("alembic stamp(head) failed")
 
 
+def _migrate_existing_tables(conn):
+    """Add missing columns to tables that were already created before a schema update."""
+    import sqlalchemy as sa
+    from sqlalchemy import inspect
+    try:
+        inspector = inspect(conn)
+        columns = {c["name"] for c in inspector.get_columns("tradingagents_runs")}
+    except Exception:
+        return  # table doesn't exist yet, nothing to migrate
+    sqlite_types = {
+        "current_stage": "VARCHAR(50)",
+        "current_node": "VARCHAR(100)",
+        "tool_call_count": "INTEGER DEFAULT 0",
+        "elapsed_ms": "INTEGER",
+        "cancel_requested": "INTEGER DEFAULT 0",
+        "error_detail": "TEXT",
+    }
+    for name, col_type in sqlite_types.items():
+        if name not in columns:
+            conn.execute(sa.text(f"ALTER TABLE tradingagents_runs ADD COLUMN {name} {col_type}"))
+            logger.info("Added missing column tradingagents_runs.%s", name)
+
+
 async def init_db(db_url: Optional[str] = None):
     global _engine, _session_factory, _init_done
     print("DB_DEBUG: init_db called", flush=True)
@@ -65,6 +88,8 @@ async def init_db(db_url: Optional[str] = None):
     from .models import Base
     async with _engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Add missing columns for existing tables (SQLite doesn't auto-alter)
+        await conn.run_sync(_migrate_existing_tables)
     print("DB_DEBUG: create_all done", flush=True)
     _init_done = True
     logger.info(f"Database initialized: {url}")

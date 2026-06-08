@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import Plotly from 'plotly.js-dist-min'
+import * as Plotly from 'plotly.js-dist-min'
 import { fetchOHLCV } from '../api/client'
 import type { BarData } from '../api/types'
 

@@ -10,6 +10,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { api } from '../api/client'
+import { useToastStore } from '../store/toast'
 
 
 type PipelineNodeData = {

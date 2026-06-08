@@ -1,29 +1,37 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Card from '../components/ui/Card'
+import { fetchOHLCV } from '../api/client'
+import type { BarData } from '../api/types'
 
 const TYPES = ['Renko', 'Kagi', 'Range', 'Point & Figure', 'Heikin-Ashi', 'Three-Line Break', 'Market Profile']
 
 export default function AlternativeChartsPage() {
   const [selected, setSelected] = useState('Renko')
+  const [symbol, setSymbol] = useState('SPY')
+  const [bars, setBars] = useState<BarData[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const mockCandles = useMemo(() => {
-    const candles: { time: string; o: number; h: number; l: number; c: number; v: number }[] = []
-    let price = 100
-    for (let i = 0; i < 100; i++) {
-      const change = (Math.random() - 0.48) * 4
-      const o = price; const c = price + change; const h = Math.max(o, c) + Math.random() * 2; const l = Math.min(o, c) - Math.random() * 2
-      candles.push({ time: `2025-${String(Math.floor(i / 22) + 1).padStart(2, '0')}-${String((i % 22) + 1).padStart(2, '0')}`, o, h, l, c, v: Math.floor(Math.random() * 1000000 + 500000) })
-      price = c
-    }
-    return candles
-  }, [])
+  useEffect(() => {
+    setLoading(true)
+    fetchOHLCV(symbol, '1d', '6mo')
+      .then(data => { setBars(data || []); setLoading(false) })
+      .catch(() => { setBars([]); setLoading(false) })
+  }, [symbol])
+
+  const realCandles = useMemo(() => {
+    return bars.map(b => ({
+      time: new Date(b.time * 1000).toISOString().split('T')[0],
+      o: b.open, h: b.high, l: b.low, c: b.close, v: b.volume ?? 0,
+    }))
+  }, [bars])
 
   const altData = useMemo(() => {
+    if (!realCandles.length) return []
     switch (selected) {
-      case 'Renko': return mockCandles.map((c, i) => ({ x: i + 1, y: Math.round(c.c / 2) * 2, color: c.c >= c.o ? '#22c55e' : '#ef4444' }))
+      case 'Renko': return realCandles.map((c, i) => ({ x: i + 1, y: Math.round(c.c / 2) * 2, color: c.c >= c.o ? '#22c55e' : '#ef4444' }))
       case 'Heikin-Ashi': {
-        let haOpen = mockCandles[0]?.o ?? 100
-        return mockCandles.map((c) => {
+        let haOpen = realCandles[0]?.o ?? 100
+        return realCandles.map((c) => {
           const haClose = (c.o + c.h + c.l + c.c) / 4
           const haHigh = Math.max(c.h, haOpen, haClose)
           const haLow = Math.min(c.l, haOpen, haClose)
@@ -33,9 +41,9 @@ export default function AlternativeChartsPage() {
         })
       }
       case 'Kagi': {
-        let trend: 'yang' | 'yin' = 'yang'; let current = mockCandles[0]?.c ?? 100
+        let trend: 'yang' | 'yin' = 'yang'; let current = realCandles[0]?.c ?? 100
         const reversal = 3; const lines: { price: number; yang: boolean }[] = [{ price: current, yang: true }]
-        for (const c of mockCandles) {
+        for (const c of realCandles) {
           const diff = c.c - current
           if (trend === 'yang' && diff < -reversal) { trend = 'yin'; lines.push({ price: c.c, yang: false }) }
           else if (trend === 'yin' && diff > reversal) { trend = 'yang'; lines.push({ price: c.c, yang: true }) }
@@ -44,33 +52,44 @@ export default function AlternativeChartsPage() {
         return lines
       }
       case 'Market Profile': {
+        const min = Math.min(...realCandles.map(c => c.l))
+        const max = Math.max(...realCandles.map(c => c.h))
+        const step = (max - min) / 20
         const buckets: { price: number; tpo: string[] }[] = []
         for (let i = 0; i < 20; i++) {
-                  const base = 95 + i * 0.5
+          const base = min + i * step
           const tpoLetters: string[] = []
-          for (const c of mockCandles) { if (c.h >= base && c.l <= base + 0.5) tpoLetters.push(String.fromCharCode(65 + (Math.floor((mockCandles.indexOf(c)) / 4) % 26))) }
+          for (let j = 0; j < realCandles.length; j++) {
+            const c = realCandles[j]
+            if (c.h >= base && c.l <= base + step) tpoLetters.push(String.fromCharCode(65 + (Math.floor(j / 4) % 26)))
+          }
           buckets.push({ price: base, tpo: tpoLetters })
         }
         return buckets
       }
       default: return []
     }
-  }, [selected, mockCandles])
+  }, [selected, realCandles])
 
   return (
     <div className="flex flex-col gap-1.5">
       <Card title="ALTERNATIVE CHART TYPES">
-        <div className="flex flex-wrap gap-1 mb-2">
-          {TYPES.map(t => (
-            <button key={t} onClick={() => setSelected(t)}
-              className="text-[9px] font-mono-data px-2 py-0.5 cursor-pointer rounded-sm border transition-colors"
-              style={{ background: selected === t ? 'var(--accent-blue)' : 'var(--bg-card)', color: selected === t ? '#fff' : 'var(--text-primary)', borderColor: 'var(--border-color)' }}>
-              {t}
-            </button>
-          ))}
+        <div className="flex items-center gap-2 mb-2">
+          <input value={symbol} onChange={e => setSymbol(e.target.value.toUpperCase())}
+            onKeyDown={e => e.key === 'Enter' && setSymbol(e.target.value.toUpperCase())}
+            className="bg-secondary border border-default rounded px-2 py-1 text-[10px] font-mono-data text-primary w-24" placeholder="Symbol" />
+          <div className="flex flex-wrap gap-1">
+            {TYPES.map(t => (
+              <button key={t} onClick={() => setSelected(t)}
+                className="text-[9px] font-mono-data px-2 py-0.5 cursor-pointer rounded-sm border transition-colors"
+                style={{ background: selected === t ? 'var(--accent-blue)' : 'var(--bg-card)', color: selected === t ? '#fff' : 'var(--text-primary)', borderColor: 'var(--border-color)' }}>
+                {t}
+              </button>
+            ))}
+          </div>
+          {loading && <span className="text-[9px] text-muted animate-pulse ml-auto">Loading {symbol}...</span>}
         </div>
 
-        {/* Render area */}
         <div className="relative overflow-auto" style={{ height: 450, background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 4 }}>
           {selected === 'Renko' && (
             <svg width="100%" height={400} viewBox="0 0 500 400" preserveAspectRatio="xMidYMid meet" className="p-2">
@@ -115,8 +134,11 @@ export default function AlternativeChartsPage() {
           )}
           {(['Range', 'Point & Figure', 'Three-Line Break'] as const).includes(selected as any) && (
             <div className="flex items-center justify-center h-full text-[10px] font-mono-data text-muted">
-              [{selected} — render from AlternativeChartEngine.ts]
+              [{selected} chart — {realCandles.length} real bars loaded from {symbol}]
             </div>
+          )}
+          {realCandles.length === 0 && !loading && (
+            <div className="flex items-center justify-center h-full text-[10px] font-mono-data text-muted">No data available for {symbol}</div>
           )}
         </div>
       </Card>

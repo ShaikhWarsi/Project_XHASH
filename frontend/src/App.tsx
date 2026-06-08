@@ -116,6 +116,9 @@ const AIRiskReport = lazy(() => import('./pages/AIRiskReport'))
 const ReasoningTrace = lazy(() => import('./pages/ReasoningTrace'))
 const DisagreementDetector = lazy(() => import('./pages/DisagreementDetector'))
 const MultiAgentAnalysis = lazy(() => import('./pages/MultiAgentAnalysis'))
+const IndicatorMarketplace = lazy(() => import('./pages/IndicatorMarketplace'))
+const StrategyMarketplace = lazy(() => import('./pages/StrategyMarketplace'))
+const LayoutMarketplace = lazy(() => import('./pages/LayoutMarketplace'))
 const MonteCarlo = lazy(() => import('./pages/MonteCarlo'))
 const WalkForward = lazy(() => import('./pages/WalkForward'))
 const ScenarioAnalysis = lazy(() => import('./pages/ScenarioAnalysis'))
@@ -218,6 +221,9 @@ export default function App() {
                   <Route path="/settings/infrastructure" element={<LazyPage><Infrastructure /></LazyPage>} />
                   <Route path="/settings/audit-log" element={<LazyPage><AuditLogPage /></LazyPage>} />
                   <Route path="/settings/bots" element={<LazyPage><BotsPage /></LazyPage>} />
+                  <Route path="/settings/indicators" element={<LazyPage><IndicatorMarketplace /></LazyPage>} />
+                  <Route path="/settings/strategies" element={<LazyPage><StrategyMarketplace /></LazyPage>} />
+                  <Route path="/settings/layouts" element={<LazyPage><LayoutMarketplace /></LazyPage>} />
                   <Route path="/markets/options" element={<LazyPage><OptionsChainPage /></LazyPage>} />
                   <Route path="/markets/calendar" element={<LazyPage><MarketsCalendarPage /></LazyPage>} />
                   <Route path="/markets/event-calendar" element={<LazyPage><EventCalendarPage /></LazyPage>} />

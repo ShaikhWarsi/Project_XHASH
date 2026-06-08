@@ -14,9 +14,10 @@ interface StreamSignal {
 }
 
 interface StreamEvent {
-  signals: StreamSignal[]
+  signals: StreamSignal[] | Record<string, StreamSignal[]>
   composite_score: number
-  regime: string
+  composite_scores?: Record<string, number>
+  regime: string | { primary: string; confidence: number } | null
   timestamp: string
 }
 
@@ -79,8 +80,39 @@ export default function SignalsStream() {
   }, [filterSymbol, filterEngine])
 
   const latestEvent = events[0]
+
+  const flattenSignals = (signals: StreamSignal[] | Record<string, StreamSignal[]> | undefined): StreamSignal[] => {
+    if (!signals) return []
+    if (Array.isArray(signals)) return signals
+    const flat: StreamSignal[] = []
+    for (const [symbol, sigs] of Object.entries(signals)) {
+      if (Array.isArray(sigs)) flat.push(...sigs)
+    }
+    return flat
+  }
+
+  const getCompositeScore = (evt: StreamEvent): number => {
+    if (typeof evt.composite_score === 'number' && !Number.isNaN(evt.composite_score)) return evt.composite_score
+    if (evt.composite_scores && typeof evt.composite_scores === 'object') {
+      const vals = Object.values(evt.composite_scores).filter(v => typeof v === 'number')
+      return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0
+    }
+    return 0
+  }
+
+  const getRegimeLabel = (regime: StreamEvent['regime']): string => {
+    if (!regime) return 'N/A'
+    if (typeof regime === 'string') return regime
+    if (typeof regime === 'object' && regime.primary) return regime.primary
+    return 'N/A'
+  }
+
+  const latestFlat = latestEvent ? flattenSignals(latestEvent.signals) : []
+  const latestScore = latestEvent ? getCompositeScore(latestEvent) : 0
+  const latestRegime = latestEvent ? getRegimeLabel(latestEvent.regime) : ''
+
   const filteredEvents = filterSymbol
-    ? events.filter((e) => e.signals.some((s) => s.symbol.includes(filterSymbol.toUpperCase())))
+    ? events.filter((e) => flattenSignals(e.signals).some((s) => s.symbol.includes(filterSymbol.toUpperCase())))
     : events
 
   return (
@@ -115,18 +147,18 @@ export default function SignalsStream() {
       {latestEvent && (
         <Card title="Current Composite">
           <div className="flex items-center gap-4">
-            <div className={`text-2xl font-bold font-mono-data ${latestEvent.composite_score >= 0 ? 'text-up' : 'text-down'}`}>
-              {(latestEvent.composite_score * 100).toFixed(1)}%
+            <div className={`text-2xl font-bold font-mono-data ${latestScore >= 0 ? 'text-up' : 'text-down'}`}>
+              {(latestScore * 100).toFixed(1)}%
             </div>
             <div className="text-sm font-mono-data text-secondary">
-              Regime: <span className="text-accent-cyan">{latestEvent.regime || 'N/A'}</span>
+              Regime: <span className="text-accent-cyan">{latestRegime}</span>
             </div>
             <div className="text-[10px] font-mono-data text-muted">
               {new Date(latestEvent.timestamp).toLocaleTimeString()}
             </div>
           </div>
           <div className="flex flex-wrap gap-1 mt-2">
-            {latestEvent.signals.slice(0, 10).map((s, i) => (
+            {latestFlat.slice(0, 10).map((s, i) => (
               <Badge
                 key={`${s.symbol}-${i}`}
                 label={`${s.symbol} ${s.direction > 0 ? '↑' : s.direction < 0 ? '↓' : '→'} ${(s.confidence * 100).toFixed(0)}%`}
@@ -152,18 +184,21 @@ export default function SignalsStream() {
             {filterSymbol ? `No signals matching "${filterSymbol}"` : 'Waiting for signals...'}
           </div>
         )}
-        {filteredEvents.slice(0, 100).map((evt, i) => (
+        {filteredEvents.slice(0, 100).map((evt, i) => {
+          const evtFlat = flattenSignals(evt.signals)
+          const evtScore = getCompositeScore(evt)
+          return (
           <div key={`${evt.timestamp}-${i}`} className="bg-card border border-default rounded-sm px-2.5 py-1.5 mb-1">
             <div className="flex items-center justify-between mb-1">
               <span className="text-[9px] font-mono-data text-muted">
                 {new Date(evt.timestamp).toLocaleTimeString()}
               </span>
-              <span className={`text-[10px] font-mono-data font-bold ${evt.composite_score >= 0 ? 'text-up' : 'text-down'}`}>
-                Score: {(evt.composite_score * 100).toFixed(1)}%
+              <span className={`text-[10px] font-mono-data font-bold ${evtScore >= 0 ? 'text-up' : 'text-down'}`}>
+                Score: {(evtScore * 100).toFixed(1)}%
               </span>
             </div>
             <div className="flex flex-wrap gap-1">
-              {evt.signals.map((s, j) => (
+              {evtFlat.map((s, j) => (
                 <Badge
                   key={`${s.symbol}-${j}`}
                   label={`${s.symbol} ${s.type} ${s.direction > 0 ? '↑' : s.direction < 0 ? '↓' : '→'} ${(s.confidence * 100).toFixed(0)}%`}
@@ -173,7 +208,8 @@ export default function SignalsStream() {
               ))}
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

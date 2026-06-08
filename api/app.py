@@ -148,6 +148,7 @@ from .routes.agent import strategies as agent_strategies
 from .routes.agent import backtests as agent_backtests
 from .routes.agent import jobs as agent_jobs
 from .routes.agent import admin as agent_admin
+from .routes.agent import personas as agent_personas
 from .routes.signals_stream import router as signals_stream_router
 from .routes.risk_live import router as risk_live_router
 from .routes.portfolio_whatif import router as portfolio_whatif_router
@@ -190,6 +191,8 @@ from .routes.reflection_routes import router as reflection_router
 from .routes.wall_clock_routes import router as wall_clock_router
 from .routes.panic import router as panic_router
 from .routes.tradingagents_routes import router as tradingagents_router
+from .routes.alt_data_routes import router as alt_data_router
+from .routes.marketplace_routes import router as marketplace_router
 from persistence import init_db, close_db
 from persistence.database import _engine as db_engine
 
@@ -778,6 +781,8 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
     app.include_router(auth_router)
     app.include_router(panic_router)
     app.include_router(tradingagents_router)
+    app.include_router(alt_data_router)
+    app.include_router(marketplace_router)
 
     @app.get("/")
     async def root():

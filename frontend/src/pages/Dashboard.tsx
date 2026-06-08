@@ -25,6 +25,7 @@ import RiskMetricsWidget from '../components/widgets/RiskMetricsWidget'
 import ScreenerWidget from '../components/widgets/ScreenerWidget'
 import { useEventBus, EVENTS } from '../contexts/EventBusContext'
 import { useAudio } from '../contexts/AudioAlertContext'
+import { useLivePrices } from '../contexts/LivePricesContext'
 import { useToastStore } from '../store/toast'
 import { RegimeSwitch } from '../components/widgets/RegimeSwitch'
 import LastActionLog from '../components/LastActionLog'
@@ -258,12 +259,17 @@ export default function Dashboard() {
 
   if (loading) return <DashboardSkeleton />
 
+  const { getPrice } = useLivePrices()
+
   const watchlist = ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'GOOGL', 'META', 'SPY', 'QQQ', 'IWM']
-  const heatStripData = watchlist.map((s) => ({
-    symbol: s,
-    change: (Math.random() - 0.5) * 6,
-    price: 100 + Math.random() * 500,
-  }))
+  const heatStripData = watchlist.map((s) => {
+    const live = getPrice(s.toUpperCase())
+    return {
+      symbol: s,
+      change: live?.changePercent ?? 0,
+      price: live?.price ?? 0,
+    }
+  })
 
   const newsForPositions = [
     { t: '09:32', h: 'AAPL: Apple Intelligence rollout expands to EU', s: 'AAPL', src: 'Bloomberg' },

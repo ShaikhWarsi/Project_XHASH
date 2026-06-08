@@ -65,9 +65,9 @@ async def panic_button(request: Request):
 
     # 3. Disable bots/trading
     try:
-        from api.routes.paper import _running
-        if _running:
-            _running["isRunning"] = False
+        from api.routes.paper import _paper
+        if _paper.get("isRunning"):
+            _paper["isRunning"] = False
             result["actions"].append({"action": "disable_paper_trading", "status": "stopped"})
             logger.warning("PANIC: Paper trading disabled")
     except Exception:

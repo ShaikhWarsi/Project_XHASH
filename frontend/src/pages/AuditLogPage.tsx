@@ -14,8 +14,8 @@ export default function AuditLogPage() {
   const replayRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const cancelledRef = useRef(false)
 
-  const { data: rawLogs, isLoading } = useApiQuery<any[]>('/audit/logs', undefined, { refetchInterval: liveTail && !paused ? 3000 : undefined })
-  const logs = rawLogs ?? []
+  const { data: rawLogs, isLoading } = useApiQuery<{ logs: any[]; total: number }>('/audit/logs', undefined, { refetchInterval: liveTail && !paused ? 3000 : undefined })
+  const logs = Array.isArray(rawLogs) ? rawLogs : (rawLogs?.logs ?? [])
 
 
 

@@ -96,6 +96,9 @@ export const ROUTES: RouteConfig[] = [
   { path: '/settings/infrastructure', label: 'Infrastructure', group: 'settings', workflow: 'admin' },
   { path: '/settings/audit-log', label: 'Audit Log', group: 'settings', workflow: 'admin' },
   { path: '/settings/bots', label: 'Bot Integrations', group: 'settings', workflow: 'admin' },
+  { path: '/settings/indicators', label: 'Indicator Marketplace', group: 'settings', workflow: 'admin' },
+  { path: '/settings/strategies', label: 'Strategy Marketplace', group: 'settings', workflow: 'admin' },
+  { path: '/settings/layouts', label: 'Layout Marketplace', group: 'settings', workflow: 'admin' },
 ]
 
 export function getRouteLabel(path: string): string {

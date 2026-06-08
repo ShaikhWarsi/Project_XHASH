@@ -1,11 +1,28 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Card from '../components/ui/Card'
 import CorrelationHeatmap from '../components/CorrelationHeatmap'
+
 export default function CorrelationMatrixPage() {
   const [window, setWindow] = useState(30)
-  const symbols = ['SPY', 'QQQ', 'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'TSLA']
-  const mockMatrix = symbols.map(() => symbols.map(() => Math.random() * 2 - 1))
-  symbols.forEach((_, i) => { mockMatrix[i][i] = 1 })
+  const [matrix, setMatrix] = useState<number[][]>([])
+  const [symbols, setSymbols] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    const syms = ['SPY', 'QQQ', 'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'TSLA']
+    fetch(`/api/correlation/matrix?symbols=${syms.join(',')}&period_days=${window}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.symbols && data.matrix) {
+          setSymbols(data.symbols)
+          setMatrix(data.matrix)
+        }
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [window])
+
   return (
     <div className="flex flex-col gap-1.5">
       <Card title="CORRELATION MATRIX" actions={
@@ -14,7 +31,11 @@ export default function CorrelationMatrixPage() {
           <option value={5}>5D</option><option value={15}>15D</option><option value={30}>30D</option><option value={60}>60D</option><option value={90}>90D</option>
         </select>
       }>
-        <CorrelationHeatmap data={{ symbols, matrix: mockMatrix }} height={400} cellSize={40} />
+        {loading ? (
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 10 }}>Loading correlation data...</div>
+        ) : (
+          <CorrelationHeatmap data={{ symbols, matrix }} height={400} cellSize={40} />
+        )}
       </Card>
     </div>
   )
