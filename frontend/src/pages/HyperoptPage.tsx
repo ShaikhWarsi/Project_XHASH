@@ -1,10 +1,13 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import ProgressBar from '../components/ProgressBar'
 import { runHyperoptOptimize, runHyperoptFull, fetchHyperoptSpace } from '../api/hyperopt'
 import type { HyperoptResult, FullOptimizeResult } from '../api/hyperopt'
 import { useToastStore } from '../store/toast'
+import { fetchExperiments, createExperiment, runExperiment, structuredTune, aiOptimize } from '../api/experiments'
+import type { Experiment } from '../api/experiments'
+import { fmtDateTime } from '../utils/format'
 
 /* ── Extended types ── */
 interface Trial {
@@ -21,7 +24,7 @@ interface ExtendedFullOptimizeResult extends FullOptimizeResult {
   trials?: Trial[]
 }
 
-type Tab = 'standard' | 'full'
+type Tab = 'standard' | 'full' | 'experiments'
 
 /* ── Helpers ── */
 
@@ -322,6 +325,59 @@ export default function HyperoptPage() {
     setLoading(false)
   }
 
+  /* ── Experiments tab ── */
+  const [experiments, setExperiments] = useState<Experiment[]>([])
+  const [expLoading, setExpLoading] = useState(true)
+  const [expRunningId, setExpRunningId] = useState<string | null>(null)
+  const [newExpName, setNewExpName] = useState('')
+  const [newExpConfig, setNewExpConfig] = useState('{\n  "strategy": "momentum",\n  "tickers": ["SPY"],\n  "lookback": 20\n}')
+  const [tuneConfig, setTuneConfig] = useState('{\n  "strategy": "mean_reversion",\n  "params": {\n    "lookback": {"min": 5, "max": 50, "type": "int"},\n    "threshold": {"min": 0.5, "max": 3.0, "type": "float"}\n  },\n  "metric": "sharpe_ratio"\n}')
+  const [aiConfig, setAiConfig] = useState('{\n  "objective": "maximize_sharpe",\n  "constraints": {\n    "max_drawdown": 0.2,\n    "min_trades": 10\n  },\n  "search_space": {\n    "lookback": {"low": 5, "high": 100},\n    "entry_threshold": {"low": 0.5, "high": 2.0}\n  }\n}')
+  const [expTab, setExpTab] = useState<'experiments' | 'tune' | 'ai_optimize'>('experiments')
+  const loadExperiments = useCallback(async () => {
+    setExpLoading(true)
+    try { const res = await fetchExperiments(); setExperiments(res.experiments || []) }
+    catch (err: any) { addToast(err?.message || 'Failed to load experiments', 'error') }
+    setExpLoading(false)
+  }, [addToast])
+  useEffect(() => { if (tab === 'experiments') loadExperiments() }, [tab, loadExperiments])
+  const handleCreate = useCallback(async () => {
+    if (!newExpName.trim()) return
+    try {
+      let config: any
+      try { config = JSON.parse(newExpConfig) } catch { config = {} }
+      const exp = await createExperiment({ name: newExpName.trim(), config })
+      setExperiments(prev => [exp, ...prev])
+      setNewExpName('')
+      addToast('Experiment created', 'success')
+    } catch (err: any) { addToast(err?.message || 'Create failed', 'error') }
+  }, [newExpName, newExpConfig, addToast])
+  const handleRunExp = useCallback(async (id: string) => {
+    setExpRunningId(id)
+    try {
+      await runExperiment(id)
+      addToast('Experiment started', 'info')
+      setTimeout(loadExperiments, 2000)
+    } catch (err: any) { addToast(err?.message || 'Run failed', 'error') }
+    setExpRunningId(null)
+  }, [addToast, loadExperiments])
+  const handleStructuredTune = useCallback(async () => {
+    try {
+      const config = JSON.parse(tuneConfig)
+      const exp = await structuredTune(config)
+      setExperiments(prev => [exp, ...prev])
+      addToast('Structured tune started', 'info')
+    } catch (err: any) { addToast(err?.message || 'Tune failed', 'error') }
+  }, [tuneConfig, addToast])
+  const handleAiOptimize = useCallback(async () => {
+    try {
+      const config = JSON.parse(aiConfig)
+      const exp = await aiOptimize(config)
+      setExperiments(prev => [exp, ...prev])
+      addToast('AI optimization started', 'info')
+    } catch (err: any) { addToast(err?.message || 'AI optimize failed', 'error') }
+  }, [aiConfig, addToast])
+
   const isFull = (r: unknown): r is FullOptimizeResult =>
     r !== null && typeof r === 'object' && 'best_composite' in r
 
@@ -351,7 +407,7 @@ export default function HyperoptPage() {
       <div className="bg-card border border-default px-2 py-1">
         <div className="flex items-center gap-2">
           <Badge label="HYPEROPT" variant="info" />
-          {(['standard', 'full'] as const).map((t) => (
+          {(['standard', 'full', 'experiments'] as const).map((t) => (
             <button
               key={t}
               onClick={() => { setTab(t); setResult(null) }}
@@ -361,7 +417,7 @@ export default function HyperoptPage() {
                 color: tab === t ? 'var(--accent-blue)' : 'var(--text-muted)',
               }}
             >
-              {t === 'standard' ? 'STANDARD' : 'MULTI-TIMEFRAME'}
+              {t === 'standard' ? 'STANDARD' : t === 'full' ? 'MULTI-TIMEFRAME' : 'EXPERIMENTS'}
             </button>
           ))}
         </div>
@@ -548,7 +604,93 @@ export default function HyperoptPage() {
         </>
       )}
 
-      {!result && !loading && (
+      {tab === 'experiments' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="flex items-center gap-2 mb-1">
+            {(['experiments', 'tune', 'ai_optimize'] as const).map((t) => (
+              <button key={t} onClick={() => setExpTab(t)}
+                className="px-3 py-1 text-[10px] font-mono font-semibold cursor-pointer rounded-sm"
+                style={{ background: expTab === t ? 'var(--accent-cyan)' : 'var(--bg-hover)', color: expTab === t ? '#000' : 'var(--text-secondary)', border: '1px solid var(--border-color)' }}>
+                {t === 'experiments' ? 'Experiments' : t === 'tune' ? 'Structured Tune' : 'AI Optimize'}
+              </button>
+            ))}
+          </div>
+          {expTab === 'experiments' && (
+            <>
+              <Card title="NEW EXPERIMENT">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <input value={newExpName} onChange={e => setNewExpName(e.target.value)} placeholder="Experiment name"
+                    className="px-2 py-1 text-[10px] font-mono outline-none rounded-sm"
+                    style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--input-text)' }} />
+                  <textarea value={newExpConfig} onChange={e => setNewExpConfig(e.target.value)}
+                    className="font-mono text-[10px] p-2 outline-none rounded-sm"
+                    style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--input-text)', minHeight: 100, resize: 'vertical' }} />
+                  <button onClick={handleCreate} disabled={!newExpName.trim()}
+                    className="self-start px-4 py-1 text-[10px] font-mono font-bold cursor-pointer rounded-sm"
+                    style={{ background: 'var(--accent-blue)', color: '#fff', border: 'none', opacity: newExpName.trim() ? 1 : 0.5 }}>
+                    CREATE
+                  </button>
+                </div>
+              </Card>
+              <Card title={`EXPERIMENTS (${experiments.length})`}>
+                {expLoading ? (
+                  <div className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>Loading...</div>
+                ) : experiments.length === 0 ? (
+                  <div className="py-6 text-center text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>No experiments yet</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {experiments.map(exp => (
+                      <div key={exp.id} className="flex items-center gap-3 px-2 py-1.5 rounded-sm" style={{ border: '1px solid var(--border-color)' }}>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--text-primary)' }}>{exp.name}</span>
+                            <Badge label={exp.status} variant={exp.status === 'completed' ? 'success' : exp.status === 'failed' ? 'error' : exp.status === 'running' ? 'warning' : 'info'} size="sm" />
+                          </div>
+                          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--text-muted)' }}>
+                            {fmtDateTime(exp.created_at)} · {exp.id.slice(0, 8)}
+                          </div>
+                        </div>
+                        <button onClick={() => handleRunExp(exp.id)} disabled={expRunningId === exp.id || exp.status === 'running'}
+                          className="px-2.5 py-0.5 text-[9px] font-mono font-semibold cursor-pointer rounded-sm"
+                          style={{ background: 'var(--accent-cyan)', color: '#000', border: 'none', opacity: expRunningId === exp.id ? 0.6 : 1 }}>
+                          {expRunningId === exp.id ? '...' : 'RUN'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            </>
+          )}
+          {expTab === 'tune' && (
+            <Card title="STRUCTURED TUNE">
+              <div className="text-[9px] font-mono mb-2" style={{ color: 'var(--text-muted)' }}>
+                Define parameter search space for hyperparameter optimization
+              </div>
+              <textarea value={tuneConfig} onChange={e => setTuneConfig(e.target.value)}
+                className="w-full font-mono text-[10px] p-2 outline-none rounded-sm mb-2"
+                style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--input-text)', minHeight: 150, resize: 'vertical' }} />
+              <button onClick={handleStructuredTune}
+                className="px-4 py-1 text-[10px] font-mono font-bold cursor-pointer rounded-sm"
+                style={{ background: 'var(--accent-blue)', color: '#fff', border: 'none' }}>START TUNE</button>
+            </Card>
+          )}
+          {expTab === 'ai_optimize' && (
+            <Card title="AI OPTIMIZE">
+              <div className="text-[9px] font-mono mb-2" style={{ color: 'var(--text-muted)' }}>
+                AI-driven strategy optimization with objective function and constraints
+              </div>
+              <textarea value={aiConfig} onChange={e => setAiConfig(e.target.value)}
+                className="w-full font-mono text-[10px] p-2 outline-none rounded-sm mb-2"
+                style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--input-text)', minHeight: 150, resize: 'vertical' }} />
+              <button onClick={handleAiOptimize}
+                className="px-4 py-1 text-[10px] font-mono font-bold cursor-pointer rounded-sm"
+                style={{ background: 'var(--accent-blue)', color: '#fff', border: 'none' }}>START OPTIMIZATION</button>
+            </Card>
+          )}
+        </div>
+      )}
+      {!result && !loading && tab !== 'experiments' && (
         <div className="p-6 text-center font-mono-data text-[10px] text-muted">
           Configure and run hyperparameter optimization
         </div>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from 'react'
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSignalStore } from '../store/signals'
 import Card from '../components/ui/Card'
@@ -8,6 +8,36 @@ import EmptyState from '../components/ui/EmptyState'
 import { useToastStore } from '../store/toast'
 import type { QuantSignal } from '../api/types'
 import { useUrlState } from '../hooks/useUrlState'
+
+interface StreamSignal {
+  symbol: string; type: string; direction: number; confidence: number; timestamp: string; engine?: string
+}
+interface StreamEvent {
+  signals: StreamSignal[] | Record<string, StreamSignal[]>
+  composite_score: number; composite_scores?: Record<string, number>
+  regime: string | { primary: string; confidence: number } | null; timestamp: string
+}
+function flattenSignals(signals: StreamSignal[] | Record<string, StreamSignal[]> | undefined): StreamSignal[] {
+  if (!signals) return []
+  if (Array.isArray(signals)) return signals
+  const flat: StreamSignal[] = []
+  for (const sigs of Object.values(signals)) if (Array.isArray(sigs)) flat.push(...sigs)
+  return flat
+}
+function getCompositeScore(evt: StreamEvent): number {
+  if (typeof evt.composite_score === 'number' && !Number.isNaN(evt.composite_score)) return evt.composite_score
+  if (evt.composite_scores && typeof evt.composite_scores === 'object') {
+    const vals = Object.values(evt.composite_scores).filter(v => typeof v === 'number')
+    return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0
+  }
+  return 0
+}
+function getRegimeLabel(regime: StreamEvent['regime']): string {
+  if (!regime) return 'N/A'
+  if (typeof regime === 'string') return regime
+  if (typeof regime === 'object' && regime.primary) return regime.primary
+  return 'N/A'
+}
 
 const FONT_DATA = 'font-mono-data text-[11px]'
 const FONT_SM = 'font-mono-data text-[10px]'
@@ -22,20 +52,25 @@ export default function Signals() {
   const [typeFilter, setTypeFilter] = useUrlState('type', 'all')
   const [pinned, setPinned] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem('signals_pinned') || '[]') } catch { return [] } })
   const [regimeFilter, setRegimeFilter] = useState<string>('all')
-  const [tab, setTab] = useState<'list' | 'heatmap'>('list')
+  const [tab, setTab] = useState<'list' | 'heatmap' | 'stream'>('list')
   const heatmapRef = useRef<HTMLDivElement>(null)
+  const [streamEvents, setStreamEvents] = useState<StreamEvent[]>([])
+  const [streamConnected, setStreamConnected] = useState(false)
+  const [streamFilter, setStreamFilter] = useState('')
 
   useEffect(() => {
     load()
     const base = import.meta.env.VITE_API_BASE ?? '/api'
     const es = new EventSource(`${base}/signals/stream`)
+    es.onopen = () => setStreamConnected(true)
     es.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data)
         if (data.signals && Object.keys(data.signals).length > 0) update(data)
+        setStreamEvents(prev => [data as StreamEvent, ...prev].slice(0, 200))
       } catch { /* silent */ }
     }
-    es.onerror = () => { /* EventSource auto-reconnects */ }
+    es.onerror = () => { setStreamConnected(false) }
     return () => { es.close() }
   }, [])
 
@@ -128,11 +163,11 @@ export default function Signals() {
       {/* TAB BAR */}
       <div className="flex items-center gap-2 bg-card border border-default px-2 py-1 flex-wrap">
         <Badge label="SIGNALS" variant="info" />
-        {(['list', 'heatmap'] as const).map((t) => (
+        {(['list', 'heatmap', 'stream'] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)}
             className="font-mono-data text-[10px] px-2.5 py-0.5 cursor-pointer"
             style={{ background: tab === t ? 'rgba(59,130,246,0.15)' : 'none', border: 'none', color: tab === t ? 'var(--accent-blue)' : 'var(--text-muted)' }}>
-            {t === 'list' ? 'LIST' : 'HEATMAP'}
+            {t === 'list' ? 'LIST' : t === 'heatmap' ? 'HEATMAP' : 'STREAM'}
           </button>
         ))}
       </div>
@@ -141,6 +176,44 @@ export default function Signals() {
         <Card title="SIGNAL TYPES × SYMBOLS HEATMAP">
           <div ref={heatmapRef} />
         </Card>
+      ) : tab === 'stream' ? (
+        <div className="flex flex-col gap-1.5" style={{ height: 'calc(100vh - 200px)' }}>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center border border-default bg-card px-1.5 py-0.5">
+              <input type="text" placeholder="FILTER SYMBOL..." value={streamFilter} onChange={e => setStreamFilter(e.target.value.toUpperCase())}
+                className="bg-none border-none text-primary font-mono-data text-[10px] outline-none w-[140px]" />
+            </div>
+            <span className={`w-2 h-2 rounded-full ${streamConnected ? 'bg-up' : 'bg-down'}`} />
+            <span className="text-[9px] font-mono-data text-muted">{streamConnected ? 'CONNECTED' : 'DISCONNECTED'}</span>
+            <Badge label={`${streamEvents.length} events`} variant="info" size="sm" />
+          </div>
+          <div className="flex-1 overflow-auto">
+            {streamEvents.length === 0 && (
+              <div className="flex items-center justify-center h-32 text-[10px] font-mono-data text-muted">Waiting for signals...</div>
+            )}
+            {streamEvents.filter(e => !streamFilter || flattenSignals(e.signals).some(s => s.symbol.includes(streamFilter))).slice(0, 100).map((evt, i) => {
+              const evtFlat = flattenSignals(evt.signals)
+              const evtScore = getCompositeScore(evt)
+              return (
+                <div key={`${evt.timestamp}-${i}`} className="bg-card border border-default rounded-sm px-2.5 py-1.5 mb-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[9px] font-mono-data text-muted">{new Date(evt.timestamp).toLocaleTimeString()}</span>
+                    <span className={`text-[10px] font-mono-data font-bold ${evtScore >= 0 ? 'text-up' : 'text-down'}`}>
+                      Score: {(evtScore * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {evtFlat.map((s, j) => (
+                      <Badge key={`${s.symbol}-${j}`}
+                        label={`${s.symbol} ${s.type} ${s.direction > 0 ? '\u2191' : s.direction < 0 ? '\u2193' : '\u2192'} ${(s.confidence * 100).toFixed(0)}%`}
+                        variant={s.direction > 0 ? 'success' : s.direction < 0 ? 'error' : 'warning'} size="sm" />
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
       ) : (
       <>
       {/* FILTER BAR */}

@@ -22,9 +22,9 @@ export const ROUTES: RouteConfig[] = [
   { path: '/markets/advanced-charts', label: 'Advanced Charts', group: 'markets', workflow: 'trader' },
   { path: '/markets/screener', label: 'Screener', group: 'markets', workflow: 'researcher' },
   { path: '/markets/compare', label: 'Compare', group: 'markets', workflow: 'quant' },
-  { path: '/markets/persona-council', label: 'Persona Council', group: 'markets', workflow: 'quant' },
   { path: '/markets/options', label: 'Options Chain', group: 'markets', workflow: 'trader' },
   { path: '/markets/calendar', label: 'Calendar', group: 'markets', workflow: 'trader' },
+  { path: '/markets/market-intel', label: 'Market Intel', group: 'markets', workflow: 'trader' },
 
   // Trading
   { path: '/trading/orders', label: 'Orders', group: 'trading', workflow: 'trader' },
@@ -32,7 +32,6 @@ export const ROUTES: RouteConfig[] = [
   { path: '/trading/portfolio', label: 'Portfolio', group: 'trading', workflow: 'trader' },
   { path: '/trading/paper-trading', label: 'Paper Trading', group: 'trading', workflow: 'trader' },
   { path: '/trading/portfolio-optimization', label: 'Portfolio Opt', group: 'trading', workflow: 'quant' },
-  { path: '/trading/social-trading', label: 'Social Trading', group: 'trading', workflow: 'trader' },
   { path: '/trading/live', label: 'Live Trading Wizard', group: 'trading', workflow: 'trader' },
   { path: '/trading/what-if', label: 'What-If', group: 'trading', workflow: 'quant' },
 
@@ -49,26 +48,15 @@ export const ROUTES: RouteConfig[] = [
 
   // AI
   { path: '/ai/agents', label: 'Agents', group: 'ai', workflow: 'quant' },
-  { path: '/ai/hedge-fund', label: 'Hedge Fund', group: 'ai', workflow: 'quant' },
   { path: '/ai/hedge-flow', label: 'Hedge Flow', group: 'ai', workflow: 'quant' },
-  { path: '/ai/swarm', label: 'Swarm', group: 'ai', workflow: 'quant' },
   { path: '/ai/hypothesis-lab', label: 'Hypothesis Lab', group: 'ai', workflow: 'researcher' },
-  { path: '/ai/debate', label: 'Debate Arena', group: 'ai', workflow: 'researcher' },
   { path: '/ai/rl-training', label: 'RL Training', group: 'ai', workflow: 'quant' },
   { path: '/ai/llm', label: 'LLM Playground', group: 'ai', workflow: 'researcher' },
   { path: '/ai/persona-council', label: 'Persona Council', group: 'ai', workflow: 'quant' },
   { path: '/ai/strategy-generator', label: 'Strategy Generator', group: 'ai', workflow: 'quant' },
-  { path: '/ai/indicator-generator', label: 'Indicator Generator', group: 'ai', workflow: 'quant' },
-  { path: '/ai/strategy-health', label: 'Strategy Health', group: 'ai', workflow: 'quant' },
-  { path: '/ai/auto-tag-trades', label: 'Auto-Tag Trades', group: 'ai', workflow: 'trader' },
-  { path: '/ai/explain-pnl', label: 'Explain P&L', group: 'ai', workflow: 'trader' },
   { path: '/ai/prompt-library', label: 'Prompt Library', group: 'ai', workflow: 'researcher' },
-  { path: '/ai/leaderboard', label: 'AI Leaderboard', group: 'ai', workflow: 'quant' },
   { path: '/ai/explain-stops', label: 'Explain Stops', group: 'ai', workflow: 'trader' },
-  { path: '/ai/trade-coach', label: 'Trade Coach', group: 'ai', workflow: 'trader' },
   { path: '/ai/risk-report', label: 'Risk Report', group: 'ai', workflow: 'trader' },
-  { path: '/ai/reasoning-trace', label: 'Reasoning Trace', group: 'ai', workflow: 'researcher' },
-  { path: '/ai/disagreement-detector', label: 'Disagreement', group: 'ai', workflow: 'quant' },
   { path: '/ai/multi-agent-analysis', label: 'Multi-Agent Analysis', group: 'ai', workflow: 'quant' },
 
   // Research
@@ -88,7 +76,7 @@ export const ROUTES: RouteConfig[] = [
   { path: '/data/signal-engines', label: 'Signal Engines', group: 'data', workflow: 'quant' },
   { path: '/data/china-markets', label: 'China Markets', group: 'data', workflow: 'researcher' },
   { path: '/data/workflows', label: 'Workflows', group: 'data', workflow: 'quant' },
-  { path: '/data/signals-stream', label: 'Signals Stream', group: 'data', workflow: 'quant' },
+
 
   // Settings
   { path: '/settings', label: 'Settings', group: 'settings', workflow: 'admin' },
@@ -96,9 +84,6 @@ export const ROUTES: RouteConfig[] = [
   { path: '/settings/infrastructure', label: 'Infrastructure', group: 'settings', workflow: 'admin' },
   { path: '/settings/audit-log', label: 'Audit Log', group: 'settings', workflow: 'admin' },
   { path: '/settings/bots', label: 'Bot Integrations', group: 'settings', workflow: 'admin' },
-  { path: '/settings/indicators', label: 'Indicator Marketplace', group: 'settings', workflow: 'admin' },
-  { path: '/settings/strategies', label: 'Strategy Marketplace', group: 'settings', workflow: 'admin' },
-  { path: '/settings/layouts', label: 'Layout Marketplace', group: 'settings', workflow: 'admin' },
 ]
 
 export function getRouteLabel(path: string): string {

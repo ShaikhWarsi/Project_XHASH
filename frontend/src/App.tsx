@@ -28,13 +28,13 @@ const WatchlistPage = lazy(() => import('./pages/WatchlistPage'))
 const Signals = lazy(() => import('./pages/Signals'))
 const Structure = lazy(() => import('./pages/Structure'))
 const AdvancedCharts = lazy(() => import('./pages/AdvancedCharts'))
+const MarketIntel = lazy(() => import('./pages/MarketIntel'))
 const Orders = lazy(() => import('./pages/Orders'))
 const Trades = lazy(() => import('./pages/Trades'))
 const Portfolio = lazy(() => import('./pages/Portfolio'))
 const PaperTrading = lazy(() => import('./pages/PaperTrading'))
 const PortfolioOptimization = lazy(() => import('./pages/PortfolioOptimization'))
 const PortfolioWhatIf = lazy(() => import('./pages/PortfolioWhatIf'))
-const SocialTrading = lazy(() => import('./pages/SocialTrading'))
 const LiveTradingWizard = lazy(() => import('./pages/LiveTradingWizard'))
 const RiskDashboard = lazy(() => import('./pages/RiskDashboard'))
 const AttributionAnalysis = lazy(() => import('./pages/AttributionAnalysis'))
@@ -44,11 +44,8 @@ const StrategyCode = lazy(() => import('./pages/StrategyCode'))
 const StrategyOptimizer = lazy(() => import('./pages/StrategyOptimizer'))
 const VisualStrategy = lazy(() => import('./pages/VisualStrategy'))
 const Agents = lazy(() => import('./pages/Agents'))
-const HedgeFund = lazy(() => import('./pages/HedgeFund'))
 const HedgeFlow = lazy(() => import('./pages/HedgeFlow'))
-const SwarmDashboard = lazy(() => import('./pages/SwarmDashboard'))
 const HypothesisLab = lazy(() => import('./pages/HypothesisLab'))
-const DebateArena = lazy(() => import('./pages/DebateArena'))
 const RLTrainer = lazy(() => import('./pages/RLTrainer'))
 const LLMPage = lazy(() => import('./pages/LLMPage'))
 const PersonaCouncil = lazy(() => import('./pages/PersonaCouncil'))
@@ -60,11 +57,10 @@ const HyperoptPage = lazy(() => import('./pages/HyperoptPage'))
 const GeopoliticalAnalysis = lazy(() => import('./pages/GeopoliticalAnalysis'))
 const WorkflowLab = lazy(() => import('./pages/WorkflowLab'))
 const SqlResearch = lazy(() => import('./pages/SqlResearch'))
-const ExperimentLab = lazy(() => import('./pages/ExperimentLab'))
 const DataPipeline = lazy(() => import('./pages/DataPipeline'))
 const TaskOrch = lazy(() => import('./pages/TaskOrchestration'))
 const SignalEnginePage = lazy(() => import('./pages/SignalEnginePage'))
-const SignalsStream = lazy(() => import('./pages/SignalsStream'))
+
 const ChinaMarketsPage = lazy(() => import('./pages/ChinaMarketsPage'))
 const WorkflowPage = lazy(() => import('./pages/WorkflowPage'))
 const Settings = lazy(() => import('./pages/Settings'))
@@ -78,47 +74,24 @@ const AlertsPage = lazy(() => import('./pages/Alerts'))
 const OptionsChainPage = lazy(() => import('./pages/OptionsChainPage'))
 const MarketsCalendarPage = lazy(() => import('./pages/MarketsCalendarPage'))
 const EventCalendarPage = lazy(() => import('./pages/EventCalendarPage'))
-const DarkPoolPage = lazy(() => import('./pages/DarkPoolPage'))
-const InsiderTransactionsPage = lazy(() => import('./pages/InsiderTransactionsPage'))
-const EtfFlowPage = lazy(() => import('./pages/EtfFlowPage'))
-const ShortInterestPage = lazy(() => import('./pages/ShortInterestPage'))
-const ThirteenFPage = lazy(() => import('./pages/ThirteenFPage'))
 const VolSurfacePage = lazy(() => import('./pages/VolSurfacePage'))
 const WorldMarketsPage = lazy(() => import('./pages/WorldMarketsPage'))
 const CurrencyMatrixPage = lazy(() => import('./pages/CurrencyMatrixPage'))
 const BondYieldsPage = lazy(() => import('./pages/BondYieldsPage'))
-const CommoditiesPage = lazy(() => import('./pages/CommoditiesPage'))
-const CryptoDominancePage = lazy(() => import('./pages/CryptoDominancePage'))
-const StablecoinDepegPage = lazy(() => import('./pages/StablecoinDepegPage'))
-const FundingRatePage = lazy(() => import('./pages/FundingRatePage'))
-const LiquidationMapPage = lazy(() => import('./pages/LiquidationMapPage'))
-const OrderFlowPage = lazy(() => import('./pages/OrderFlowPage'))
-const FootprintChartPage = lazy(() => import('./pages/FootprintChartPage'))
-const AlternativeChartsPage = lazy(() => import('./pages/AlternativeChartsPage'))
+
 const CorrelationMatrixPage = lazy(() => import('./pages/CorrelationMatrixPage'))
 const SectorHeatmapPage = lazy(() => import('./pages/SectorHeatmapPage'))
-const RealTimeGreeksPage = lazy(() => import('./pages/RealTimeGreeksPage'))
-const LiveTapePage = lazy(() => import('./pages/LiveTapePage'))
 const AltDataPage = lazy(() => import('./components/AltDataPage'))
 const EventsAnalytics = lazy(() => import('./components/EventsAnalytics'))
 const PromptToTradePage = lazy(() => import('./pages/PromptToTradePage'))
 const AIStrategyGenerator = lazy(() => import('./pages/AIStrategyGenerator'))
 const AIIndicatorGenerator = lazy(() => import('./pages/AIIndicatorGenerator'))
 const StrategyHealthCheck = lazy(() => import('./pages/StrategyHealthCheck'))
-const AutoTagTrades = lazy(() => import('./pages/AutoTagTrades'))
-const ExplainPnL = lazy(() => import('./pages/ExplainPnL'))
 const PromptLibrary = lazy(() => import('./pages/PromptLibrary'))
-const AILeaderboard = lazy(() => import('./pages/AILeaderboard'))
 const ExplainableStops = lazy(() => import('./pages/ExplainableStops'))
-const TradeCoach = lazy(() => import('./pages/TradeCoach'))
 const AIBriefingPage = lazy(() => import('./pages/AIBriefingPage'))
 const AIRiskReport = lazy(() => import('./pages/AIRiskReport'))
-const ReasoningTrace = lazy(() => import('./pages/ReasoningTrace'))
-const DisagreementDetector = lazy(() => import('./pages/DisagreementDetector'))
 const MultiAgentAnalysis = lazy(() => import('./pages/MultiAgentAnalysis'))
-const IndicatorMarketplace = lazy(() => import('./pages/IndicatorMarketplace'))
-const StrategyMarketplace = lazy(() => import('./pages/StrategyMarketplace'))
-const LayoutMarketplace = lazy(() => import('./pages/LayoutMarketplace'))
 const MonteCarlo = lazy(() => import('./pages/MonteCarlo'))
 const WalkForward = lazy(() => import('./pages/WalkForward'))
 const ScenarioAnalysis = lazy(() => import('./pages/ScenarioAnalysis'))
@@ -175,6 +148,7 @@ export default function App() {
                   <Route path="/markets/signals" element={<LazyPage><Signals /></LazyPage>} />
                   <Route path="/markets/structure" element={<LazyPage><Structure /></LazyPage>} />
                   <Route path="/markets/advanced-charts" element={<LazyPage><AdvancedCharts /></LazyPage>} />
+                  <Route path="/markets/market-intel" element={<LazyPage><MarketIntel /></LazyPage>} />
                   <Route path="/markets/compare" element={<LazyPage><MultiSymbolCompare /></LazyPage>} />
                   <Route path="/markets/screener" element={<LazyPage><MarketScreener /></LazyPage>} />
                   <Route path="/trading/orders" element={<LazyPage><Orders /></LazyPage>} />
@@ -183,8 +157,6 @@ export default function App() {
                   <Route path="/trading/paper-trading" element={<LazyPage><PaperTrading /></LazyPage>} />
                   <Route path="/trading/portfolio-optimization" element={<LazyPage><PortfolioOptimization /></LazyPage>} />
                   <Route path="/trading/what-if" element={<LazyPage><PortfolioWhatIf /></LazyPage>} />
-                  <Route path="/trading/social-trading" element={<LazyPage><SocialTrading /></LazyPage>} />
-                  <Route path="/trading/live" element={<LazyPage><LiveTradingWizard /></LazyPage>} />
                   <Route path="/risk" element={<LazyPage><RiskDashboard /></LazyPage>} />
                   <Route path="/risk/attribution" element={<LazyPage><AttributionAnalysis /></LazyPage>} />
                   <Route path="/strategy/backtest" element={<LazyPage><Backtest /></LazyPage>} />
@@ -193,11 +165,8 @@ export default function App() {
                   <Route path="/strategy/optimizer" element={<LazyPage><StrategyOptimizer /></LazyPage>} />
                   <Route path="/strategy/visual" element={<LazyPage><VisualStrategy /></LazyPage>} />
                   <Route path="/ai/agents" element={<LazyPage><Agents /></LazyPage>} />
-                  <Route path="/ai/hedge-fund" element={<LazyPage><HedgeFund /></LazyPage>} />
                   <Route path="/ai/hedge-flow" element={<LazyPage><HedgeFlow /></LazyPage>} />
-                  <Route path="/ai/swarm" element={<LazyPage><SwarmDashboard /></LazyPage>} />
                   <Route path="/ai/hypothesis-lab" element={<LazyPage><HypothesisLab /></LazyPage>} />
-                  <Route path="/ai/debate" element={<LazyPage><DebateArena /></LazyPage>} />
                   <Route path="/ai/rl-training" element={<LazyPage><RLTrainer /></LazyPage>} />
                   <Route path="/ai/llm" element={<LazyPage><LLMPage /></LazyPage>} />
                   <Route path="/ai/persona-council" element={<LazyPage><PersonaCouncil /></LazyPage>} />
@@ -209,11 +178,11 @@ export default function App() {
                   <Route path="/research/geo" element={<LazyPage><GeopoliticalAnalysis /></LazyPage>} />
                   <Route path="/research/workflow-lab" element={<LazyPage><WorkflowLab /></LazyPage>} />
                   <Route path="/research/sql" element={<LazyPage><SqlResearch /></LazyPage>} />
-                  <Route path="/research/experiments" element={<LazyPage><ExperimentLab /></LazyPage>} />
+                  <Route path="/research/experiments" element={<LazyPage><HyperoptPage /></LazyPage>} />
                   <Route path="/data/pipeline" element={<LazyPage><DataPipeline /></LazyPage>} />
                   <Route path="/data/task-orchestration" element={<LazyPage><TaskOrch /></LazyPage>} />
                   <Route path="/data/signal-engines" element={<LazyPage><SignalEnginePage /></LazyPage>} />
-                  <Route path="/data/signals-stream" element={<LazyPage><SignalsStream /></LazyPage>} />
+
                   <Route path="/data/china-markets" element={<LazyPage><ChinaMarketsPage /></LazyPage>} />
                   <Route path="/data/workflows" element={<LazyPage><WorkflowPage /></LazyPage>} />
                   <Route path="/settings" element={<LazyPage><Settings /></LazyPage>} />
@@ -221,9 +190,6 @@ export default function App() {
                   <Route path="/settings/infrastructure" element={<LazyPage><Infrastructure /></LazyPage>} />
                   <Route path="/settings/audit-log" element={<LazyPage><AuditLogPage /></LazyPage>} />
                   <Route path="/settings/bots" element={<LazyPage><BotsPage /></LazyPage>} />
-                  <Route path="/settings/indicators" element={<LazyPage><IndicatorMarketplace /></LazyPage>} />
-                  <Route path="/settings/strategies" element={<LazyPage><StrategyMarketplace /></LazyPage>} />
-                  <Route path="/settings/layouts" element={<LazyPage><LayoutMarketplace /></LazyPage>} />
                   <Route path="/markets/options" element={<LazyPage><OptionsChainPage /></LazyPage>} />
                   <Route path="/markets/calendar" element={<LazyPage><MarketsCalendarPage /></LazyPage>} />
                   <Route path="/markets/event-calendar" element={<LazyPage><EventCalendarPage /></LazyPage>} />
@@ -232,22 +198,7 @@ export default function App() {
                   <Route path="/markets/world-markets" element={<LazyPage><WorldMarketsPage /></LazyPage>} />
                   <Route path="/markets/currency-matrix" element={<LazyPage><CurrencyMatrixPage /></LazyPage>} />
                   <Route path="/markets/bond-yields" element={<LazyPage><BondYieldsPage /></LazyPage>} />
-                  <Route path="/markets/commodities" element={<LazyPage><CommoditiesPage /></LazyPage>} />
-                  <Route path="/markets/alternative-charts" element={<LazyPage><AlternativeChartsPage /></LazyPage>} />
                   <Route path="/markets/vol-surface" element={<LazyPage><VolSurfacePage /></LazyPage>} />
-                  <Route path="/markets/greeks" element={<LazyPage><RealTimeGreeksPage /></LazyPage>} />
-                  <Route path="/markets/live-tape" element={<LazyPage><LiveTapePage /></LazyPage>} />
-                  <Route path="/markets/dark-pool" element={<LazyPage><DarkPoolPage /></LazyPage>} />
-                  <Route path="/markets/insider" element={<LazyPage><InsiderTransactionsPage /></LazyPage>} />
-                  <Route path="/markets/etf-flow" element={<LazyPage><EtfFlowPage /></LazyPage>} />
-                  <Route path="/markets/short-interest" element={<LazyPage><ShortInterestPage /></LazyPage>} />
-                  <Route path="/markets/13f" element={<LazyPage><ThirteenFPage /></LazyPage>} />
-                  <Route path="/markets/crypto-dominance" element={<LazyPage><CryptoDominancePage /></LazyPage>} />
-                  <Route path="/markets/stablecoin-depeg" element={<LazyPage><StablecoinDepegPage /></LazyPage>} />
-                  <Route path="/markets/funding-rates" element={<LazyPage><FundingRatePage /></LazyPage>} />
-                  <Route path="/markets/liquidation-map" element={<LazyPage><LiquidationMapPage /></LazyPage>} />
-                  <Route path="/markets/order-flow" element={<LazyPage><OrderFlowPage /></LazyPage>} />
-                  <Route path="/markets/footprint" element={<LazyPage><FootprintChartPage /></LazyPage>} />
                   <Route path="/markets/events" element={<LazyPage><EventsAnalytics /></LazyPage>} />
                   <Route path="/research/alt-data" element={<LazyPage><AltDataPage /></LazyPage>} />
                   <Route path="/alerts" element={<LazyPage><AlertsPage /></LazyPage>} />
@@ -255,16 +206,10 @@ export default function App() {
                   <Route path="/ai/strategy-generator" element={<LazyPage><AIStrategyGenerator /></LazyPage>} />
                   <Route path="/ai/indicator-generator" element={<LazyPage><AIIndicatorGenerator /></LazyPage>} />
                   <Route path="/ai/strategy-health" element={<LazyPage><StrategyHealthCheck /></LazyPage>} />
-                  <Route path="/ai/auto-tag-trades" element={<LazyPage><AutoTagTrades /></LazyPage>} />
-                  <Route path="/ai/explain-pnl" element={<LazyPage><ExplainPnL /></LazyPage>} />
                   <Route path="/ai/prompt-library" element={<LazyPage><PromptLibrary /></LazyPage>} />
-                  <Route path="/ai/leaderboard" element={<LazyPage><AILeaderboard /></LazyPage>} />
                   <Route path="/ai/explain-stops" element={<LazyPage><ExplainableStops /></LazyPage>} />
                   <Route path="/ai/briefing" element={<LazyPage><AIBriefingPage /></LazyPage>} />
-                  <Route path="/ai/trade-coach" element={<LazyPage><TradeCoach /></LazyPage>} />
                   <Route path="/ai/risk-report" element={<LazyPage><AIRiskReport /></LazyPage>} />
-                  <Route path="/ai/reasoning-trace" element={<LazyPage><ReasoningTrace /></LazyPage>} />
-                  <Route path="/ai/disagreement-detector" element={<LazyPage><DisagreementDetector /></LazyPage>} />
                   <Route path="/ai/multi-agent-analysis" element={<LazyPage><MultiAgentAnalysis /></LazyPage>} />
                   <Route path="/research/monte-carlo" element={<LazyPage><MonteCarlo /></LazyPage>} />
                   <Route path="/research/walkforward" element={<LazyPage><WalkForward /></LazyPage>} />

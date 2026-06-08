@@ -2,11 +2,22 @@ import { useState, useMemo } from 'react'
 import { api } from '../api/client'
 import { useToastStore } from '../store/toast'
 
+function generateMeetingDates(year: number, firstMonth: number, dayOfWeek: number, count: number): string[] {
+  const dates: string[] = []
+  let d = new Date(year, firstMonth, 1)
+  while (d.getDay() !== dayOfWeek) d.setDate(d.getDate() + 1)
+  for (let i = 0; i < count; i++) {
+    dates.push(d.toISOString().slice(0, 10))
+    d.setDate(d.getDate() + 42)
+  }
+  return dates
+}
+
 const CENTRAL_BANK_DATES: Record<string, string[]> = {
-  FOMC: ['2025-03-19', '2025-05-07', '2025-06-18', '2025-07-30', '2025-09-17', '2025-11-05', '2025-12-17'],
-  ECB: ['2025-03-06', '2025-04-17', '2025-06-05', '2025-07-24', '2025-09-11', '2025-10-30', '2025-12-18'],
-  BOJ: ['2025-03-19', '2025-04-30', '2025-06-17', '2025-07-30', '2025-09-18', '2025-10-30', '2025-12-18'],
-  BOE: ['2025-03-20', '2025-05-08', '2025-06-19', '2025-08-07', '2025-09-11', '2025-11-06', '2025-12-18'],
+  FOMC: generateMeetingDates(2026, 0, 3, 7),
+  ECB: generateMeetingDates(2026, 0, 4, 7),
+  BOJ: generateMeetingDates(2026, 0, 2, 7),
+  BOE: generateMeetingDates(2026, 0, 4, 7),
 }
 
 const COUNTRIES = ['US', 'EU', 'CN', 'JP', 'UK', 'RU', 'IN', 'BR', 'AU', 'SA', 'KR', 'SG']
