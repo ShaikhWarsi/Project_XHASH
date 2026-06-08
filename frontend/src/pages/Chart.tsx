@@ -362,7 +362,7 @@ export default function ChartPage() {
           engine.setSignals(markers)
           setSignalMarkers(markers)
         })
-        .catch(() => {})
+        .catch((err: unknown) => console.warn('Signal markers load failed:', err))
       // Re-hydrate indicators on the main engine only
       for (const ind of indicators) {
         engine.addIndicator(ind)

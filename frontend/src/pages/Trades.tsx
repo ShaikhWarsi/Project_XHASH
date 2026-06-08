@@ -4,6 +4,7 @@ import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import EmptyState from '../components/ui/EmptyState'
 import ExportButton from '../components/ui/ExportButton'
+import Skeleton from '../components/Skeleton'
 import VirtualList from '../components/VirtualList'
 import ExecutionAnalytics from '../components/ExecutionAnalytics'
 import { useUrlState } from '../hooks/useUrlState'
@@ -33,11 +34,38 @@ function TradeRow({ trade }: { trade: { id: number; symbol: string; side: string
 const FONT_INPUT = { ...FONT_SM, background: 'none', border: 'none', color: 'var(--text-primary)', outline: 'none', width: 140 }
 
 export default function Trades() {
-  const { trades, load } = usePortfolioStore()
+  const { trades, loading, error, load } = usePortfolioStore()
+  const addToast = useToastStore((s) => s.addToast)
   const [search, setSearch] = useUrlState('search', '')
   const [tradeTab, setTradeTab] = useState<'list' | 'execution'>('list')
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+  }, [])
+
+  if (loading) {
+    return (
+      <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <Skeleton width={200} height={16} />
+        <Skeleton count={8} height={22} variant="rect" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div style={{ padding: 24, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#ef4444' }}>
+        <div style={{ fontWeight: 600, marginBottom: 8 }}>Error loading trades</div>
+        <div style={{ color: 'var(--text-muted)', fontSize: 10, whiteSpace: 'pre-wrap' }}>{error}</div>
+        <button onClick={() => load()} style={{
+          marginTop: 12, padding: '6px 14px', fontSize: 10, fontWeight: 600,
+          fontFamily: "'JetBrains Mono', monospace",
+          background: 'var(--bg-hover)', color: 'var(--text-primary)',
+          border: '1px solid var(--border-color)', borderRadius: 4, cursor: 'pointer',
+        }}>Retry</button>
+      </div>
+    )
+  }
 
   const filteredTrades = useMemo(() => {
     if (!search) return trades

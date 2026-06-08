@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { Send, Users, Radio, UserPlus, Trophy } from 'lucide-react'
+import { useToastStore } from '../store/toast'
 
 interface SignalMessage {
   id: string
@@ -117,7 +118,9 @@ export default function SocialTrading() {
                   order_type: 'mkt',
                   time_in_force: 'day',
                 }),
-              }).catch(() => {})
+              }).catch(() => {
+                useToastStore.getState().addToast('Copy signal failed', 'error')
+              })
             }
           }
         } catch {}

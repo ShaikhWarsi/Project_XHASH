@@ -12,6 +12,19 @@ from sqlalchemy.orm import DeclarativeBase
 
 logger = logging.getLogger(__name__)
 
+
+async def _run_alembic_upgrade_async(sync_url: str):
+    print("DB_DEBUG: alembic background task started", flush=True)
+    try:
+        await asyncio.wait_for(
+            asyncio.to_thread(_run_alembic_upgrade, sync_url),
+            timeout=30,
+        )
+    except asyncio.TimeoutError:
+        logger.warning("Alembic upgrade timed out after 30s")
+    except Exception as e:
+        logger.warning("Alembic upgrade failed: %s", e)
+
 _engine = None
 _session_factory = None
 _init_lock = asyncio.Lock()
@@ -39,6 +52,7 @@ def _run_alembic_upgrade(db_url: str):
 
 async def init_db(db_url: Optional[str] = None):
     global _engine, _session_factory, _init_done
+    print("DB_DEBUG: init_db called", flush=True)
     url = db_url or get_db_path()
     engine_kwargs = {"echo": False}
     if not url.startswith("sqlite"):
@@ -47,16 +61,15 @@ async def init_db(db_url: Optional[str] = None):
     _engine = create_async_engine(url, **engine_kwargs)
     _session_factory = async_sessionmaker(_engine, expire_on_commit=False)
 
-    sync_url = url.replace("+aiosqlite", "")
-    try:
-        await asyncio.to_thread(_run_alembic_upgrade, sync_url)
-    except Exception as e:
-        logger.warning("Alembic upgrade failed (%s), falling back to create_all", e)
+    print("DB_DEBUG: about to create_all", flush=True)
     from .models import Base
     async with _engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    print("DB_DEBUG: create_all done", flush=True)
     _init_done = True
     logger.info(f"Database initialized: {url}")
+    asyncio.create_task(_run_alembic_upgrade_async(url.replace("+aiosqlite", "")))
+    print("DB_DEBUG: init_db complete", flush=True)
 
 
 async def close_db():

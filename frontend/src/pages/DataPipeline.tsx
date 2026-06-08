@@ -104,7 +104,9 @@ export default function DataPipeline() {
           if (Array.isArray(res.data.runs)) setPipelineRuns(res.data.runs)
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        useToastStore.getState().addToast('Failed to load pipeline data', 'error')
+      })
       .finally(() => setLoading(false))
   }, [])
 

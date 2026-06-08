@@ -77,12 +77,12 @@ export default function Infrastructure() {
   useEffect(() => {
     setLoading(true)
     Promise.all([
-      api.get('/providers/').then(r => setProviders(r.data.providers || [])).catch(() => { }),
-      api.get('/mcp/tools').then(r => setMcpTools(r.data.tools || [])).catch(() => { }),
-      api.get('/backtest-cache/stats').then(r => setCacheStats(r.data)).catch(() => { }),
-      api.get('/db/stats').then(r => setDbPoolStats(r.data)).catch(() => { }),
-      api.get('/cache/stats/routes').then(r => setRouteCacheStats(r.data.routes || r.data || [])).catch(() => { }),
-      api.get('/scheduler/jobs').then(r => setSchedulerJobs(r.data.jobs || r.data || [])).catch(() => { }),
+      api.get('/providers/').then(r => setProviders(r.data.providers || [])).catch(() => { addToast('Providers load failed', 'error') }),
+      api.get('/mcp/tools').then(r => setMcpTools(r.data.tools || [])).catch(() => { addToast('MCP tools load failed', 'error') }),
+      api.get('/backtest-cache/stats').then(r => setCacheStats(r.data)).catch(() => { addToast('Cache stats load failed', 'error') }),
+      api.get('/db/stats').then(r => setDbPoolStats(r.data)).catch(() => { addToast('DB stats load failed', 'error') }),
+      api.get('/cache/stats/routes').then(r => setRouteCacheStats(r.data.routes || r.data || [])).catch(() => { addToast('Route cache stats load failed', 'error') }),
+      api.get('/scheduler/jobs').then(r => setSchedulerJobs(r.data.jobs || r.data || [])).catch(() => { addToast('Scheduler jobs load failed', 'error') }),
     ]).finally(() => setLoading(false))
   }, [])
 
@@ -91,7 +91,7 @@ export default function Infrastructure() {
     const fetchHealth = () => {
       api.get('/health/metrics')
         .then((r: any) => { if (r.data) setHealth(r.data) })
-        .catch(() => {})
+        .catch(() => { /* health metrics are best-effort */ })
     }
     fetchHealth()
     const interval = setInterval(fetchHealth, 5000)

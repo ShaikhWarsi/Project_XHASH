@@ -222,7 +222,7 @@ function TerminalLayout() {
   ) : null
 
   const content = (
-    <>
+    <div className="flex h-screen" style={{ background: 'var(--bg-primary)' }}>
       {!distractionFree && <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} isMobile={isMobile} />}
       <div className="flex-1 flex flex-col min-w-0">
         {!distractionFree && isMobile ? null : <StatusStrip />}
@@ -291,7 +291,7 @@ function TerminalLayout() {
       <GlobalSymbolSearch />
       <KeyboardShortcutListener />
       {helpOverlay}
-    </>
+    </div>
   )
 
   return content

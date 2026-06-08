@@ -322,3 +322,50 @@ class StockAnalysisSnapshot(Base):
     analysis_json = Column(Text, nullable=False)
     news_json = Column(Text, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class TradingAgentsRun(Base):
+    """TradingAgents multi-agent analysis runs."""
+
+    __tablename__ = "tradingagents_runs"
+
+    id = Column(String(36), primary_key=True)
+    ticker = Column(String(20), nullable=False, index=True)
+    status = Column(String(20), nullable=False, default="queued")
+    config_json = Column(Text, default="{}")
+    started_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    finished_at = Column(DateTime, nullable=True)
+    error = Column(Text, nullable=True)
+
+    # Pipeline state tracking
+    current_stage = Column(String(50), nullable=True)
+    current_node = Column(String(100), nullable=True)
+    tool_call_count = Column(Integer, default=0)
+    elapsed_ms = Column(Integer, nullable=True)
+    cancel_requested = Column(Integer, default=0)
+    error_detail = Column(Text, nullable=True)
+
+
+class TradingAgentsEvent(Base):
+    """Per-event log for a pipeline run."""
+
+    __tablename__ = "tradingagents_events"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    run_id = Column(String(36), nullable=False, index=True)
+    event_type = Column(String(50), nullable=False)
+    event_data = Column(Text, default="{}")
+    node_name = Column(String(100), nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class TradingAgentsReport(Base):
+    """Per-stage report snapshots for a run."""
+
+    __tablename__ = "tradingagents_reports"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    run_id = Column(String(36), nullable=False, index=True)
+    stage = Column(String(50), nullable=False)
+    payload_json = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

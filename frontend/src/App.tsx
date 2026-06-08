@@ -115,6 +115,7 @@ const AIBriefingPage = lazy(() => import('./pages/AIBriefingPage'))
 const AIRiskReport = lazy(() => import('./pages/AIRiskReport'))
 const ReasoningTrace = lazy(() => import('./pages/ReasoningTrace'))
 const DisagreementDetector = lazy(() => import('./pages/DisagreementDetector'))
+const MultiAgentAnalysis = lazy(() => import('./pages/MultiAgentAnalysis'))
 const MonteCarlo = lazy(() => import('./pages/MonteCarlo'))
 const WalkForward = lazy(() => import('./pages/WalkForward'))
 const ScenarioAnalysis = lazy(() => import('./pages/ScenarioAnalysis'))
@@ -123,6 +124,7 @@ const MemoryLog = lazy(() => import('./pages/MemoryLog'))
 const Calibration = lazy(() => import('./pages/Calibration'))
 const Reflection = lazy(() => import('./pages/Reflection'))
 const WallClock = lazy(() => import('./pages/WallClock'))
+const DebugPage = lazy(() => import('./pages/Debug'))
 
 import Skeleton from './components/Skeleton'
 
@@ -257,6 +259,7 @@ export default function App() {
                   <Route path="/ai/risk-report" element={<LazyPage><AIRiskReport /></LazyPage>} />
                   <Route path="/ai/reasoning-trace" element={<LazyPage><ReasoningTrace /></LazyPage>} />
                   <Route path="/ai/disagreement-detector" element={<LazyPage><DisagreementDetector /></LazyPage>} />
+                  <Route path="/ai/multi-agent-analysis" element={<LazyPage><MultiAgentAnalysis /></LazyPage>} />
                   <Route path="/research/monte-carlo" element={<LazyPage><MonteCarlo /></LazyPage>} />
                   <Route path="/research/walkforward" element={<LazyPage><WalkForward /></LazyPage>} />
                   <Route path="/research/scenario" element={<LazyPage><ScenarioAnalysis /></LazyPage>} />
@@ -265,6 +268,7 @@ export default function App() {
                   <Route path="/settings/calibration" element={<LazyPage><Calibration /></LazyPage>} />
                   <Route path="/settings/reflection" element={<LazyPage><Reflection /></LazyPage>} />
                   <Route path="/settings/wall-clock" element={<LazyPage><WallClock /></LazyPage>} />
+                  <Route path="/debug" element={<LazyPage><DebugPage /></LazyPage>} />
                 </Route>
               </Routes>
             </AudioAlertProvider>

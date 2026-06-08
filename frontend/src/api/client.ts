@@ -32,13 +32,30 @@ export const api = axios.create({
 
 const NO_RETRY_PATTERNS = [/\/market\/(news|quotes)/, /\/signals\//]
 
+// Global error toast - show for important errors
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const config = error.config
     if (!config || config._retryCount >= 1) return Promise.reject(error)
+
+    // Show toast for non-404, non-cancelled errors on all endpoints
+    const url = config.url || ''
+    const status = error.response?.status
+    if (status && status !== 404 && status !== 304 && !url.includes('/stream') && !url.includes('/health')) {
+      const method = (config.method || 'get').toUpperCase()
+      const isCritical = url.includes('/tradingagents') || status >= 500
+      if (method !== 'GET' || isCritical) {
+        const msg = error.response?.data?.detail || error.response?.data?.message || error.message
+        try {
+          const { useToastStore } = await import('../store/toast')
+          useToastStore.getState().addToast(`${method} ${url.split('?')[0]} failed: ${msg}`, 'error')
+        } catch {}
+      }
+    }
+
     if (!error.response || error.response.status < 500) return Promise.reject(error)
-    if (NO_RETRY_PATTERNS.some((p) => p.test(config.url))) return Promise.reject(error)
+    if (NO_RETRY_PATTERNS.some((p) => p.test(url))) return Promise.reject(error)
     config._retryCount = (config._retryCount || 0) + 1
     const delay = 1000
     await new Promise((resolve) => setTimeout(resolve, delay))

@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
 import Editor from '@monaco-editor/react'
 import { api, listStrategyTemplates, getStrategyTemplate } from '../api/client'
+import { useToastStore } from '../store/toast'
 import { Play, Save, Copy, RotateCcw, FileCode, FileDown, Table, LayoutGrid } from 'lucide-react'
 
 const DEFAULT_CODE = `// FinScript Strategy
@@ -203,7 +204,9 @@ export default function StrategyCode() {
     setLoadingTemplates(true)
     listStrategyTemplates().then((list) => {
       if (Array.isArray(list)) setTemplates(list)
-    }).catch(() => {}).finally(() => setLoadingTemplates(false))
+    }).catch(() => {
+      useToastStore.getState().addToast('Failed to load strategy templates', 'error')
+    }).finally(() => setLoadingTemplates(false))
   }, [])
 
   const loadApiTemplate = async (name: string) => {

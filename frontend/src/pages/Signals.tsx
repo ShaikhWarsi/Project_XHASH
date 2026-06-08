@@ -5,6 +5,7 @@ import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import Skeleton from '../components/Skeleton'
 import EmptyState from '../components/ui/EmptyState'
+import { useToastStore } from '../store/toast'
 import type { QuantSignal } from '../api/types'
 import { useUrlState } from '../hooks/useUrlState'
 
@@ -25,7 +26,7 @@ export default function Signals() {
   const heatmapRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    load().catch(() => {})
+    load()
     const base = import.meta.env.VITE_API_BASE ?? '/api'
     const es = new EventSource(`${base}/signals/stream`)
     es.onmessage = (e) => {

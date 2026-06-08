@@ -383,3 +383,97 @@ export interface WhatIfResult {
   tax_impact: number
   total_cost: number
 }
+
+// ── TradingAgents Multi-Agent Pipeline ──
+
+export interface ScrapeSource {
+  source: string
+  items: Record<string, unknown>[]
+  fetched_at: string
+}
+
+export interface ScrapeBundle {
+  ticker: string
+  sources: ScrapeSource[]
+}
+
+export interface AnalyzeRequest {
+  ticker: string
+  trade_date?: string
+  max_debate_rounds?: number
+  max_risk_rounds?: number
+  deep_model?: string
+  quick_model?: string
+}
+
+export interface AnalyzeResponse {
+  run_id: string
+  ticker: string
+  status: string
+}
+
+export interface AnalystReport {
+  name: string
+  content: string
+  at: string
+}
+
+export interface DebateRound {
+  speaker: string
+  round: number
+  content: string
+  at: string
+}
+
+export interface PortfolioDecision {
+  rating: string
+  executive_summary: string
+  investment_thesis: string
+  price_target: number | null
+  time_horizon: string | null
+  raw: string
+}
+
+export interface ReportBundle {
+  ticker: string
+  scrape: ScrapeBundle | null
+  analysts: AnalystReport[]
+  invest_debate: DebateRound[]
+  research_plan: string
+  trader_plan: string
+  risk_debate: DebateRound[]
+  final: PortfolioDecision
+}
+
+export interface RunSummary {
+  id: string
+  ticker: string
+  status: string
+  started_at: string | null
+  finished_at: string | null
+  error: string | null
+}
+
+export interface TradingAgentsEvent {
+  event: string
+  data: Record<string, unknown>
+  ts: string
+}
+
+export interface RunStatus {
+  id: string
+  ticker: string
+  status: string
+  current_stage: string | null
+  current_node: string | null
+  tool_call_count: number
+  elapsed_ms: number
+  cancel_requested: boolean
+  started_at: string | null
+  finished_at: string | null
+  error: string | null
+  error_detail: string | null
+}
+
+export const PIPELINE_STAGES = ['scraping', 'analysts', 'debate', 'risk', 'final'] as const
+export type PipelineStage = typeof PIPELINE_STAGES[number]

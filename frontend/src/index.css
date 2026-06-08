@@ -534,6 +534,11 @@ input, textarea, select {
   100% { width: 100%; }
 }
 
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 4px var(--accent-blue); }
+  50% { box-shadow: 0 0 12px var(--accent-blue); }
+}
+
 @keyframes spinner-rotate {
   to { transform: rotate(360deg); }
 }

@@ -8,6 +8,7 @@ import logging
 import signal
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
+from datetime import datetime, timezone
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -188,6 +189,7 @@ from .routes.calibration_routes import router as calibration_router
 from .routes.reflection_routes import router as reflection_router
 from .routes.wall_clock_routes import router as wall_clock_router
 from .routes.panic import router as panic_router
+from .routes.tradingagents_routes import router as tradingagents_router
 from persistence import init_db, close_db
 from persistence.database import _engine as db_engine
 
@@ -343,10 +345,13 @@ def start_background_tasks():
 async def lifespan(app: FastAPI):
     global _shutting_down
     try:
+        print("LIFESPAN_DEBUG: init_db starting", flush=True)
         await init_db()
+        print("LIFESPAN_DEBUG: init_db done", flush=True)
         await seed_demo_data()
+        print("LIFESPAN_DEBUG: seed_demo_data done", flush=True)
 
-        # Load active credentials and seed back into provider registries
+        print("LIFESPAN_DEBUG: loading API keys from DB", flush=True)
         try:
             import json
             from sqlalchemy import select
@@ -362,12 +367,9 @@ async def lifespan(app: FastAPI):
                 for key in keys:
                     try:
                         config = json.loads(key.key_value)
-                        # Update registry
                         if key.provider in registry._providers:
                             registry._providers[key.provider].credentials.update(config)
                             logger.info("Restored credentials for registry provider: %s", key.provider)
-
-                        # Update global_provider_registry
                         p = global_provider_registry.get(key.provider)
                         if p and hasattr(p, "credentials") and isinstance(p.credentials, dict):
                             p.credentials.update(config)
@@ -376,23 +378,30 @@ async def lifespan(app: FastAPI):
                         logger.warning("Failed to restore credentials for %s: %s", key.provider, ex)
         except Exception as e:
             logger.warning("Failed to load and seed API keys on startup: %s", e)
+        print("LIFESPAN_DEBUG: API keys loaded", flush=True)
 
+        print("LIFESPAN_DEBUG: registering YFinance", flush=True)
         try:
             yfinance_provider = YFinanceProvider()
             global_provider_registry.register(yfinance_provider, enabled=True)
             logger.info("Registered YFinance provider")
         except Exception as e:
             logger.warning("Failed to register YFinance provider: %s", e)
+        print("LIFESPAN_DEBUG: YFinance registered", flush=True)
+
+        print("LIFESPAN_DEBUG: starting background tasks", flush=True)
         if _env_bool("TRADING_ENGINE_MARKET_INTEL_ENABLED", True):
             start_background_tasks()
+        print("LIFESPAN_DEBUG: background tasks started", flush=True)
 
-        # ── Register OS signal handlers for graceful shutdown ──
+        print("LIFESPAN_DEBUG: registering signal handlers", flush=True)
         loop = asyncio.get_event_loop()
         for sig in (signal.SIGTERM, signal.SIGINT):
             try:
                 loop.add_signal_handler(sig, lambda s=sig: asyncio.create_task(_handle_shutdown(s)))
             except NotImplementedError:
                 pass
+        print("LIFESPAN_DEBUG: signal handlers registered", flush=True)
 
         yield
     finally:
@@ -513,7 +522,7 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
     @app.middleware("http")
     async def etag_middleware(request: Request, call_next):
         response = await call_next(request)
-        if request.method == "GET" and response.status_code == 200 and response.body:
+        if request.method == "GET" and response.status_code == 200 and hasattr(response, 'body') and response.body:
             if request.url.path in ("/portfolio", "/api/portfolio", "/request-metrics"):
                 import hashlib
                 etag = hashlib.md5(response.body).hexdigest()
@@ -768,6 +777,7 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
     app.include_router(wall_clock_router)
     app.include_router(auth_router)
     app.include_router(panic_router)
+    app.include_router(tradingagents_router)
 
     @app.get("/")
     async def root():

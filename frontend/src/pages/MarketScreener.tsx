@@ -74,7 +74,7 @@ export default function MarketScreener() {
   const addToast = useToastStore((s) => s.addToast)
 
   useEffect(() => {
-    getScreenerPresets().then(setPresets).catch(() => {})
+    getScreenerPresets().then(setPresets).catch(() => { addToast('Failed to load screener presets', 'error') })
   }, [])
 
   const doScan = useCallback(async (overrides?: Record<string, any>) => {

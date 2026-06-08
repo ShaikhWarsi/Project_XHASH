@@ -45,6 +45,18 @@ llm = [
     "langchain-anthropic>=0.1",
     "langchain-google-genai>=1.0",
 ]
+tradingagents = [
+    "langchain>=0.3",
+    "langchain-core>=0.3",
+    "langchain-openai>=0.2",
+    "langgraph>=0.2",
+    "langgraph-checkpoint-sqlite>=2.0",
+    "yfinance>=0.2,<1.0",
+    "stockstats>=0.6.2",
+    "pandas-ta>=0.3.14b",
+    "textblob>=0.18",
+    "rich>=13.0",
+]
 mcp = [
     "fastmcp>=0.2",
 ]
@@ -109,7 +121,7 @@ include = [
     "backtesting.market_engines*",
     "analytics*", "analytics.optimizers*", "analytics.hypothesis*", "analytics.benchmarks*",
     "analytics.options*",
-    "api*", "integrations*", "scripts*", "config*",
+    "api*", "integrations.tradingagents*", "integrations.tradingagents_bridge*", "scripts*", "config*",
     "persistence*", "llm*", "analyzers*", "analyzers.mmc*",
     "analytics.cfa*", "finscript*", "finscript.export*",
     "cli*",

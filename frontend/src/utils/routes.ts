@@ -69,6 +69,7 @@ export const ROUTES: RouteConfig[] = [
   { path: '/ai/risk-report', label: 'Risk Report', group: 'ai', workflow: 'trader' },
   { path: '/ai/reasoning-trace', label: 'Reasoning Trace', group: 'ai', workflow: 'researcher' },
   { path: '/ai/disagreement-detector', label: 'Disagreement', group: 'ai', workflow: 'quant' },
+  { path: '/ai/multi-agent-analysis', label: 'Multi-Agent Analysis', group: 'ai', workflow: 'quant' },
 
   // Research
   { path: '/research/cfa', label: 'CFA Analytics', group: 'research', workflow: 'researcher' },

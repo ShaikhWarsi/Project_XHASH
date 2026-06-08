@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react'
 import { api } from '../api/client'
 import Spinner from '../components/Spinner'
 import KpiCard from '../components/ui/KpiCard'
+import { useToastStore } from '../store/toast'
 
 export default function ScenarioAnalysis() {
+  const addToast = useToastStore((s) => s.addToast)
   const [symbol, setSymbol] = useState('AAPL')
   const [result, setResult] = useState<any>(null)
   const [scenarios, setScenarios] = useState<Record<string, any>>({})
@@ -11,7 +13,9 @@ export default function ScenarioAnalysis() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    api.get('/scenario/scenarios').then(r => setScenarios(r.data.scenarios)).catch(() => {})
+    api.get('/scenario/scenarios').then(r => setScenarios(r.data.scenarios)).catch((err) => {
+      addToast(`Failed to load scenarios: ${err instanceof Error ? err.message : 'Unknown'}`, 'error')
+    })
   }, [])
 
   const run = async () => {
