@@ -123,7 +123,7 @@ export class ChartLayout {
       if (pane === this.mainPane) continue
       try {
         ;(pane.chart as any).crosshair().setPosition(time, 0)
-      } catch {}
+      } catch (e) { console.warn('[ChartLayout] crosshair sync failed:', e) }
     }
   }
 
@@ -137,9 +137,9 @@ export class ChartLayout {
         if (pane === this.mainPane) continue
         try {
           pane.chart.timeScale().setVisibleRange(range)
-        } catch {}
+        } catch (e) { console.warn('[ChartLayout] timeScale sync failed:', e) }
       }
-    } catch {}
+    } catch (e) { console.warn('[ChartLayout] getVisibleRange failed:', e) }
   }
 
   resize(height: number) {

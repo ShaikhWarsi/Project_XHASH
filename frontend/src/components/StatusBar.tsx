@@ -5,6 +5,7 @@ import { usePortfolioStore } from '../store/portfolio'
 import { api } from '../api/client'
 import AIBriefing from './AIBriefing'
 import VoiceCommandButton from './VoiceCommandButton'
+import ConnectionStatus from './ConnectionStatus'
 import { Sun, Moon, Monitor, ChevronDown, ChevronUp, Activity, Cpu, MemoryStick, Signal, Wifi, Layers, ScrollText } from 'lucide-react'
 
 interface StatusInfo {
@@ -80,7 +81,7 @@ export default function StatusBar() {
         const res = await api.get('/orders?status=open')
         const data = res.data
         setStatus((prev) => ({ ...prev, ordersCount: Array.isArray(data) ? data.length : data.orders?.length || 0 }))
-      } catch {}
+      } catch (e) { console.warn('[StatusBar] open orders fetch failed:', e) }
     }
     fetchOrders()
     const interval = setInterval(fetchOrders, 30000)
@@ -219,6 +220,7 @@ export default function StatusBar() {
               {latency}ms
             </span>
           )}
+          <ConnectionStatus />
           <span style={{ color: 'var(--text-muted)', fontSize: 8 }}>|</span>
           {status.portfolioValue && (
             <>

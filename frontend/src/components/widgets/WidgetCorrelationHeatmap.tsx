@@ -107,8 +107,8 @@ export default function WidgetCorrelationHeatmap({
           responsive: true,
           displayModeBar: false,
         })
-      } catch {
-        /* ignore render errors */
+      } catch (e) {
+        console.warn('[WidgetCorrelationHeatmap] render failed:', e)
       }
 
       if (onCellClick) {
@@ -139,8 +139,8 @@ export default function WidgetCorrelationHeatmap({
         if (Plotly && typeof Plotly.purge === 'function') {
           Plotly.purge(el)
         }
-      } catch {
-        /* ignore cleanup errors */
+      } catch (e) {
+        console.warn('[WidgetCorrelationHeatmap] cleanup failed:', e)
       }
     }
   }, [data, timeframe, onCellClick])

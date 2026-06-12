@@ -74,7 +74,7 @@ export class ChartScreenshot {
           const x = rect.left - containerRect.left
           const y = rect.top - containerRect.top
           ctx.drawImage(canvas, x, y, rect.width, rect.height)
-        } catch {}
+        } catch (e) { console.warn('[ChartScreenshot] canvas fallback draw failed:', e) }
       }
     }
 
@@ -86,7 +86,7 @@ export class ChartScreenshot {
         const x = rect.left - containerRect.left
         const y = rect.top - containerRect.top
         ctx.drawImage(img, x, y, rect.width, rect.height)
-      } catch {}
+      } catch (e) { console.warn('[ChartScreenshot] image draw failed:', e) }
     }
 
     if (options?.watermark !== false) {

@@ -24,7 +24,7 @@ function StrengthMeter({ v }: { v: number }) {
 }
 
 export default function CurrencyMatrixPage() {
-  const { data, isLoading } = useApiQuery<any>('/market/fx-rates')
+  const { data, isLoading, error: queryError } = useApiQuery<any>('/market/fx-rates')
   const fx: FxRate[] = data?.rates ?? []
   const dxy = data?.dxy ?? 104.5
   const dxyChange = data?.dxy_change ?? 0
@@ -43,6 +43,8 @@ export default function CurrencyMatrixPage() {
       }>
         {isLoading ? (
           <div className="text-[10px] font-mono-data text-muted py-4 text-center">Loading FX rates...</div>
+        ) : queryError ? (
+          <div className="text-[10px] font-mono-data text-down py-4 text-center">{String(queryError)}</div>
         ) : fx.length === 0 ? (
           <div className="text-[10px] font-mono-data text-muted">No FX data available.</div>
         ) : (

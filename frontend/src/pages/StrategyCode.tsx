@@ -215,8 +215,8 @@ export default function StrategyCode() {
       const t = await getStrategyTemplate(name)
       if (t.code) setCode(t.code)
       setOutput(`Loaded template: ${name}`)
-    } catch {
-      setOutput(`Template "${name}" not available from API, try local templates.`)
+    } catch (e) {
+      setOutput(`Template "${name}" not available: ${(e as Error).message}`)
     }
     setShowGallery(false)
   }
@@ -415,7 +415,8 @@ export default function StrategyCode() {
     try {
       const { data } = await api.post('/finscript/export/pine', { code })
       setOutput(data.code || data.result || JSON.stringify(data, null, 2))
-    } catch {
+    } catch (e) {
+      if (import.meta.env.DEV) console.debug('[StrategyCode] API export failed, using local Pine conversion:', e)
       setOutput(convertToPineScript(code))
     }
   }
@@ -425,7 +426,8 @@ export default function StrategyCode() {
     try {
       const { data } = await api.post('/finscript/export/mt5', { code })
       setOutput(data.code || data.result || JSON.stringify(data, null, 2))
-    } catch {
+    } catch (e) {
+      if (import.meta.env.DEV) console.debug('[StrategyCode] API export failed, using local MT5 conversion:', e)
       setOutput(convertToMT5(code))
     }
   }

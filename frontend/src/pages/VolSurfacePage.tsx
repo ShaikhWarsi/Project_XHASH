@@ -8,7 +8,7 @@ export default function VolSurfacePage() {
   const [fetchSymbol, setFetchSymbol] = useState('SPY')
   const plotRef = useRef<HTMLDivElement>(null)
 
-  const { data, isLoading } = useApiQuery<any>(fetchSymbol ? `/options/vol-surface/${fetchSymbol}` : null)
+  const { data, isLoading, error: queryError } = useApiQuery<any>(fetchSymbol ? `/options/vol-surface/${fetchSymbol}` : null)
 
   useEffect(() => {
     if (!plotRef.current || !data) return
@@ -49,6 +49,9 @@ export default function VolSurfacePage() {
           </button>
           <Badge label="3D SURFACE" variant="info" size="sm" />
         </div>
+        {queryError && (
+          <div className="text-[10px] font-mono-data text-down py-2 text-center">{String(queryError)}</div>
+        )}
         <div ref={plotRef} style={{ height: 400, width: '100%' }} />
         {data && (
           <div className="grid grid-cols-4 gap-2 mt-2">

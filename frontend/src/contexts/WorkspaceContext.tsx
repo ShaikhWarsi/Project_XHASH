@@ -63,7 +63,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         if (ws.widgetOrder) localStorage.setItem('dashboard_widget_order', JSON.stringify(ws.widgetOrder))
         if (ws.widgetVisibility) localStorage.setItem('dashboard_widget_order_visible', JSON.stringify(ws.widgetVisibility))
         if (ws.widgetSizes) localStorage.setItem('dashboard_widget_order_sizes', JSON.stringify(ws.widgetSizes))
-      } catch {}
+      } catch (e) { console.warn('[Workspace] failed to persist widget state:', e) }
     }
     return ws
   }, [])
@@ -92,7 +92,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         widgetVisibility: visibility,
         widgetSizes: sizes,
       })
-    } catch {}
+      } catch (e) { console.warn('[Workspace] failed to capture widget state:', e) }
   }, [currentWorkspace, saveWorkspace])
 
   const applyWidgetState = useCallback((storageKey: string, name: string) => {
@@ -104,7 +104,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       if (layout?.visibility) localStorage.setItem(`${storageKey}_visible`, JSON.stringify(layout.visibility))
       if (layout?.sizes) localStorage.setItem(`${storageKey}_sizes`, JSON.stringify(layout.sizes))
       window.dispatchEvent(new StorageEvent('storage', { key: storageKey }))
-    } catch {}
+    } catch (e) { console.warn('[Workspace] failed to apply widget state:', e) }
   }, [])
 
   return (

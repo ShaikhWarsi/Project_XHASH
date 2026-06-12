@@ -204,7 +204,7 @@ export default function MultiTimeframeOverlay({
       if (seriesRef.current && chartEngine) {
         try {
           chartEngine.chart.removeSeries(seriesRef.current)
-        } catch {}
+        } catch (e) { console.warn('[MultiTimeframeOverlay] removeSeries failed:', e) }
         seriesRef.current = null
       }
       return
@@ -229,7 +229,7 @@ export default function MultiTimeframeOverlay({
           lineWidth: 2,
           lineStyle: config.dash.length > 0 ? 2 : 0,
         })
-      } catch {}
+      } catch (e) { console.warn('[MultiTimeframeOverlay] setData failed:', e) }
       return
     }
 
@@ -253,7 +253,7 @@ export default function MultiTimeframeOverlay({
       if (seriesRef.current) {
         try {
           chartEngine?.chart.removeSeries(seriesRef.current)
-        } catch {}
+        } catch (e) { console.warn('[MultiTimeframeOverlay] cleanup removeSeries failed:', e) }
         seriesRef.current = null
       }
     }
@@ -264,7 +264,7 @@ export default function MultiTimeframeOverlay({
       if (seriesRef.current && chartEngine) {
         try {
           chartEngine.chart.removeSeries(seriesRef.current)
-        } catch {}
+        } catch (e) { console.warn('[MultiTimeframeOverlay] visibility removeSeries failed:', e) }
         seriesRef.current = null
       }
     }
@@ -278,7 +278,7 @@ export default function MultiTimeframeOverlay({
       if (seriesRef.current && chartEngine) {
         try {
           chartEngine.chart.removeSeries(seriesRef.current)
-        } catch {}
+        } catch (e) { console.warn('[MultiTimeframeOverlay] handleTFChange removeSeries failed:', e) }
         seriesRef.current = null
       }
     }

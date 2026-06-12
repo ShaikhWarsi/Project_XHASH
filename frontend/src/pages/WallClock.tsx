@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { api } from '../api/client'
 import Spinner from '../components/Spinner'
+import { useToastStore } from '../store/toast'
 
 export default function WallClock() {
   const [summary, setSummary] = useState<any>(null)
   const [completed, setCompleted] = useState<any[]>([])
   const [active, setActive] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
+  const addToast = useToastStore((s) => s.addToast)
 
   const load = async () => {
     setLoading(true)
@@ -19,7 +21,9 @@ export default function WallClock() {
       setSummary(s.data)
       setCompleted(c.data.completed || [])
       setActive(a.data.active || [])
-    } catch {}
+    } catch (err: any) {
+      addToast(err?.response?.data?.detail || err.message || 'Failed to load', 'error')
+    }
     setLoading(false)
   }
 
@@ -29,7 +33,9 @@ export default function WallClock() {
     try {
       await api.post(`/wall-clock/start?name=${encodeURIComponent(name)}`)
       load()
-    } catch {}
+    } catch (err: any) {
+      addToast(err?.response?.data?.detail || err.message || 'Failed to start timer', 'error')
+    }
   }
 
   useEffect(() => { load() }, [])

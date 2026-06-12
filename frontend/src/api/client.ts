@@ -32,32 +32,81 @@ export const api = axios.create({
 
 const NO_RETRY_PATTERNS = [/\/market\/(news|quotes)/, /\/signals\//]
 
-// Global error toast - show for important errors
+const ERROR_SUGGESTIONS: Record<string, string> = {
+  'NetworkError': 'Cannot reach the server. Is the API running? Try: python scripts/dashboard.py',
+  'ERR_CONNECTION_REFUSED': 'Connection refused. The API server may not be running.',
+  'ERR_NETWORK': 'Network error. Check your internet connection.',
+  'timeout': 'The request timed out. The server may be overloaded.',
+}
+
+function getUserFriendlyError(error: any): { message: string; suggestion?: string } {
+  const response = error?.response
+  const data = response?.data
+  const status = response?.status
+  const url = error?.config?.url || ''
+
+  if (!response || error.code === 'ERR_NETWORK') {
+    return {
+      message: 'Cannot connect to the API server.',
+      suggestion: 'Make sure the API server is running on port 8000.\nRun: python scripts/dashboard.py',
+    }
+  }
+
+  if (error.code === 'ECONNABORTED') {
+    return {
+      message: 'Request timed out.',
+      suggestion: 'The server may be overloaded. Try again in a moment.',
+    }
+  }
+
+  if (data?.suggestion) {
+    return { message: data.message || data.detail || error.message, suggestion: data.suggestion }
+  }
+
+  const statusSuggestions: Record<number, string> = {
+    400: 'Check your input and try again.',
+    401: 'Your API key may be invalid. Go to Settings to update it.',
+    403: 'You do not have permission for this action.',
+    404: url.includes('/api/') ? 'This resource was not found.' : 'Page not found.',
+    429: 'Too many requests. Please wait a moment before trying again.',
+     500: 'The server encountered an error. The error details above describe the issue.',
+    502: 'The server received an invalid response from an upstream service.',
+    503: 'Service temporarily unavailable. The server may be starting up.',
+  }
+
+  const msg = data?.message || data?.detail || data?.error || error.message
+  const suggestion = statusSuggestions[status] || ''
+
+  return { message: msg, suggestion }
+}
+
+// Global error interceptor with user-friendly messages
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const config = error.config
     if (!config || config._retryCount >= 1) return Promise.reject(error)
 
-    // Show toast for non-404, non-cancelled errors on all endpoints
     const url = config.url || ''
     const status = error.response?.status
-    if (status && status !== 404 && status !== 304 && !url.includes('/stream') && !url.includes('/health')) {
+
+    if (status && status !== 304 && !url.includes('/stream') && !url.includes('/health')) {
       const method = (config.method || 'get').toUpperCase()
-      const isCritical = url.includes('/tradingagents') || status >= 500
+      const isCritical = url.includes('/tradingagents') || (status && status >= 500)
       if (method !== 'GET' || isCritical) {
-        const msg = error.response?.data?.detail || error.response?.data?.message || error.message
+        const { message, suggestion } = getUserFriendlyError(error)
+        const fullMsg = suggestion ? `${message}\n${suggestion}` : message
         try {
           const { useToastStore } = await import('../store/toast')
-          useToastStore.getState().addToast(`${method} ${url.split('?')[0]} failed: ${msg}`, 'error')
-        } catch {}
+          useToastStore.getState().addToast(`${method} ${url.split('?')[0]} failed: ${fullMsg}`, 'error')
+        } catch (e) { console.warn('[API] Could not show error toast:', e) }
       }
     }
 
-    if (!error.response || error.response.status < 500) return Promise.reject(error)
+    if (!error.response || (status && status < 500)) return Promise.reject(error)
     if (NO_RETRY_PATTERNS.some((p) => p.test(url))) return Promise.reject(error)
     config._retryCount = (config._retryCount || 0) + 1
-    const delay = 1000
+    const delay = 1000 * config._retryCount
     await new Promise((resolve) => setTimeout(resolve, delay))
     return api(config)
   },

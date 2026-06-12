@@ -21,7 +21,7 @@ export default function WorldMarketsPage() {
     return () => clearInterval(interval)
   }, [])
 
-  const { data, isLoading } = useApiQuery<any>('/market/global-market/overview')
+  const { data, isLoading, error: queryError } = useApiQuery<any>('/market/global-market/overview')
   const markets: MarketStatus[] = data?.markets ?? []
 
   return (
@@ -31,6 +31,8 @@ export default function WorldMarketsPage() {
       }>
         {isLoading ? (
           <div className="text-[10px] font-mono-data text-muted py-4 text-center">Loading market status...</div>
+        ) : queryError ? (
+          <div className="text-[10px] font-mono-data text-down py-4 text-center">{String(queryError)}</div>
         ) : markets.length === 0 ? (
           <div className="text-[10px] font-mono-data text-muted">No market data available.</div>
         ) : (

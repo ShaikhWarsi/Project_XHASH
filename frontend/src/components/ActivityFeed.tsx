@@ -117,7 +117,7 @@ export default function ActivityFeed({ maxItems = 100 }: { maxItems?: number }) 
           const combined = [...newActivities, ...prev]
           return combined.slice(0, maxItems)
         })
-      } catch {}
+      } catch (e) { console.warn('[ActivityFeed] audit fetch failed:', e) }
     }
     fetchAudit()
     const interval = setInterval(fetchAudit, 10000)

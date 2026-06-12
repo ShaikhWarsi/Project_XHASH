@@ -7,8 +7,10 @@ Welcome to the Trading Engine documentation. This is a comprehensive quantitativ
 ## Documentation Structure
 
 ### Getting Started
-- [Quick Start Guide](QUICKSTART.md) - Installation and first steps
-- [Architecture Overview](ARCHITECTURE.md) - System architecture and design
+- [Quick Start Guide](QUICKSTART.md) — Installation and first steps
+- [User Guide](USER_GUIDE.md) — Complete guide to all features and pages
+- [Troubleshooting Guide](TROUBLESHOOTING.md) — Fix common issues step by step
+- [Architecture Overview](ARCHITECTURE.md) — System architecture and design
 
 ### Core Systems
 - [Signal Generation](SIGNALS.md) — 23+ signal engines and pattern recognition
@@ -21,6 +23,8 @@ Welcome to the Trading Engine documentation. This is a comprehensive quantitativ
 ### Reference
 - [API Reference](API.md) — 60+ REST endpoints (including 7 new AI endpoints)
 - [Frontend Guide](FRONTEND.md) — 30-page React SPA overview with all new components
+- [Feature Reference](FEATURES.md) — Complete list of every feature and button
+- [Keyboard Shortcuts](SHORTCUTS.md) — All keyboard shortcuts reference
 
 ## Key Features
 

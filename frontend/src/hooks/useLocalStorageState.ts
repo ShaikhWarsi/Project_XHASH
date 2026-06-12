@@ -31,7 +31,7 @@ export function useLocalStorageState<T>(
       if (e.key === storageKey && e.newValue !== null) {
         try {
           setState(JSON.parse(e.newValue) as T)
-        } catch { /* ignore */ }
+        } catch { /* cross-tab parse error, expected */ }
       }
     }
     window.addEventListener('storage', handler)
@@ -43,7 +43,7 @@ export function useLocalStorageState<T>(
       const next = typeof val === 'function' ? (val as (prev: T) => T)(prev) : val
       try {
         localStorage.setItem(storageKey, JSON.stringify(next))
-      } catch { /* quota exceeded */ }
+      } catch (e) { console.warn('[LocalStorage] quota exceeded for key:', storageKey, e) }
       return next
     })
   }, [storageKey])

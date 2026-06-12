@@ -11,11 +11,13 @@ import { useToastStore } from '../store/toast'
 export default function WatchlistPage() {
   const [items, setItems] = useState<(WatchlistItem & { price?: number; change?: number; changePercent?: number; profile?: Record<string, unknown> })[]>([])
   const [quoteError, setQuoteError] = useState(false)
+  const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
   const addToast = useToastStore((s) => s.addToast)
   const userId = 'default'
 
   const load = async () => {
+    setLoading(true)
     try {
       const data = await fetchWatchlist(userId)
       let anyQuoteFailed = false
@@ -32,6 +34,7 @@ export default function WatchlistPage() {
       setItems(enriched)
       setQuoteError(anyQuoteFailed)
     } catch (err) { addToast('Failed to load watchlist', 'error') }
+    setLoading(false)
   }
 
   useEffect(() => { load() }, [])
@@ -62,7 +65,12 @@ export default function WatchlistPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <Card>
-            {items.length === 0 ? (
+            {loading ? (
+              <div className="text-center py-8 text-[#5f6368]">
+                <div className="animate-spin w-6 h-6 border-2 border-[#5f6368] border-t-transparent rounded-full mx-auto mb-2" />
+                <p className="text-sm">Loading watchlist...</p>
+              </div>
+            ) : items.length === 0 ? (
               <div className="text-center py-8 text-[#5f6368]">
                 <Star className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">Your watchlist is empty</p>

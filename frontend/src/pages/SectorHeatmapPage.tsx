@@ -12,12 +12,13 @@ interface SectorData {
 export default function SectorHeatmapPage() {
   const [sectors, setSectors] = useState<SectorData[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     fetch('/api/calendar/sectors')
       .then(r => r.json())
       .then(data => { setSectors(Array.isArray(data) ? data : []); setLoading(false) })
-      .catch(() => setLoading(false))
+      .catch((err) => { setError(err.message || 'Failed to load sectors'); setLoading(false) })
   }, [])
 
   const chartData = sectors.map(s => ({
@@ -32,6 +33,8 @@ export default function SectorHeatmapPage() {
       <Card title="SECTOR HEATMAP">
         {loading ? (
           <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 10 }}>Loading sectors...</div>
+        ) : error ? (
+          <div style={{ padding: 24, textAlign: 'center', color: '#ef4444', fontSize: 10 }}>{error}</div>
         ) : (
           <div style={{ padding: 12 }}>
             <SectorAllocationChart sectors={chartData} size={400} />

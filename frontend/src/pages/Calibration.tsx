@@ -18,7 +18,9 @@ export default function Calibration() {
       ])
       setThresholds(t.data)
       setWeights(w.data)
-    } catch {}
+    } catch (err: any) {
+      setMessage(err?.response?.data?.detail || err.message || 'Failed to load')
+    }
     setLoading(false)
   }
 

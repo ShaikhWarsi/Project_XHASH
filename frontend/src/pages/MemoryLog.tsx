@@ -30,7 +30,9 @@ export default function MemoryLog() {
     try {
       const r = await api.get(`/memory/sessions?agent_id=${agentId}`)
       setSessions(r.data.sessions || [])
-    } catch {}
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || err.message || 'Failed to load sessions')
+    }
   }
 
   const addReflection = async () => {
@@ -39,7 +41,9 @@ export default function MemoryLog() {
     try {
       await api.post(`/memory/reflect?agent_id=${agentId}&session_id=${sessionId}&content=${encodeURIComponent(content)}`)
       loadMemory()
-    } catch {}
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || err.message || 'Failed to add reflection')
+    }
   }
 
   const deleteMemory = async () => {
@@ -47,7 +51,9 @@ export default function MemoryLog() {
     try {
       await api.post(`/memory/delete?agent_id=${agentId}&session_id=${sessionId}`)
       setMemory(null)
-    } catch {}
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || err.message || 'Failed to delete memory')
+    }
   }
 
   return (

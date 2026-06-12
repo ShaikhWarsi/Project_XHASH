@@ -132,25 +132,43 @@ async def analyze(req: AnalyzeRequest):
 @router.get("/runs", response_model=RunListResponse)
 async def list_runs_endpoint(limit: int = Query(default=20, le=100)):
     """List recent analysis runs."""
-    runs = await list_runs(limit=limit)
-    return RunListResponse(runs=runs)
+    try:
+        runs = await list_runs(limit=limit)
+        return RunListResponse(runs=runs)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Failed to list runs: %s", e)
+        raise HTTPException(status_code=500, detail=f"Could not list runs: {e}")
 
 
 @router.get("/runs/{run_id}", response_model=ReportBundleOut)
 async def get_run_result(run_id: str):
     """Get the full report for a completed analysis run."""
-    report = await get_report(run_id)
-    if not report:
-        raise HTTPException(status_code=404, detail="Run not found")
-    return report
+    try:
+        report = await get_report(run_id)
+        if not report:
+            raise HTTPException(status_code=404, detail="Run not found")
+        return report
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Failed to get report for run %s: %s", run_id, e)
+        raise HTTPException(status_code=500, detail=f"Could not get report: {e}")
 
 
 @router.get("/runs/{run_id}/stream")
 async def stream_run(run_id: str):
     """SSE stream for live pipeline progress."""
-    status = await get_run_status(run_id)
-    if status is None:
-        raise HTTPException(status_code=404, detail="Run not found")
+    try:
+        status = await get_run_status(run_id)
+        if status is None:
+            raise HTTPException(status_code=404, detail="Run not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Failed to get run status for stream %s: %s", run_id, e)
+        raise HTTPException(status_code=500, detail=f"Could not start stream: {e}")
 
     async def event_generator():
         queue: asyncio.Queue[SSEEvent] = asyncio.Queue()
@@ -190,10 +208,16 @@ async def stream_run(run_id: str):
 @router.get("/runs/{run_id}/status", response_model=RunStatusOut)
 async def get_run_status_endpoint(run_id: str):
     """Get detailed pipeline status for a run."""
-    status = await get_run_status_detail(run_id)
-    if not status:
-        raise HTTPException(status_code=404, detail="Run not found")
-    return status
+    try:
+        status = await get_run_status_detail(run_id)
+        if not status:
+            raise HTTPException(status_code=404, detail="Run not found")
+        return status
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Failed to get status for run %s: %s", run_id, e)
+        raise HTTPException(status_code=500, detail=f"Could not get status: {e}")
 
 
 @router.post("/runs/{run_id}/cancel", response_model=CancelResponse)
@@ -208,8 +232,14 @@ async def cancel_run_endpoint(run_id: str):
 @router.get("/runs/{run_id}/events", response_model=EventListResponse)
 async def get_run_events_endpoint(run_id: str, limit: int = Query(default=200, le=1000)):
     """Get the full event log for a run."""
-    events = await get_run_events(run_id, limit=limit)
-    return EventListResponse(events=events, total=len(events))
+    try:
+        events = await get_run_events(run_id, limit=limit)
+        return EventListResponse(events=events, total=len(events))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Failed to get events for run %s: %s", run_id, e)
+        raise HTTPException(status_code=500, detail=f"Could not get events: {e}")
 
 
 @router.get("/debug", response_model=DebugInfoOut)
@@ -237,7 +267,11 @@ async def debug_info():
     except Exception:
         pass
 
-    last_runs = await list_runs(limit=5)
+    try:
+        last_runs = await list_runs(limit=5)
+    except Exception as e:
+        logger.warning("Failed to list runs for debug: %s", e)
+        last_runs = []
     uptime = int(time.time() - _start_time)
 
     return DebugInfoOut(

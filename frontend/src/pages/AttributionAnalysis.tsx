@@ -11,10 +11,18 @@ const FONT_LABEL = { fontSize: 9, fontFamily: "'JetBrains Mono', monospace", let
 export default function AttributionAnalysis() {
   const [attribution, setAttribution] = useState<Record<string, unknown> | null>(null)
   const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null)
+  const [sseError, setSseError] = useState('')
 
   useEffect(() => {
-    const es = connectDashboardSSE(setSnapshot)
-    return () => es.close()
+    let disconnected = false
+    const es = connectDashboardSSE((snap) => {
+      setSnapshot(snap)
+      if (!disconnected && snap) setSseError('')
+    }, (isStale) => {
+      if (!disconnected && isStale) setSseError('SSE connection lost — data may be stale')
+      else if (!disconnected && !isStale) setSseError('')
+    })
+    return () => { disconnected = true; es.close() }
   }, [])
 
   useEffect(() => {
@@ -44,6 +52,11 @@ export default function AttributionAnalysis() {
         {snapshot && (
           <span style={{ ...FONT_SM, color: 'var(--text-muted)' }}>
             {new Date(snapshot.timestamp).toLocaleTimeString()}
+          </span>
+        )}
+        {sseError && (
+          <span style={{ ...FONT_SM, color: '#ef4444', marginLeft: 'auto' }}>
+            {sseError}
           </span>
         )}
       </div>

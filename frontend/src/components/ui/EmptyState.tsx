@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { PackageOpen } from 'lucide-react'
+import { PackageOpen, WifiOff, Activity, AlertTriangle } from 'lucide-react'
 
 const QUOTES = [
   '"The trend is your friend." — Ed Seykota',
@@ -24,6 +24,8 @@ const QUOTES = [
   '"Don\'t confuse a bull market with brains."',
 ]
 
+type EmptyStateVariant = 'empty' | 'error' | 'offline' | 'no_data'
+
 interface EmptyStateProps {
   icon?: ReactNode
   title: string
@@ -31,10 +33,48 @@ interface EmptyStateProps {
   action?: ReactNode
   compact?: boolean
   sampleAction?: { label: string; onClick: () => void }
+  variant?: EmptyStateVariant
+  onRetry?: () => void
+  suggestion?: string
 }
 
-export default function EmptyState({ icon, title, description, action, compact, sampleAction }: EmptyStateProps) {
+const VARIANT_CONFIG: Record<EmptyStateVariant, { icon: ReactNode; defaultTitle: string; defaultDesc: string }> = {
+  empty: {
+    icon: <PackageOpen size={28} />,
+    defaultTitle: 'Nothing here yet',
+    defaultDesc: '',
+  },
+  error: {
+    icon: <AlertTriangle size={28} />,
+    defaultTitle: 'Something went wrong',
+    defaultDesc: 'An unexpected error occurred.',
+  },
+  offline: {
+    icon: <WifiOff size={28} />,
+    defaultTitle: 'Connection lost',
+    defaultDesc: 'Could not reach the server.',
+  },
+  no_data: {
+    icon: <Activity size={28} />,
+    defaultTitle: 'No data available',
+    defaultDesc: '',
+  },
+}
+
+export default function EmptyState({
+  icon,
+  title,
+  description,
+  action,
+  compact,
+  sampleAction,
+  variant,
+  onRetry,
+  suggestion,
+}: EmptyStateProps) {
   const [quote] = useState(() => QUOTES[Math.floor(Math.random() * QUOTES.length)])
+  const config = variant ? VARIANT_CONFIG[variant] : null
+
   return (
     <div
       style={{
@@ -47,30 +87,60 @@ export default function EmptyState({ icon, title, description, action, compact, 
       }}
     >
       <div style={{ opacity: 0.3 }}>
-        {icon || <PackageOpen size={compact ? 20 : 28} />}
+        {icon || (config?.icon) || <PackageOpen size={compact ? 20 : 28} />}
       </div>
       <div
         style={{
           fontSize: compact ? 11 : 12,
           fontWeight: 600,
-          color: 'var(--text-secondary)',
+          color: variant === 'error' ? 'var(--accent-red)' : variant === 'offline' ? 'var(--accent-yellow)' : 'var(--text-secondary)',
           fontFamily: "'JetBrains Mono', monospace",
         }}
       >
-        {title}
+        {title || config?.defaultTitle}
       </div>
-      {description && (
+      {(description || config?.defaultDesc) && (
         <div
           style={{
             fontSize: 10,
             color: 'var(--text-muted)',
             textAlign: 'center',
-            maxWidth: 280,
+            maxWidth: 320,
             fontFamily: "'JetBrains Mono', monospace",
+            lineHeight: 1.5,
           }}
         >
-          {description}
+          {description || config?.defaultDesc}
         </div>
+      )}
+      {suggestion && (
+        <div
+          style={{
+            fontSize: 9,
+            color: 'var(--accent-cyan)',
+            textAlign: 'center',
+            maxWidth: 320,
+            fontFamily: "'JetBrains Mono', monospace",
+            lineHeight: 1.5,
+            marginTop: 4,
+          }}
+        >
+          {suggestion}
+        </div>
+      )}
+      {(onRetry) && (
+        <button
+          onClick={onRetry}
+          className="flex items-center gap-1.5 px-3 py-1 text-[10px] font-mono rounded-sm cursor-pointer"
+          style={{
+            background: 'var(--accent-blue)',
+            color: '#fff',
+            border: 'none',
+            marginTop: 8,
+          }}
+        >
+          Try Again
+        </button>
       )}
       <div
         style={{

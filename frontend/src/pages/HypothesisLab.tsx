@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { api } from '../api/client'
 import { FlaskConical, Search, Plus } from 'lucide-react'
 import Spinner from '../components/Spinner'
+import { useToastStore } from '../store/toast'
 
 interface Hypothesis {
   hypothesis_id: string
@@ -32,6 +33,7 @@ export default function HypothesisLab() {
   const [statusFilter, setStatusFilter] = useState('')
   const [showCreate, setShowCreate] = useState(false)
   const [selectedH, setSelectedH] = useState<Hypothesis | null>(null)
+  const addToast = useToastStore((s) => s.addToast)
 
   // create form
   const [title, setTitle] = useState('')
@@ -46,7 +48,9 @@ export default function HypothesisLab() {
       if (statusFilter) params.status = statusFilter
       const r = await api.get('/hypotheses', { params })
       setHypotheses(r.data.hypotheses || [])
-    } catch { }
+    } catch (err: any) {
+      addToast(err?.response?.data?.detail || err.message || 'Failed to load hypotheses', 'error')
+    }
     setLoading(false)
   }
 
@@ -62,7 +66,9 @@ export default function HypothesisLab() {
       setSignalDef('')
       setShowCreate(false)
       fetchHypotheses()
-    } catch { }
+    } catch (err: any) {
+      addToast(err?.response?.data?.detail || err.message || 'Failed to create hypothesis', 'error')
+    }
   }
 
   const updateStatus = async (id: string, status: string) => {
@@ -73,7 +79,9 @@ export default function HypothesisLab() {
         const r = await api.get(`/hypotheses/${id}`)
         setSelectedH(r.data)
       }
-    } catch { }
+    } catch (err: any) {
+      addToast(err?.response?.data?.detail || err.message || 'Failed to update status', 'error')
+    }
   }
 
   const deleteHypothesis = async (id: string) => {
@@ -81,7 +89,9 @@ export default function HypothesisLab() {
       await api.delete(`/hypotheses/${id}`)
       if (selectedH?.hypothesis_id === id) setSelectedH(null)
       fetchHypotheses()
-    } catch { }
+    } catch (err: any) {
+      addToast(err?.response?.data?.detail || err.message || 'Failed to delete hypothesis', 'error')
+    }
   }
 
   return (

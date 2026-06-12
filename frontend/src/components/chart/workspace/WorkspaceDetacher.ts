@@ -158,7 +158,7 @@ body {
           candleSeries.setData(msg.data);
           chart.timeScale().fitContent();
         }
-      } catch(e) {}
+      } catch(e) { console.warn('[WorkspaceDetacher] WS message error:', e); }
     };
     ws.onclose = function() { setTimeout(connectWS, 3000); };
   }

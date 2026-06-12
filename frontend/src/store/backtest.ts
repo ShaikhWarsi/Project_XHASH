@@ -61,8 +61,8 @@ export const useBacktestStore = create<BacktestStore>()(
         try {
           const engines = await fetchBacktestEngines()
           set({ engines, enginesLoading: false })
-        } catch {
-          set({ enginesLoading: false })
+        } catch (err) {
+          set({ enginesLoading: false, error: String(err) })
         }
       },
 
@@ -90,7 +90,7 @@ export const useBacktestStore = create<BacktestStore>()(
             const channel = new BroadcastChannel('te-sync')
             channel.postMessage({ type: 'BACKTEST_COMPLETE', payload: { total_return: result.total_return, sharpe: result.sharpe_ratio }, tabId: 'backtest', timestamp: Date.now() })
             channel.close()
-          } catch {}
+          } catch (e) { console.warn('[Backtest] BroadcastChannel failed:', e) }
         } catch (err) {
           set({ error: String(err), running: false })
         }

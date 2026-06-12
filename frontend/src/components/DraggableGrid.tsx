@@ -75,19 +75,19 @@ export default function DraggableGrid({ items, onReorder, storageKey = STORAGE_K
   useEffect(() => {
     try {
       localStorage.setItem(storageKey, JSON.stringify(order))
-    } catch {}
+    } catch (e) { console.warn('[DraggableGrid] failed to persist order:', e) }
   }, [order, storageKey])
 
   useEffect(() => {
     try {
       localStorage.setItem(`${storageKey}_visible`, JSON.stringify(visibleItems))
-    } catch {}
+    } catch (e) { console.warn('[DraggableGrid] failed to persist visibility:', e) }
   }, [visibleItems, storageKey])
 
   useEffect(() => {
     try {
       localStorage.setItem(`${storageKey}_sizes`, JSON.stringify(sizes))
-    } catch {}
+    } catch (e) { console.warn('[DraggableGrid] failed to persist sizes:', e) }
   }, [sizes, storageKey])
 
   useEffect(() => {

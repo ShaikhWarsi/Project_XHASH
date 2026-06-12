@@ -3,6 +3,7 @@ import Card from '../components/ui/Card'
 import ChartContainer from '../components/ChartContainer'
 import ErrorBoundary from '../components/ErrorBoundary'
 import { fetchOHLCV, trainRL } from '../api/client'
+import { useToastStore } from '../store/toast'
 import type { RLTrainResult, BarData } from '../api/types'
 import { fmtNumber, fmtDate } from '../utils/format'
 
@@ -236,7 +237,7 @@ export default function RLTrainer() {
             if (bars.length === 0) { setError('No valid bars parsed from CSV'); return }
             setHistoricalData(bars)
             setError('')
-            addToast(`Loaded ${bars.length} bars from CSV`, 'success')
+            useToastStore.getState().addToast(`Loaded ${bars.length} bars from CSV`, 'success')
           } catch (e: any) {
             setError(`CSV parse failed: ${e.message}`)
           }

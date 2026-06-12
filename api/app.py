@@ -193,6 +193,7 @@ from .routes.panic import router as panic_router
 from .routes.tradingagents_routes import router as tradingagents_router
 from .routes.alt_data_routes import router as alt_data_router
 from .routes.marketplace_routes import router as marketplace_router
+from .routes.health_routes import router as health_router
 from persistence import init_db, close_db
 from persistence.database import _engine as db_engine
 
@@ -623,6 +624,11 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     app.add_middleware(SlowAPIMiddleware)
 
+    from .error_handlers import global_error_handler
+    from core.errors import TradingEngineError
+    app.add_exception_handler(TradingEngineError, global_error_handler)
+    app.add_exception_handler(Exception, global_error_handler)
+
     # ── Prometheus metrics ──
     if _env_bool("PROMETHEUS_ENABLED", False):
         try:
@@ -783,6 +789,7 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
     app.include_router(tradingagents_router)
     app.include_router(alt_data_router)
     app.include_router(marketplace_router)
+    app.include_router(health_router)
 
     @app.get("/")
     async def root():

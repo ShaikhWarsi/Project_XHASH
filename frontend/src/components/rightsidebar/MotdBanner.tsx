@@ -38,7 +38,7 @@ export default function MotdBanner() {
         const data = await res.json()
         setMotd(data)
       }
-    } catch {}
+    } catch (e) { console.warn('[MotD] fetch failed:', e) }
   }, [])
 
   useEffect(() => {

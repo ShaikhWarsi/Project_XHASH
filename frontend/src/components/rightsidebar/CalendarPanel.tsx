@@ -54,7 +54,7 @@ export default function CalendarPanel() {
         const data = await res.json()
         setCal(data)
       }
-    } catch {} finally {
+    } catch (e) { console.warn('[Calendar] fetch failed:', e) } finally {
       setLoading(false)
     }
   }, [tickers])

@@ -105,7 +105,19 @@ export default function PipelineProgress() {
     setCancelling(false)
   }
 
-  if (status === 'idle' || status === 'scraping') return null
+  if (status === 'idle') return null
+
+  if (status === 'scraping') return (
+    <div style={{
+      padding: '8px 16px',
+      borderBottom: '1px solid var(--border-color)',
+      display: 'flex', alignItems: 'center', gap: 8,
+      fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: 'var(--accent-cyan)',
+    }}>
+      <Loader2 size={12} className="animate-spin" />
+      Scraping data for {useTradingAgentsStore.getState().ticker}...
+    </div>
+  )
 
   const lastEvent = events.length > 0 ? events[events.length - 1] : null
   const liveActivity = currentNode

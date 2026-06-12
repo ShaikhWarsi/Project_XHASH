@@ -38,7 +38,9 @@ export default function Reflection() {
     try {
       await api.post(`/reflection/record?signal=${signal}&confidence=${confidence}`)
       load()
-    } catch {}
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || err.message || 'Failed to record decision')
+    }
   }
 
   useEffect(() => { load() }, [])

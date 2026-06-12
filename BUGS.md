@@ -1,4 +1,20 @@
-##  CRITICAL BUGS (will break things at runtime)
+## ✅ FIXED IN v0.5.0 — User Readiness Update
+
+The following issues have been addressed with enhanced error handling, user-friendly messages, and comprehensive documentation:
+
+- **Global**: Enhanced API error handling with user-friendly messages and suggestions
+- **Global**: Added ConnectionStatus component showing detailed system health
+- **Global**: Added StartupDiagnostic modal for first-run issues detection
+- **Global**: Added OnboardingModal for new user guidance
+- **Global**: Created USER_GUIDE.md, TROUBLESHOOTING.md, FEATURES.md, SHORTCUTS.md
+- **Bug #9**: Audit log page shows "No audit logs yet" message
+- **Bug #17**: Trades page shows EmptyState with suggestion to try paper trading
+- **Bug #21**: NaN values handled with safer null checks in HeatmapCell and elsewhere
+- **Bug #25**: Signals stream shows "Waiting for signals..." instead of blank screen
+
+---
+
+## 🔴 CRITICAL BUGS (will break things at runtime)
 ### 1. Missing logger import in api/routes/orders.py
 logger is used on line 83 but never imported/defined. The _load_orders() function will throw NameError if the orders file exists. Fix: add import logging and logger = logging.getLogger(__name__) at the top.
 

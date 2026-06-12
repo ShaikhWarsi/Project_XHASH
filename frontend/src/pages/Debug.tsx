@@ -62,10 +62,12 @@ export default function Debug() {
   const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null)
   const [lastError, setLastError] = useState<string | null>(null)
   const [runs, setRuns] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [testStatus, setTestStatus] = useState<string | null>(null)
   const [testTicker, setTestTicker] = useState('NVDA')
 
   const loadAll = useCallback(async () => {
+    setLoading(true)
     try {
       const h = await api.get('/health').then(r => r.data)
       setHealth(h)
@@ -84,6 +86,7 @@ export default function Debug() {
     } catch (e) {
       setRuns([])
     }
+    setLoading(false)
   }, [])
 
   useEffect(() => {
@@ -121,7 +124,7 @@ export default function Debug() {
             addToast(`Analysis test complete: ${testTicker} -> ${report.final.rating}`, 'success')
             return
           }
-        } catch {}
+          } catch (pollErr) { console.error('[Debug] Poll error:', pollErr) }
         attempts++
         if (attempts < 30) {
           setTimeout(poll, 2000)
@@ -137,6 +140,18 @@ export default function Debug() {
       setTestStatus(`Analysis FAILED: ${msg}`)
       addToast(`Analysis test failed: ${msg}`, 'error')
     }
+  }
+
+  if (loading) {
+    return (
+      <div style={{
+        padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        height: '100%', fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
+        color: 'var(--text-muted)',
+      }}>
+        Loading debug info...
+      </div>
+    )
   }
 
   return (

@@ -3,6 +3,7 @@ import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import { listPrompts, createPrompt, updatePrompt, deletePrompt, clonePrompt } from '../api/llm'
 import { BookTemplate, Plus, Copy, Trash2, Edit3, Search } from 'lucide-react'
+import { useToastStore } from '../store/toast'
 
 export default function PromptLibrary() {
   const [prompts, setPrompts] = useState<any[]>([])
@@ -12,12 +13,15 @@ export default function PromptLibrary() {
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState({ name: '', description: '', prompt_text: '', category: 'general', tags: '', is_public: false })
   const [saving, setSaving] = useState(false)
+  const addToast = useToastStore((s) => s.addToast)
 
   const fetch = useCallback(async () => {
     setLoading(true)
-    try { const r = await listPrompts(); setPrompts(r.prompts) } catch {}
+    try { const r = await listPrompts(); setPrompts(r.prompts) } catch (err: any) {
+      addToast(err?.response?.data?.detail || err.message || 'Failed to load prompts', 'error')
+    }
     setLoading(false)
-  }, [])
+  }, [addToast])
 
   useEffect(() => { fetch() }, [fetch])
 
@@ -29,12 +33,22 @@ export default function PromptLibrary() {
       else await createPrompt(data)
       setShowCreate(false); setEditId(null); setForm({ name: '', description: '', prompt_text: '', category: 'general', tags: '', is_public: false })
       await fetch()
-    } catch {}
+    } catch (err: any) {
+      addToast(err?.response?.data?.detail || err.message || 'Failed to save prompt', 'error')
+    }
     setSaving(false)
-  }, [form, editId, fetch])
+  }, [form, editId, fetch, addToast])
 
-  const handleDelete = async (id: string) => { await deletePrompt(id); await fetch() }
-  const handleClone = async (id: string) => { await clonePrompt(id); await fetch() }
+  const handleDelete = async (id: string) => {
+    try { await deletePrompt(id); await fetch() } catch (err: any) {
+      addToast(err?.response?.data?.detail || err.message || 'Failed to delete prompt', 'error')
+    }
+  }
+  const handleClone = async (id: string) => {
+    try { await clonePrompt(id); await fetch() } catch (err: any) {
+      addToast(err?.response?.data?.detail || err.message || 'Failed to clone prompt', 'error')
+    }
+  }
   const handleEdit = (p: any) => { setForm({ name: p.name, description: p.description, prompt_text: p.prompt_text, category: p.category, tags: (p.tags || []).join(', '), is_public: p.is_public }); setEditId(p.id); setShowCreate(true) }
 
   const filtered = prompts.filter(p => search ? p.name.toLowerCase().includes(search.toLowerCase()) || p.description?.toLowerCase().includes(search.toLowerCase()) : true)

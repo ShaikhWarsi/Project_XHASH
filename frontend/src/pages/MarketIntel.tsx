@@ -49,9 +49,10 @@ function EquitiesTab() {
   const [shortData, setShortData] = useState<any>(null)
   const [f13Data, setF13Data] = useState<any>(null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const fetchAll = async () => {
-    setLoading(true)
+    setLoading(true); setError('')
     try {
       const [dp, etf, ins, sh, f13] = await Promise.all([
         fetch(`/api/alt-data/dark-pool?symbol=${symbol}`).then(r => r.json()).catch(() => null),
@@ -61,7 +62,7 @@ function EquitiesTab() {
         fetch(`/api/alt-data/13f?symbol=${symbol}`).then(r => r.json()).catch(() => null),
       ])
       setDpData(dp); setEtfData(etf); setInsiderData(ins); setShortData(sh); setF13Data(f13)
-    } catch {} finally { setLoading(false) }
+    } catch (err: any) { setError(err.message || 'Failed to load equity data') } finally { setLoading(false) }
   }
 
   useEffect(() => { fetchAll() }, [symbol])
@@ -75,6 +76,8 @@ function EquitiesTab() {
           {loading ? 'Loading...' : 'Refresh All'}
         </button>
       </div>
+
+      {error && <div style={{ color: '#ef4444', fontSize: 9, padding: '4px 0', fontFamily: "'JetBrains Mono', monospace" }}>{error}</div>}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         <Card title={`DARK POOL — ${symbol}`}>
@@ -136,8 +139,8 @@ function FlowTab() {
   const [tapeData, setTapeData] = useState<any>(null)
 
   useEffect(() => {
-    fetch(`/api/alt-data/order-flow?symbol=${symbol}`).then(r => r.json()).then(setOrderData).catch(() => {})
-    fetch(`/api/alt-data/live-tape?symbol=${symbol}`).then(r => r.json()).then(setTapeData).catch(() => {})
+    fetch(`/api/alt-data/order-flow?symbol=${symbol}`).then(r => r.json()).then(setOrderData).catch((e) => console.warn('[MarketIntel] order-flow failed:', e))
+    fetch(`/api/alt-data/live-tape?symbol=${symbol}`).then(r => r.json()).then(setTapeData).catch((e) => console.warn('[MarketIntel] live-tape failed:', e))
   }, [symbol])
 
   const volProfile = orderData?.volumeProfile || []
@@ -247,7 +250,7 @@ function DerivativesTab() {
   const [greeksData, setGreeksData] = useState<any>(null)
 
   useEffect(() => {
-    fetch(`/api/alt-data/greeks?symbol=${symbol}`).then(r => r.json()).then(setGreeksData).catch(() => {})
+    fetch(`/api/alt-data/greeks?symbol=${symbol}`).then(r => r.json()).then(setGreeksData).catch((e) => console.warn('[MarketIntel] greeks failed:', e))
   }, [symbol])
 
   return (
@@ -297,7 +300,7 @@ function CommoditiesTab() {
   const [data, setData] = useState<any>(null)
 
   useEffect(() => {
-    fetch('/api/alt-data/commodities').then(r => r.json()).then(setData).catch(() => {})
+    fetch('/api/alt-data/commodities').then(r => r.json()).then(setData).catch((e) => console.warn('[MarketIntel] commodities failed:', e))
   }, [])
 
   const groups = data?.groups || []

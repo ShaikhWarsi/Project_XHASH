@@ -50,7 +50,7 @@ export default function NewsPanel() {
         const data = await res.json()
         setNews(data.news ?? [])
       }
-    } catch {} finally {
+    } catch (e) { console.warn('[News] fetch failed:', e) } finally {
       setLoading(false)
     }
   }, [tickers])

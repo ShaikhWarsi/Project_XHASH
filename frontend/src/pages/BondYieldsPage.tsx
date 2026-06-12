@@ -13,7 +13,7 @@ export default function BondYieldsPage() {
   const [historyYears, setHistoryYears] = useState(5)
   const chartRef = useRef<HTMLDivElement>(null)
 
-  const { data: bonds, isLoading } = useApiQuery<BondYield[]>('/market/bond-yields', { history_years: historyYears })
+  const { data: bonds, isLoading, error: queryError } = useApiQuery<BondYield[]>('/market/bond-yields', { history_years: historyYears })
 
   useEffect(() => {
     if (!chartRef.current || !bonds || bonds.length === 0) return
@@ -52,6 +52,8 @@ export default function BondYieldsPage() {
       }>
         {isLoading ? (
           <div className="text-[10px] font-mono-data text-muted py-4 text-center">Loading bond yields...</div>
+        ) : queryError ? (
+          <div className="text-[10px] font-mono-data text-down py-4 text-center">{String(queryError)}</div>
         ) : !bonds || bonds.length === 0 ? (
           <div className="text-[10px] font-mono-data text-muted">No bond yield data available.</div>
         ) : (

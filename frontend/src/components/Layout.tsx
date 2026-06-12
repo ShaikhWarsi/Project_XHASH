@@ -13,6 +13,8 @@ import StatusStrip from './StatusStrip'
 import GlobalSymbolSearch from './GlobalSymbolSearch'
 import BreakingNewsBanner from './BreakingNewsBanner'
 import StatusBar from './StatusBar'
+import OnboardingModal from './OnboardingModal'
+import StartupDiagnostic from './StartupDiagnostic'
 import Breadcrumbs from './Breadcrumbs'
 import FavoritesBar from './FavoritesBar'
 import OfflineBanner from './OfflineBanner'
@@ -290,6 +292,8 @@ function TerminalLayout() {
       <CommandPalette onThemeChange={setTheme} />
       <GlobalSymbolSearch />
       <KeyboardShortcutListener />
+      <OnboardingModal />
+      <StartupDiagnostic />
       {helpOverlay}
     </div>
   )

@@ -1,10 +1,35 @@
 import { useState } from 'react'
 import { useTradingAgentsStore } from '../../store/tradingagents'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react'
 
 export default function ScraperConsole() {
   const scrapeBundle = useTradingAgentsStore((s) => s.scrapeBundle)
+  const status = useTradingAgentsStore((s) => s.status)
+  const error = useTradingAgentsStore((s) => s.error)
+  const ticker = useTradingAgentsStore((s) => s.ticker)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+
+  if (status === 'scraping') {
+    return (
+      <div style={{ padding: 24, textAlign: 'center' }}>
+        <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 12px', color: 'var(--accent-cyan)' }} />
+        <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
+          Scraping data for {ticker || 'ticker'}...
+        </div>
+        <div style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 4 }}>
+          Fetching from StockTwits, Reddit, Yahoo News
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div style={{ padding: 24, color: '#ef4444', fontSize: 13, fontFamily: "'JetBrains Mono', monospace" }}>
+        Scrape failed: {error}
+      </div>
+    )
+  }
 
   if (!scrapeBundle) {
     return (

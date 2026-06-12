@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { api } from '../api/client'
 
 interface Agent {
   id: string
@@ -27,11 +28,10 @@ export const useAgentStore = create<AgentState>()(
       load: async () => {
         set({ loading: true, error: null })
         try {
-          const res = await fetch('/api/agents')
-          const data = await res.json()
+          const { data } = await api.get('/agents')
           set({ agents: data.agents || [], loading: false })
         } catch (err: any) {
-          set({ error: err.message, loading: false })
+          set({ error: err?.response?.data?.detail || err.message || 'Failed to load agents', loading: false })
         }
       },
       setAgents: (agents) => set({ agents }),

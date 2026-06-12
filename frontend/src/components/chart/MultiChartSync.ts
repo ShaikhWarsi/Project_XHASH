@@ -28,7 +28,7 @@ export class MultiChartSync {
     this._linked = linked
     if (!linked) {
       for (const { chart } of this.charts.values()) {
-        try { (chart as any).crosshair().clearPosition() } catch {}
+        try { (chart as any).crosshair().clearPosition() } catch (e) { console.warn('[MultiChartSync] clearPosition failed:', e) }
       }
     }
   }
@@ -82,7 +82,7 @@ export class MultiChartSync {
           } else {
             ;(chart as any).crosshair().clearPosition()
           }
-        } catch {}
+        } catch (e) { console.warn('[MultiChartSync] setPosition failed:', e) }
       }
     } finally {
       this._updating = false
@@ -99,9 +99,9 @@ export class MultiChartSync {
       for (const { chart } of this.charts.values()) {
         try {
           chart.timeScale().setVisibleRange(range)
-        } catch {}
+        } catch (e) { console.warn('[MultiChartSync] setVisibleRange failed:', e) }
       }
-    } catch {}
+    } catch (e) { console.warn('[MultiChartSync] getVisibleRange failed:', e) }
   }
 
   get currentIndex(): number {

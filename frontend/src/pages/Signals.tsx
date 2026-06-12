@@ -68,7 +68,7 @@ export default function Signals() {
         const data = JSON.parse(e.data)
         if (data.signals && Object.keys(data.signals).length > 0) update(data)
         setStreamEvents(prev => [data as StreamEvent, ...prev].slice(0, 200))
-      } catch { /* silent */ }
+      } catch (e) { console.warn('[Signals] SSE parse error:', e) }
     }
     es.onerror = () => { setStreamConnected(false) }
     return () => { es.close() }

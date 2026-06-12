@@ -149,9 +149,9 @@ export default function RunControls() {
             borderRadius: 6, color: 'var(--text-primary)',
           }}
         />
-        <button onClick={handleScrape} disabled={!ticker.trim() || status === 'analyzing'}
+        <button onClick={handleScrape} disabled={!ticker.trim() || status === 'analyzing' || status === 'scraping'}
           style={btnStyle('#4a9eff')}>
-          Scrape
+          {status === 'scraping' ? 'Scraping...' : 'Scrape'}
         </button>
         <button onClick={handleAnalyze} disabled={!ticker.trim() || status === 'analyzing'}
           style={btnStyle('#22c55e')}>
@@ -170,6 +170,15 @@ export default function RunControls() {
             style={numInputStyle} />
         </label>
       </div>
+      {errMsg && (
+        <div style={{
+          padding: '8px 12px', fontSize: 11, color: '#ef4444',
+          background: '#2a1010', borderRadius: 6,
+          fontFamily: "'JetBrains Mono', monospace",
+        }}>
+          {errMsg}
+        </div>
+      )}
     </div>
   )
 }

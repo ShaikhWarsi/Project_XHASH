@@ -7,6 +7,7 @@ interface WorkflowState {
   workflows: WorkflowDefinition[]
   runs: Record<string, WorkflowRun[]>
   loading: boolean
+  error: string | null
   runningId: string | null
   pollInterval: number | null
   load: () => Promise<void>
@@ -23,22 +24,23 @@ export const useWorkflowStore = create<WorkflowState>()(
       workflows: [],
       runs: {},
       loading: false,
+      error: null,
       runningId: null,
       pollInterval: null,
 
       load: async () => {
-        set({ loading: true })
+        set({ loading: true, error: null })
         try {
           const res = await fetchWorkflows()
           set({ workflows: res.workflows || [], loading: false })
-        } catch { set({ loading: false }) }
+        } catch (err) { set({ loading: false, error: String(err) }) }
       },
 
       loadRuns: async (id: string) => {
         try {
           const res = await fetchWorkflowRuns(id)
           set((s) => ({ runs: { ...s.runs, [id]: res.runs || [] } }))
-        } catch {}
+        } catch (e) { console.warn('[WorkflowStore] loadRuns failed:', e) }
       },
 
       triggerRun: async (id: string) => {
@@ -52,8 +54,8 @@ export const useWorkflowStore = create<WorkflowState>()(
             runningId: null,
             runs: { ...s.runs, [id]: res.runs || [] },
           }))
-        } catch {
-          set({ runningId: null })
+        } catch (err) {
+          set({ runningId: null, error: String(err) })
         }
       },
 
@@ -70,7 +72,7 @@ export const useWorkflowStore = create<WorkflowState>()(
             } else {
               set((s) => ({ runs: { ...s.runs, [id]: updated } }))
             }
-          } catch {}
+          } catch (e) { console.warn('[WorkflowStore] refreshRuns failed for', id, e) }
         }
       },
 

@@ -126,7 +126,8 @@ export default function DataPipeline() {
       const res = await api.post('/data/pipeline/run')
       const run = res.data?.run || { id: `run-${Date.now()}`, started: new Date().toLocaleTimeString(), duration: '0s', status: 'success' as const, errors: 0 }
       setPipelineRuns((prev) => [run, ...prev].slice(0, 20))
-    } catch {
+    } catch (e) {
+      useToastStore.getState().addToast(`Pipeline run failed: ${(e as Error).message}`, 'error')
       const newRun: PipelineRun = { id: `run-${Date.now()}`, started: new Date().toLocaleTimeString(), duration: '0s', status: 'failed', errors: 1 }
       setPipelineRuns((prev) => [newRun, ...prev].slice(0, 20))
     }

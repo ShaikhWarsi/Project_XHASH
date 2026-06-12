@@ -120,7 +120,7 @@ export default function ChartPage() {
       const channel = new BroadcastChannel('te-sync')
       channel.postMessage({ type: 'SYMBOL_CHANGED', payload: { symbol: sym }, tabId: 'chart', timestamp: Date.now() })
       channel.close()
-    } catch {}
+    } catch (e) { console.warn('[Chart] BroadcastChannel postMessage failed:', e) }
   }, [])
 
   const urlSymbol = searchParams.get('symbol')
@@ -143,7 +143,7 @@ export default function ChartPage() {
         }
       }
       return () => channel.close()
-    } catch {}
+    } catch (e) { console.warn('[Chart] BroadcastChannel setup failed:', e) }
   }, [symbol])
 
   const [interval, setIntervalState] = useState('1d')
@@ -320,7 +320,7 @@ export default function ChartPage() {
           keyLevels: (raw as any).key_levels ?? [],
         }
         setStructureDataState(mapped)
-      } catch { /* silent */ }
+      } catch { console.warn('[Chart] Structure overlay load failed') }
     }
     load()
     return () => abort.abort()
@@ -844,7 +844,7 @@ export default function ChartPage() {
         try {
           chartRef.current!.drawingManager.addDrawingFromJSON(d)
         } catch {
-          if (import.meta.env.DEV) console.debug('[Chart] Skipped drawing import during engine transition')
+          console.warn('[Chart] Skipped drawing import during engine transition')
         }
       })
     }
@@ -952,7 +952,7 @@ export default function ChartPage() {
         try {
           chartRef.current!.drawingManager.addDrawingFromJSON(d)
         } catch {
-          if (import.meta.env.DEV) console.debug('[Chart] Skipped drawing import during workspace load')
+          console.warn('[Chart] Skipped drawing import during workspace load')
         }
       })
     }

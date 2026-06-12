@@ -7,7 +7,7 @@ export const eventBus = {
     return () => { _handlers.get(event)?.delete(handler) }
   },
   emit(event: string, ...args: any[]) {
-    _handlers.get(event)?.forEach((h) => { try { h(...args) } catch {} })
+    _handlers.get(event)?.forEach((h) => { try { h(...args) } catch (e) { console.warn('[EventBus] handler error:', e) } })
   },
   off(event: string, handler: (...args: any[]) => void) {
     _handlers.get(event)?.delete(handler)

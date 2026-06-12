@@ -159,6 +159,10 @@ npm install
 
 ## Next Steps
 
+- Read the **[User Guide](USER_GUIDE.md)** for a complete walkthrough of every feature
+- Check the **[Troubleshooting Guide](TROUBLESHOOTING.md)** if you run into any issues
+- Browse the **[Feature Reference](FEATURES.md)** for an overview of all capabilities
+- Learn **[Keyboard Shortcuts](SHORTCUTS.md)** to work faster
 - Read [Architecture Overview](ARCHITECTURE.md) for system design
 - Explore [Signal Generation](SIGNALS.md) for trading signals
 - Learn about [AI Agents](AGENTS.md) for automated analysis

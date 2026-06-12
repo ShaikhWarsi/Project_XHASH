@@ -114,7 +114,7 @@ export function storeTheme(theme: ThemeName): void {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ theme }),
     }).catch(() => {})
-  } catch {}
+  } catch (e) { console.warn('[ChartTheme] failed to persist theme:', e) }
 }
 
 export const HIGHCONTRAST_THEME: ChartThemeColors = {

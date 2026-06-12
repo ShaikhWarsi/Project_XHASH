@@ -25,7 +25,7 @@ export function createEventBus(): EventBus {
         console.debug(`[EventBus] ${event}`, data)
       }
       handlers.get(event)?.forEach((h) => {
-        try { h(...data) } catch { /* handler error */ }
+        try { h(...data) } catch (e) { console.warn('[EventBus] handler error:', e) }
       })
     },
   }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { api } from '../api/client'
 import Spinner from '../components/Spinner'
 
@@ -27,17 +27,21 @@ export default function Renaissance() {
     try {
       const r = await api.get('/renaissance/agents')
       setAgents(r.data.agents || [])
-    } catch {}
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || err.message || 'Failed to load agents')
+    }
   }
 
   const loadRuns = async () => {
     try {
       const r = await api.get('/renaissance/runs')
       setRuns(r.data.runs || [])
-    } catch {}
+    } catch (err: any) {
+      console.error('[Renaissance] Failed to load runs:', err)
+    }
   }
 
-  useState(() => { loadAgents(); loadRuns() })
+  useEffect(() => { loadAgents(); loadRuns() }, [])
 
   return (
     <div className="h-full flex flex-col font-mono-data text-[11px] bg-[var(--bg-app)]">

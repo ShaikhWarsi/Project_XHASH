@@ -137,7 +137,7 @@ export default function Agents() {
             }
             if (msgs.length > 0) setMessages(msgs)
           }
-        } catch {}
+        } catch (parseErr) { console.warn('[Agents] Failed to parse trailing buffer:', parseErr) }
       }
     } catch (e: any) {
       if (e.name !== 'AbortError') {

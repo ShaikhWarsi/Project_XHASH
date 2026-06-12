@@ -150,7 +150,7 @@ export default function CorrelationHeatmap({ data, height = 500, draggable, onRe
           Plotly.newPlot(container, [trace], layout, { responsive: true, displayModeBar: false })
         }
         chartRef.current = container
-      } catch {}
+      } catch (e) { console.warn('[CorrelationHeatmap] Plotly render failed:', e) }
 
       if (resizeRef.current) resizeRef.current.disconnect()
       resizeRef.current = new ResizeObserver(() => {
@@ -168,7 +168,7 @@ export default function CorrelationHeatmap({ data, height = 500, draggable, onRe
         try {
           const Plotly = (window as any).Plotly
           Plotly?.purge?.(chartRef.current)
-        } catch {}
+        } catch (e) { console.warn('[CorrelationHeatmap] Plotly purge failed:', e) }
         chartRef.current = null
       }
     }

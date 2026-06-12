@@ -7,9 +7,10 @@ export default function CorrelationMatrixPage() {
   const [matrix, setMatrix] = useState<number[][]>([])
   const [symbols, setSymbols] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
-    setLoading(true)
+    setLoading(true); setError('')
     const syms = ['SPY', 'QQQ', 'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'TSLA']
     fetch(`/api/correlation/matrix?symbols=${syms.join(',')}&period_days=${window}`)
       .then(r => r.json())
@@ -20,7 +21,7 @@ export default function CorrelationMatrixPage() {
         }
         setLoading(false)
       })
-      .catch(() => setLoading(false))
+      .catch((err) => { setError(err.message || 'Failed to load correlation data'); setLoading(false) })
   }, [window])
 
   return (
@@ -33,6 +34,8 @@ export default function CorrelationMatrixPage() {
       }>
         {loading ? (
           <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 10 }}>Loading correlation data...</div>
+        ) : error ? (
+          <div style={{ padding: 24, textAlign: 'center', color: '#ef4444', fontSize: 10 }}>{error}</div>
         ) : (
           <CorrelationHeatmap data={{ symbols, matrix }} height={400} cellSize={40} />
         )}

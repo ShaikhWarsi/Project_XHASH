@@ -86,7 +86,7 @@ export function useWebSocket<T = unknown>(url: string, options: UseWebSocketOpti
         } else {
           setLastData(data)
         }
-      } catch { /* silent */ }
+      } catch (e) { console.warn('[useWebSocket] message processing error:', e) }
     }
 
     ws.onerror = (event) => {

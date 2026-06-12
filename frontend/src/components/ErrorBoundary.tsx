@@ -1,5 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
-import { AlertTriangle, RefreshCw, RotateCcw, Terminal } from 'lucide-react'
+import { AlertTriangle, RefreshCw, RotateCcw, Terminal, WifiOff, Cpu, ExternalLink } from 'lucide-react'
 
 interface Props {
   children: ReactNode
@@ -20,6 +20,46 @@ const CATEGORY_STYLES = {
   widget: { icon: Terminal, title: 'Widget Error', height: '200px' },
   chart: { icon: Terminal, title: 'Chart Error', height: '300px' },
   data: { icon: Terminal, title: 'Data Error', height: '120px' },
+}
+
+const ERROR_TIPS: Record<string, { message: string; suggestion: string }> = {
+  'NetworkError': {
+    message: 'Cannot connect to the API server.',
+    suggestion: 'Make sure the API server is running on port 8000. Run: python scripts/dashboard.py',
+  },
+  'ERR_CONNECTION_REFUSED': {
+    message: 'Connection was refused by the server.',
+    suggestion: 'The API server may not be running. Start it with: python scripts/dashboard.py',
+  },
+  'ERR_NETWORK': {
+    message: 'Network error — the server may be down.',
+    suggestion: 'Check your internet connection and ensure the API server is running.',
+  },
+  '500': {
+    message: 'The server encountered an internal error.',
+    suggestion: 'Check the error message above for details. Try again or restart the API server.',
+  },
+  '503': {
+    message: 'The service is temporarily unavailable.',
+    suggestion: 'The server might be starting up or is overloaded. Wait a moment and try again.',
+  },
+  '429': {
+    message: 'Too many requests. Please slow down.',
+    suggestion: 'Wait a few seconds before making another request.',
+  },
+  '404': {
+    message: 'The requested page or resource was not found.',
+    suggestion: 'The URL may be incorrect or the feature may not be available yet.',
+  },
+}
+
+function getErrorTip(error: Error | null): { message: string; suggestion: string } | null {
+  if (!error) return null
+  const msg = error.message || ''
+  for (const [key, tip] of Object.entries(ERROR_TIPS)) {
+    if (msg.includes(key)) return tip
+  }
+  return null
 }
 
 export default class ErrorBoundary extends Component<Props, State> {
@@ -52,6 +92,7 @@ export default class ErrorBoundary extends Component<Props, State> {
 
       const cat = CATEGORY_STYLES[this.props.category ?? 'widget']
       const Icon = cat.icon
+      const tip = getErrorTip(this.state.error)
 
       return (
         <div
@@ -69,11 +110,35 @@ export default class ErrorBoundary extends Component<Props, State> {
                 {cat.title}
               </span>
             </div>
-            <div className="text-xs font-mono">
-              <span className="text-muted">
-                {this.state.error?.message || 'An unexpected error occurred'}
-              </span>
+            <div className="text-xs font-mono text-muted">
+              {this.state.error?.message || 'An unexpected error occurred'}
             </div>
+
+            {tip && (
+              <div
+                className="text-xs font-mono p-3 rounded-md text-left"
+                style={{
+                  background: 'var(--bg-primary)',
+                  border: '1px solid var(--border-color)',
+                }}
+              >
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <WifiOff className="w-3 h-3" style={{ color: 'var(--accent-yellow)' }} />
+                  <span className="font-semibold" style={{ color: 'var(--accent-yellow)' }}>
+                    What happened:
+                  </span>
+                </div>
+                <p style={{ color: 'var(--text-secondary)', marginBottom: 8 }}>{tip.message}</p>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Cpu className="w-3 h-3" style={{ color: 'var(--accent-cyan)' }} />
+                  <span className="font-semibold" style={{ color: 'var(--accent-cyan)' }}>
+                    How to fix:
+                  </span>
+                </div>
+                <p style={{ color: 'var(--text-secondary)' }}>{tip.suggestion}</p>
+              </div>
+            )}
+
             <div className="flex items-center justify-center gap-2 flex-wrap">
               <button
                 onClick={this.handleRetry}
@@ -115,6 +180,7 @@ export default class ErrorBoundary extends Component<Props, State> {
                 className="flex items-center gap-1.5 px-3 py-1 text-[10px] font-mono rounded-sm cursor-pointer"
                 style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)' }}
               >
+                <ExternalLink className="w-3 h-3" />
                 Report Issue
               </button>
             </div>

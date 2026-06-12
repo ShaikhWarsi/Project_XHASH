@@ -83,9 +83,9 @@ function createConnection(endpoint: string) {
       if (data.type === 'ping') { ws.send(JSON.stringify({ type: 'pong' })); return }
       if (data.type === 'pong') return
       conn.subscribers.forEach((handler) => {
-        try { handler(data) } catch { /* handler error */ }
+        try { handler(data) } catch (e) { console.warn('[WS] handler error:', e) }
       })
-    } catch { /* silent */ }
+    } catch (e) { console.warn('[WS] malformed message:', e) }
   }
 
   ws.onclose = () => {

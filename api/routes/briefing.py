@@ -134,7 +134,9 @@ async def ai_briefing():
     except Exception as e:
         logger.warning("Briefing generation failed: %s", e)
         return {
-            "briefing": f"Portfolio: ${portfolio.get('total_value', 0):,.0f} | Positions: {portfolio.get('position_count', 0)} | SPY: {regime.get('spy_current', '—')} ({regime.get('spy_change_pct', '—')}%) | Trend: {regime.get('trend', 'unknown').title()}",
+            "briefing": f"⚠️ AI briefing failed: {e}\n\nPortfolio: ${portfolio.get('total_value', 0):,.0f} | Positions: {portfolio.get('position_count', 0)} | SPY: {regime.get('spy_current', '—')} ({regime.get('spy_change_pct', '—')}%) | Trend: {regime.get('trend', 'unknown').title()}",
             "generated_at": str(date.today()),
             "data_summary": {"portfolio": portfolio, "regime": regime, "movers": movers, "risk": risk},
+            "error": str(e),
+            "status": "degraded",
         }

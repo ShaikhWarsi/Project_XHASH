@@ -75,7 +75,7 @@ export default function ChatPanel() {
           if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
           typingTimerRef.current = setTimeout(() => setTyping(null), 3000)
         }
-      } catch {}
+      } catch (e) { console.warn('[Chat] malformed message:', e) }
     }
 
     ws.onclose = () => setConnected(false)

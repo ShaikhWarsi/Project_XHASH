@@ -126,7 +126,7 @@ export default function PersonaCouncil() {
               setLoading(false)
               return
             }
-          } catch {}
+          } catch (parseErr) { console.warn('[PersonaCouncil] Skipped malformed SSE event:', parseErr) }
         }
       }
     } catch (e: unknown) {
@@ -156,8 +156,8 @@ export default function PersonaCouncil() {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
       addToast('Council results copied to clipboard', 'success')
-    } catch {
-      addToast('Failed to copy', 'error')
+    } catch (e) {
+      addToast(`Failed to copy: ${(e as Error).message || 'clipboard unavailable'}`, 'error')
     }
   }
 

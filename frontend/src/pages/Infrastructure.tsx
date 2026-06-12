@@ -105,8 +105,8 @@ export default function Infrastructure() {
       addToast('All providers refreshed', 'success')
       const res = await api.get('/providers/')
       setProviders(res.data.providers || [])
-    } catch {
-      addToast('Failed to refresh providers', 'error')
+    } catch (e) {
+      addToast(`Failed to refresh providers: ${(e as Error).message}`, 'error')
     }
     setRefreshingProviders(false)
   }
@@ -119,8 +119,8 @@ export default function Infrastructure() {
     try {
       await api.post(`/scheduler/jobs/${name}/run`)
       addToast(`Job "${name}" triggered`, 'success')
-    } catch {
-      addToast(`Failed to run job "${name}"`, 'error')
+    } catch (e) {
+      addToast(`Failed to run job "${name}": ${(e as Error).message}`, 'error')
     }
   }
 

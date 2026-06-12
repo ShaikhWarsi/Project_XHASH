@@ -351,9 +351,9 @@ async def _stream_wrapper(provider: str, model: str, prompt: str, temperature: f
             yield f"data: {json.dumps({'error': 'Unknown provider'})}\n\n"
     except ImportError:
         yield f"data: {json.dumps({'error': 'Required dependency not installed'})}\n\n"
-    except Exception:
-        logger.warning("LLM stream call failed for %s", model)
-        yield f"data: {json.dumps({'error': 'LLM provider error'})}\n\n"
+    except Exception as e:
+        logger.warning("LLM stream call failed for %s: %s", model, e)
+        yield f"data: {json.dumps({'error': f'LLM provider error: {type(e).__name__}: {e}'[:500]})}\n\n"
 
 
 @router.post("/complete-stream")

@@ -168,6 +168,23 @@ pytest --cov=.
 cd frontend && npm run test
 ```
 
+## Documentation
+
+| Guide | Description |
+|-------|-------------|
+| [User Guide](docs/USER_GUIDE.md) | Complete guide to every page, feature, and button |
+| [Quick Start](docs/QUICKSTART.md) | Installation and first steps |
+| [Troubleshooting](docs/TROUBLESHOOTING.md) | Fix common issues step by step |
+| [Feature Reference](docs/FEATURES.md) | Every feature explained |
+| [Keyboard Shortcuts](docs/SHORTCUTS.md) | All keyboard shortcuts |
+| [Architecture](docs/ARCHITECTURE.md) | System architecture |
+| [API Reference](docs/API.md) | REST API documentation |
+| [Signal Engines](docs/SIGNALS.md) | Signal generation docs |
+| [AI Agents](docs/AGENTS.md) | Hedge fund personas and LLM agents |
+| [Risk Management](docs/RISK.md) | Risk engine documentation |
+| [Backtesting](docs/BACKTESTING.md) | Backtesting engine docs |
+| [FinScript](docs/FINSCRIPT.md) | Custom trading DSL docs |
+
 ## License
 
 Proprietary — all rights reserved.

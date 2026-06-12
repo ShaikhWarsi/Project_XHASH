@@ -10,6 +10,7 @@ import { api } from '../api/client'
 import { useTheme } from '../contexts/ThemeContext'
 import Spinner from '../components/Spinner'
 import { useApiQuery } from '../hooks/useApiQuery'
+import { useToastStore } from '../store/toast'
 
 interface AppConfig {
   llm_provider: string
@@ -154,8 +155,8 @@ export default function Settings() {
       await api.put('/config', config)
       setMessage('Settings saved')
       originalRef.current = JSON.stringify(config)
-    } catch {
-      setMessage('Save failed')
+    } catch (e) {
+      setMessage((e as Error).message || 'Save failed')
     }
     setSaving(false)
   }
@@ -165,8 +166,9 @@ export default function Settings() {
     try {
       await api.post(`/config/providers/test/${provider}`)
       setProviderTesting((p) => ({ ...p, [provider]: 'success' }))
-    } catch {
+    } catch (e) {
       setProviderTesting((p) => ({ ...p, [provider]: 'failure' }))
+      useToastStore.getState().addToast(`Provider test failed: ${(e as Error).message}`, 'error')
     }
   }
 
@@ -293,8 +295,8 @@ export default function Settings() {
                     await api.post('/config/api-key', { key: apiKeyInput })
                     setMessage('API key saved')
                     setSavedApiKey(true)
-                  } catch {
-                    setMessage('Failed to save API key')
+                  } catch (e) {
+                    setMessage((e as Error).message || 'Failed to save API key')
                   }
                 }}
                 className="text-xs shrink-0 text-accent-blue"
