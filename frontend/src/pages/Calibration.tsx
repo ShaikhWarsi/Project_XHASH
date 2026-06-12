@@ -74,10 +74,10 @@ export default function Calibration() {
       {thresholds && (
         <div className="flex-1 overflow-auto p-3 space-y-3">
           <div className="grid grid-cols-4 gap-2">
-            <KpiCard title="OPTIMAL THRESHOLD" value={thresholds.optimal_confidence_threshold} />
-            <KpiCard title="ACCURACY" value={`${((thresholds.overall_accuracy || 0) * 100).toFixed(1)}%`} />
-            <KpiCard title="SAMPLES" value={thresholds.total_samples} />
-            <KpiCard title="CORRECT" value={thresholds.correct_trades} />
+            <KpiCard label="OPTIMAL THRESHOLD" value={thresholds.optimal_confidence_threshold} />
+            <KpiCard label="ACCURACY" value={`${((thresholds.overall_accuracy || 0) * 100).toFixed(1)}%`} />
+            <KpiCard label="SAMPLES" value={thresholds.total_samples} />
+            <KpiCard label="CORRECT" value={thresholds.correct_trades} />
           </div>
           {weights && Object.keys(weights).length > 0 && (
             <div>

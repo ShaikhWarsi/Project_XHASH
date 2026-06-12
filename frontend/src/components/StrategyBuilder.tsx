@@ -13,7 +13,7 @@ interface Condition {
   logic?: 'AND' | 'OR'
 }
 
-interface Strategy {
+export interface Strategy {
   id: string
   name: string
   description: string

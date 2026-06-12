@@ -1,4 +1,4 @@
-import { ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import Skeleton from './Skeleton'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 

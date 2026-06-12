@@ -54,7 +54,7 @@ indicator({
   name: 'Pivots',
   description: 'Pivot Points (Standard/Camarilla/Woodie/DeMark)',
   category: 'volatility',
-  defaultParams: { type: 'standard' },
+  defaultParams: { type: 0 },
   paramsMeta: {
     type: { label: 'Type', type: 'int', min: 0, max: 3, default: 0 },
   },

@@ -57,7 +57,7 @@ function DendrogramChart({ result, prices, symbols }: { result: PortfolioOptResu
   const ref = useRef<HTMLDivElement>(null)
   const cols = useMemo(() => {
     const n = symbols.length
-    if (n <= 1) return symbols
+    if (n <= 1) return []
     const rows = Math.floor(prices.length / n) * n
     const returns: number[][] = []
     for (let i = n; i < rows; i += n) {

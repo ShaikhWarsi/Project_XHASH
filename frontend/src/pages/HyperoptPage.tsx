@@ -13,7 +13,7 @@ import { fmtDateTime } from '../utils/format'
 interface Trial {
   params: Record<string, number>
   score: number
-  iteration?: number
+  iteration: number
 }
 
 interface ExtendedHyperoptResult extends HyperoptResult {
@@ -264,7 +264,7 @@ function ParamImportance({ trials, paramNames }: { trials: Trial[]; paramNames: 
       const vals = trials.map((t) => t.params[name] ?? 0)
       const meanV = vals.reduce((s, v) => s + v, 0) / vals.length
       const num = trials.reduce((s, t, i) => s + ((t.params[name] ?? 0) - meanV) * (t.score - totalR2), 0)
-      const den = trials.reduce((s, v) => s + (v - meanV) ** 2, 0)
+      const den = vals.reduce((s, v) => s + (v - meanV) ** 2, 0)
       const slope = den > 0 ? num / den : 0
       const r2 = totalVar > 0 ? (num ** 2 / den) / totalVar : 0
       return { name, importance: Math.abs(r2), r2, slope }

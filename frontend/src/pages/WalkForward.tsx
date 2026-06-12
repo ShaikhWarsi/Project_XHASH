@@ -43,10 +43,10 @@ export default function WalkForward() {
       {result && (
         <div className="flex-1 overflow-auto p-3 space-y-3">
           <div className="grid grid-cols-4 gap-2">
-            <KpiCard title="WINDOWS" value={result.windows} />
-            <KpiCard title="AVG SHARPE" value={result.avg_sharpe.toFixed(3)} />
-            <KpiCard title="AVG RETURN" value={`${(result.avg_return * 100).toFixed(2)}%`} />
-            <KpiCard title="STABILITY" value={`${(result.stability * 100).toFixed(1)}%`} />
+            <KpiCard label="WINDOWS" value={result.windows} />
+            <KpiCard label="AVG SHARPE" value={result.avg_sharpe.toFixed(3)} />
+            <KpiCard label="AVG RETURN" value={`${(result.avg_return * 100).toFixed(2)}%`} />
+            <KpiCard label="STABILITY" value={`${(result.stability * 100).toFixed(1)}%`} />
           </div>
           <div className="text-muted text-[10px]">
             Walk-forward over {result.windows} windows for {result.symbol}

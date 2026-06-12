@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import BaseWidget from './BaseWidget'
 import { fetchQuotes } from '../../api/client'
 

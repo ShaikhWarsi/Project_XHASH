@@ -21,6 +21,8 @@ describe('useBacktestStore', () => {
           engine_type: 'default',
           leverage: 1.0,
           agents: ['buffett', 'burry', 'druckenmiller'],
+          entryConditions: '',
+          exitConditions: '',
         },
     })
   })

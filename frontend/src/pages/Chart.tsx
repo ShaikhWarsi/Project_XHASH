@@ -577,7 +577,7 @@ export default function ChartPage() {
       ...(indicators.length > 0 ? [{
         label: 'Indicators',
         submenu: indicators.map((ind) => ({
-          label: `${ind.name}${ind.hidden ? ' (hidden)' : ''}`,
+          label: `${ind.name}${(ind as any).hidden ? ' (hidden)' : ''}`,
           submenu: [
             { label: 'Remove', onClick: () => handleIndicatorRemove(ind.id) },
             { label: 'Hide', onClick: () => {} },
@@ -600,11 +600,11 @@ export default function ChartPage() {
           },
           {
             label: 'Auto-Fib',
-            onClick: () => { chartRef.current?.drawingManager.createDrawing('auto_fib'); setDrawingsCount(chartRef.current?.drawingManager.getDrawings().length ?? 0) },
+            onClick: () => { (chartRef.current?.drawingManager as any).createDrawing('auto_fib'); setDrawingsCount(chartRef.current?.drawingManager.getDrawings().length ?? 0) },
           },
           {
             label: 'Auto-Pitchfork',
-            onClick: () => { chartRef.current?.drawingManager.createDrawing('auto_pitchfork'); setDrawingsCount(chartRef.current?.drawingManager.getDrawings().length ?? 0) },
+            onClick: () => { (chartRef.current?.drawingManager as any).createDrawing('auto_pitchfork'); setDrawingsCount(chartRef.current?.drawingManager.getDrawings().length ?? 0) },
           },
           {
             label: 'Rectangle',

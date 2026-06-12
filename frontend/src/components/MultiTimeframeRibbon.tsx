@@ -42,7 +42,7 @@ export default function MultiTimeframeRibbon({ symbol }: Props) {
       })
 
       const range = tf === '1m' || tf === '5m' ? '1d' : tf === '15m' || tf === '1h' ? '5d' : tf === '4h' ? '1mo' : '6mo'
-      const series = chart.addLineSeries({ color: '#3b82f6', lineWidth: 1 })
+      const series = (chart as any).addSeries('Line', { color: '#3b82f6', lineWidth: 1 })
       series.setData([{ time: 0 as any, value: 0 }])
 
       fetchOHLCV(symbol, tf, range).then((bars) => {

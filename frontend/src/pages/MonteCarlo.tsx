@@ -44,11 +44,11 @@ export default function MonteCarlo() {
       {result && (
         <div className="flex-1 overflow-auto p-3 space-y-3">
           <div className="grid grid-cols-5 gap-2">
-            <KpiCard title="MEAN RETURN" value={`${(result.mean_return * 100).toFixed(2)}%`} />
-            <KpiCard title="MEAN SHARPE" value={result.mean_sharpe.toFixed(3)} />
-            <KpiCard title="MAX DD" value={`${(result.mean_max_dd * 100).toFixed(2)}%`} />
-            <KpiCard title="% POSITIVE" value={`${(result.pct_positive * 100).toFixed(1)}%`} />
-            <KpiCard title="VaR 95%" value={`${(result.var_95 * 100).toFixed(2)}%`} />
+            <KpiCard label="MEAN RETURN" value={`${(result.mean_return * 100).toFixed(2)}%`} />
+            <KpiCard label="MEAN SHARPE" value={result.mean_sharpe.toFixed(3)} />
+            <KpiCard label="MAX DD" value={`${(result.mean_max_dd * 100).toFixed(2)}%`} />
+            <KpiCard label="% POSITIVE" value={`${(result.pct_positive * 100).toFixed(1)}%`} />
+            <KpiCard label="VaR 95%" value={`${(result.var_95 * 100).toFixed(2)}%`} />
           </div>
           <div className="text-muted text-[10px]">
             Based on {result.n_simulations.toLocaleString()} simulations of {symbol} returns

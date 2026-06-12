@@ -225,7 +225,7 @@ function TerminalLayout() {
 
   const content = (
     <div className="flex h-screen" style={{ background: 'var(--bg-primary)' }}>
-      {!distractionFree && <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} isMobile={isMobile} />}
+      {!distractionFree && <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />}
       <div className="flex-1 flex flex-col min-w-0">
         {!distractionFree && isMobile ? null : <StatusStrip />}
         {!distractionFree && isMobile ? null : <MenuBar />}

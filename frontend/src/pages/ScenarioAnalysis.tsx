@@ -47,9 +47,9 @@ export default function ScenarioAnalysis() {
           <div className="mb-2">
             <div className="text-[10px] font-semibold text-muted mb-1">BASE CASE</div>
             <div className="grid grid-cols-3 gap-2">
-              <KpiCard title="RETURN" value={`${(result.base.total_return * 100).toFixed(2)}%`} />
-              <KpiCard title="SHARPE" value={result.base.sharpe_ratio?.toFixed(3) || '0'} />
-              <KpiCard title="MAX DD" value={`${(result.base.max_drawdown * 100).toFixed(2)}%`} />
+              <KpiCard label="RETURN" value={`${(result.base.total_return * 100).toFixed(2)}%`} />
+              <KpiCard label="SHARPE" value={result.base.sharpe_ratio?.toFixed(3) || '0'} />
+              <KpiCard label="MAX DD" value={`${(result.base.max_drawdown * 100).toFixed(2)}%`} />
             </div>
           </div>
           <div>

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import * as Plotly from 'plotly.js-dist-min'
 
 interface Trade {
   entryTime: number
@@ -73,7 +74,7 @@ export default function TradeRibbon({ equityCurve, trades, timestamps, height = 
         dragmode: false as const,
       }
 
-      const layout = {
+      const plotLayout = {
         height,
         margin: { t: 10, b: 20, l: 40, r: 10 },
         paper_bgcolor: 'rgba(0,0,0,0)',
@@ -83,9 +84,9 @@ export default function TradeRibbon({ equityCurve, trades, timestamps, height = 
         yaxis: { gridcolor: 'rgba(255,255,255,0.05)', zerolinecolor: 'rgba(255,255,255,0.1)' },
         showlegend: trades.length > 0,
         legend: { font: { size: 8 }, orientation: 'h', y: 1.1 },
-      }
+      } as any
 
-      Plotly.newPlot(chartRef.current, traces, layout, config)
+      (Plotly as any).newPlot(chartRef.current, traces, plotLayout, config)
     })
   }, [equityCurve, trades, timestamps, height])
 

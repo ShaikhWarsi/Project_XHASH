@@ -26,10 +26,10 @@ export default function SpreadRatioChart() {
       const dates = a.slice(0, len).map((d) => d.time)
       const pricesA = a.slice(0, len).map((d) => d.close)
       const pricesB = b.slice(0, len).map((d) => d.close)
-      const ratio = pricesA.map((pa, i) => pa / pricesB[i])
-      const spread = pricesA.map((pa, i) => pa - pricesB[i])
+      const ratio = pricesA.map((pa, i) => pa / pricesB[i]) as number[]
+      const spread = pricesA.map((pa, i) => pa - pricesB[i]) as number[]
 
-      Plotly.newPlot(chartRef.current, [
+      ;(Plotly as any).newPlot(chartRef.current, [
         {
           x: dates, y: ratio, type: 'scatter', mode: 'lines',
           name: `${symA}/${symB} Ratio`,

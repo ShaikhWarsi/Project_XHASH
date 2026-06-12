@@ -302,7 +302,7 @@ export class AlternativeChartEngine {
         } else {
           const downBoxes = Math.floor((currentCol.price - bar.low) / box)
           if (downBoxes >= rev) {
-            const newPrice = currentCol.price - downBoxes * box
+            const newPrice: number = currentCol.price - downBoxes * box
             currentCol = { time: bar.time, price: newPrice, type: 'o', count: downBoxes, high: currentCol.price, low: newPrice }
             columns.push(currentCol)
           }
@@ -316,7 +316,7 @@ export class AlternativeChartEngine {
         } else {
           const upBoxes = Math.floor((bar.high - currentCol.price) / box)
           if (upBoxes >= rev) {
-            const newPrice = currentCol.price + upBoxes * box
+            const newPrice: number = currentCol.price + upBoxes * box
             currentCol = { time: bar.time, price: newPrice, type: 'x', count: upBoxes, high: newPrice, low: currentCol.price }
             columns.push(currentCol)
           }

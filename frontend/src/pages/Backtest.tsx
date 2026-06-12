@@ -562,10 +562,11 @@ export default function Backtest() {
 
   const returnColor = !result ? 'var(--text-muted)' : result.total_return >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'
 
-  const yearlyData = useMemo(() => extResult?.yearly_breakdown ?? (extResult ? computeYearlyBreakdown(extResult) : []), [extResult])
-  const trades = useMemo(() => (extResult?.trades ?? (extResult ? generateMockTrades(extResult) : [])), [extResult])
-  const symbolData = useMemo(() => extResult?.symbol_breakdown ?? computeSymbolBreakdown(trades), [extResult, trades])
-  const regimeData = useMemo(() => extResult?.regime_breakdown ?? generateMockRegimeBreakdown(trades), [extResult, trades])
+  const r = result as any
+  const yearlyData = useMemo(() => r?.yearly_breakdown ?? (r ? computeYearlyBreakdown(r) : []), [result])
+  const trades = useMemo(() => (r?.trades ?? (r ? generateMockTrades(r) : [])), [result])
+  const symbolData = useMemo(() => r?.symbol_breakdown ?? computeSymbolBreakdown(trades), [result, trades])
+  const regimeData = useMemo(() => r?.regime_breakdown ?? generateMockRegimeBreakdown(trades), [result, trades])
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -719,7 +720,7 @@ export default function Backtest() {
                   </tr>
                 </thead>
                 <tbody>
-                  {yearlyData.map((y) => (
+                  {yearlyData.map((y: any) => (
                     <tr key={y.year}>
                       <td style={{ padding: '4px 8px', textAlign: 'left', color: 'var(--accent-cyan)' }}>{y.year}</td>
                       <td style={{ padding: '4px 8px', textAlign: 'right', color: y.return >= 0 ? 'var(--accent-green)' : 'var(--accent-red)' }}>{(y.return * 100).toFixed(2)}%</td>
@@ -754,7 +755,7 @@ export default function Backtest() {
                   </tr>
                 </thead>
                 <tbody>
-                  {symbolData.map((s) => (
+                  {symbolData.map((s: any) => (
                     <tr key={s.symbol}>
                       <td style={{ padding: '4px 8px', textAlign: 'left', color: 'var(--accent-yellow)' }}>{s.symbol}</td>
                       <td style={{ padding: '4px 8px', textAlign: 'right', color: 'var(--accent-cyan)' }}>{s.trades}</td>
@@ -790,7 +791,7 @@ export default function Backtest() {
                   </tr>
                 </thead>
                 <tbody>
-                  {regimeData.map((r) => (
+                  {regimeData.map((r: any) => (
                     <tr key={r.regime}>
                       <td style={{ padding: '4px 8px', textAlign: 'left', color: 'var(--accent-cyan)' }}>{r.regime}</td>
                       <td style={{ padding: '4px 8px', textAlign: 'right', color: 'var(--accent-cyan)' }}>{r.trades}</td>
@@ -884,13 +885,13 @@ export default function Backtest() {
               </Card>
 
               {/* Trade Ribbon (#202) */}
-              <TradeRibbon result={extResult!} />
+              <TradeRibbon result={result!} />
 
               {/* Stress Test grid (#207) */}
               {showStressTest && <StressTestGrid equity={result.equity_curve} />}
 
               {/* Tear Sheet (#203) */}
-              {showTearSheet && <TearSheet result={extResult!} />}
+              {showTearSheet && <TearSheet result={result!} />}
 
               <div className="flex items-center gap-2">
                 <button onClick={() => {

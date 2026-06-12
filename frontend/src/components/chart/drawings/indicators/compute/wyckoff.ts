@@ -56,7 +56,7 @@ export function computeWyckoff(data: IndicatorInput[]): WyckoffOutput[] {
     } else if (rangeNarrowing && !volClimax) {
       score = 0.2
       phase = 'accumulation'
-    } else if (closePos < closePosPrev && data[i].volume > avgVol) {
+    } else if (closePos < closePosPrev && (data[i].volume ?? 0) > avgVol) {
       score += -0.1
     }
 

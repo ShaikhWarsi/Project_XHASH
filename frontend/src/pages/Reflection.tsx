@@ -64,10 +64,10 @@ export default function Reflection() {
       {stats && (
         <div className="flex-1 overflow-auto p-3 space-y-3">
           <div className="grid grid-cols-4 gap-2">
-            <KpiCard title="TOTAL DECISIONS" value={stats.total_decisions} />
-            <KpiCard title="WIN RATE" value={`${((stats.win_rate || 0) * 100).toFixed(1)}%`} />
-            <KpiCard title="TOTAL P&L" value={`${((stats.total_pnl_pct || 0) * 100).toFixed(2)}%`} />
-            <KpiCard title="SHARPE" value={stats.sharpe_approx?.toFixed(2) || '0'} />
+            <KpiCard label="TOTAL DECISIONS" value={stats.total_decisions} />
+            <KpiCard label="WIN RATE" value={`${((stats.win_rate || 0) * 100).toFixed(1)}%`} />
+            <KpiCard label="TOTAL P&L" value={`${((stats.total_pnl_pct || 0) * 100).toFixed(2)}%`} />
+            <KpiCard label="SHARPE" value={stats.sharpe_approx?.toFixed(2) || '0'} />
           </div>
           {report?.assessment && (
             <div className="bg-card border border-default p-3 rounded">

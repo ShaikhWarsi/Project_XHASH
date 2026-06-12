@@ -33,7 +33,7 @@ export default function AnalystReportCard({ report }: Props) {
       <div style={{
         fontSize: 12, lineHeight: 1.6, whiteSpace: 'pre-wrap',
         color: 'var(--text-primary)', maxHeight: 300, overflowY: 'auto',
-        fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
+        fontFamily: "'JetBrains Mono', monospace",
       }}>
         {report.content}
       </div>

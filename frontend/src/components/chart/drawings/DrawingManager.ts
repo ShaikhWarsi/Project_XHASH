@@ -43,8 +43,8 @@ const TOOL_MAP: Record<string, new (id: string, type: ToolType, points?: any[], 
   ruler: RulerTool,
   gann_box: GannBox,
   gann_square: GannSquare,
-  auto_fib: AutoFibRetracement,
-  auto_pitchfork: AutoPitchfork,
+  auto_fib: AutoFibRetracement as unknown as new (id: string, type: ToolType, points?: any[], style?: Partial<DrawingStyle>) => DrawingTool,
+  auto_pitchfork: AutoPitchfork as unknown as new (id: string, type: ToolType, points?: any[], style?: Partial<DrawingStyle>) => DrawingTool,
   speed_resistance_lines: SpeedResistanceLines,
 }
 
