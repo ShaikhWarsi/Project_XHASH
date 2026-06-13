@@ -8,7 +8,7 @@ interface LogEntry {
   type: 'trade' | 'signal' | 'system' | 'risk' | 'backtest'
 }
 
-function ExpandableDetails({ details, style }: { details: string } & ComponentProps<'span'>) {
+function ExpandableDetails({ details }: { details: string } & Omit<ComponentProps<'span'>, 'style'>) {
   const [expanded, setExpanded] = useState(false)
   const long = details.length > 80
   return (

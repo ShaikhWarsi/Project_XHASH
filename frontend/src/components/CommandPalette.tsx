@@ -175,7 +175,7 @@ export default function CommandPalette({ onThemeChange }: CommandPaletteProps) {
     if (cmd.path.startsWith('__theme_')) {
       onThemeChange(cmd.path.replace('__theme_', '') as ThemeName)
     } else if (cmd.path === '__mode_chart') {
-      try { localStorage.setItem('interface_mode', 'chart'); window.location.reload() } catch {}
+      try { localStorage.setItem('interface_mode', 'chart'); window.location.reload() } catch { /* ignore */ }
     } else {
       navigate(cmd.path)
     }

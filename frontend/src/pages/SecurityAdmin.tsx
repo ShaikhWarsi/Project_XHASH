@@ -41,7 +41,7 @@ export default function SecurityAdmin() {
   const load = async () => {
     setLoading(true)
     try {
-      const [data, st, login, setts] = await Promise.all([
+      const [data, st, login, setts]: any[] = await Promise.all([
         fetchSecurityData(),
         fetchSecurityStats(),
         fetchLoginActivity(),

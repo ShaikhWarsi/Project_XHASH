@@ -3,13 +3,13 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Wallet, Activity, ScrollText, FlaskConical,
   CandlestickChart, Bot, Settings, Layers, Users, Workflow, Star,
-  BarChart3, Sigma, X, ArrowLeftRight, FileCode, AlertTriangle,
+  BarChart3, Sigma, X, ArrowLeftRight, FileCode,
   PieChart, TrendingUp, BrainCircuit, Code, GitBranch, Puzzle,
   Share2, Globe, Search, Cpu, ChevronDown, ChevronRight, Target,
-  BarChart4, Radio, LineChart, Shield, BookOpen, Database, Bell,
+  BarChart4, Radio, LineChart, Shield, Bell,
 } from 'lucide-react'
 import { useBreakpoint } from '../hooks/useBreakpoint'
-import { ROUTES, GROUP_LABELS, type RouteConfig, type WorkflowGroup } from '../utils/routes'
+import { ROUTES, GROUP_LABELS, type WorkflowGroup } from '../utils/routes'
 
 const MOD = navigator.platform.startsWith('Mac') ? '⌘' : '^'
 
@@ -117,52 +117,37 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const sidebarContent = (
     <>
-      <div
-        className="flex items-center shrink-0"
-        style={{
-          height: 36,
-          padding: '0 12px',
-          borderBottom: '1px solid var(--border-color)',
-        }}
-      >
+      <div className="flex items-center shrink-0 h-9 px-3 border-b border-default">
         <div className="flex items-center gap-2 flex-1">
-          <span
-            className="text-xs font-bold"
-            style={{ color: 'var(--accent-green)', fontFamily: "'JetBrains Mono', monospace" }}
-          >
-            TE$
-          </span>
+          <span className="text-xs font-bold text-up font-mono">TE$</span>
         </div>
         {isMobile && onClose && (
           <button
             onClick={onClose}
-            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 2 }}
+            className="bg-transparent border-none text-secondary cursor-pointer p-0.5"
             aria-label="Close sidebar"
           >
             <X size={14} />
           </button>
         )}
       </div>
-      <div style={{ display: 'flex', gap: 2, padding: '4px 8px', borderBottom: '1px solid var(--border-color)' }}>
-        <button onClick={() => setWorkflowFilter(null)} style={{
-          flex: 1, padding: '3px 0', fontSize: 9, fontFamily: "'JetBrains Mono', monospace",
+      <div className="flex gap-0.5 p-1 border-b border-default">
+        <button onClick={() => setWorkflowFilter(null)} className="font-mono text-[9px] cursor-pointer" style={{
+          flex: 1, padding: '3px 0',
           background: workflowFilter === null ? 'var(--accent-green)' : 'transparent',
           color: workflowFilter === null ? '#000' : 'var(--text-muted)',
           border: `1px solid ${workflowFilter === null ? 'var(--accent-green)' : 'var(--border-color)'}`,
-          cursor: 'pointer',
           fontWeight: workflowFilter === null ? 700 : 400,
         }}>ALL</button>
         {WORKFLOW_OPTIONS.map((w) => {
           const Icon = w.icon
           const isActive = workflowFilter === w.id
           return (
-            <button key={w.id} onClick={() => setWorkflowFilter(isActive ? null : w.id)} style={{
-              flex: 1, padding: '3px 0', fontSize: 9, fontFamily: "'JetBrains Mono', monospace",
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2,
+            <button key={w.id} onClick={() => setWorkflowFilter(isActive ? null : w.id)} className="font-mono text-[9px] cursor-pointer flex items-center justify-center gap-0.5" style={{
+              flex: 1, padding: '3px 0',
               background: isActive ? 'color-mix(in srgb, var(--accent-cyan) 20%, transparent)' : 'transparent',
               color: isActive ? 'var(--accent-cyan)' : 'var(--text-muted)',
               border: `1px solid ${isActive ? 'var(--accent-cyan)' : 'var(--border-color)'}`,
-              cursor: 'pointer',
               fontWeight: isActive ? 700 : 400,
             }}>
               <Icon size={9} />
@@ -171,21 +156,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           )
         })}
       </div>
-      <nav className="flex-1 py-2 overflow-y-auto" aria-label="Main navigation" style={{ scrollbarWidth: 'thin' }}>
+      <nav className="flex-1 py-2 overflow-y-auto [scrollbar-width:thin]" aria-label="Main navigation">
         {hiddenGroups['__all'] && (
-          <div style={{ padding: '4px 12px' }}>
+          <div className="px-3 py-1">
             <button
               onClick={resetHidden}
-              style={{
-                background: 'none',
-                border: '1px solid var(--border-color)',
-                color: 'var(--text-muted)',
-                cursor: 'pointer',
-                fontSize: 9,
-                padding: '2px 8px',
-                width: '100%',
-                borderRadius: 'var(--radius-sm)',
-              }}
+              className="bg-transparent border border-default text-muted cursor-pointer text-[9px] px-2 py-0.5 w-full radius-sm"
             >
               RESET HIDDEN GROUPS
             </button>
@@ -196,16 +172,15 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           return (
             <div key={group.label} className="mb-3">
               <div
-                className="flex items-center text-[9px] font-semibold uppercase tracking-widest px-3 py-1 cursor-pointer select-none"
-                style={{ color: 'var(--text-muted)' }}
+                className="flex items-center text-[9px] font-semibold uppercase tracking-widest px-3 py-1 cursor-pointer select-none text-muted"
                 onClick={() => toggleGroup(group.label)}
               >
-                {isCollapsed ? <ChevronRight size={10} style={{ marginRight: 4 }} /> : <ChevronDown size={10} style={{ marginRight: 4 }} />}
-                <span style={{ flex: 1 }}>{group.label}</span>
+                {isCollapsed ? <ChevronRight size={10} className="mr-1" /> : <ChevronDown size={10} className="mr-1" />}
+                <span className="flex-1">{group.label}</span>
                 <span
                   onClick={(e) => { e.stopPropagation(); toggleHidden(group.label) }}
                   title="Hide group"
-                  style={{ opacity: 0.4, cursor: 'pointer', fontSize: 10, padding: '0 4px' }}
+                  className="opacity-40 cursor-pointer text-[10px] px-1"
                 >
                   ✕
                 </span>
@@ -218,38 +193,24 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                       to={link.to}
                       end={link.to === '/'}
                       onClick={isMobile ? onClose : undefined}
-                      className="flex items-center"
+                      className="flex items-center text-[11px] font-mono no-underline"
                       style={({ isActive }) => ({
                         padding: '4px 12px',
-                        fontSize: 11,
-                        textDecoration: 'none',
                         color: isActive ? 'var(--accent-green)' : 'var(--text-secondary)',
                         background: isActive ? 'var(--bg-hover)' : 'transparent',
                         borderLeft: isActive ? '2px solid var(--accent-green)' : '2px solid transparent',
-                        transition: 'none',
-                        fontFamily: "'JetBrains Mono', monospace",
                       })}
                       aria-label={link.label}
                     >
-                      <link.icon className="w-3.5 h-3.5 shrink-0" style={{ marginRight: 8, opacity: 0.7 }} />
+                      <link.icon className="w-3.5 h-3.5 shrink-0 mr-2 opacity-70" />
                       <span className="flex-1">{link.label}</span>
                       {link.badge && (
-                        <span
-                          style={{
-                            fontSize: 8,
-                            background: 'var(--accent-blue)',
-                            color: '#fff',
-                            padding: '0 4px',
-                            borderRadius: 4,
-                            lineHeight: '14px',
-                            marginRight: 4,
-                          }}
-                        >
+                        <span className="text-[8px] bg-accent-blue text-white px-1 leading-[14px] mr-1 radius-md">
                           {link.badge}
                         </span>
                       )}
                       {link.shortcut && (
-                        <span style={{ color: 'var(--text-muted)', fontSize: 9, opacity: 0.5 }}>
+                        <span className="text-muted text-[9px] opacity-50">
                           {link.shortcut}
                         </span>
                       )}
@@ -261,11 +222,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           )
         })}
       </nav>
-      <div
-        className="text-[9px] px-3 py-2 shrink-0"
-        style={{ borderTop: '1px solid var(--border-color)', color: 'var(--text-muted)', fontFamily: "'JetBrains Mono', monospace" }}
-      >
-        <div style={{ opacity: 0.5 }}>{`⌘K`} palette</div>
+      <div className="text-[9px] px-3 py-2 shrink-0 border-t border-default text-muted font-mono">
+        <div className="opacity-50">{`\u2318K`} palette</div>
       </div>
     </>
   )
@@ -276,26 +234,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         {isOpen && (
           <div
             onClick={onClose}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(0,0,0,0.6)',
-              zIndex: 'var(--z-overlay)',
-            }}
+            className="fixed inset-0 bg-black/60 z-[var(--z-overlay)]"
           />
         )}
         <aside
+          className="fixed top-0 left-0 bottom-0 z-[var(--z-sidebar)] flex flex-col bg-sidebar border-r border-default"
           style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            bottom: 0,
             width: 200,
-            background: 'var(--bg-sidebar)',
-            borderRight: '1px solid var(--border-color)',
-            zIndex: 'var(--z-sidebar)',
-            display: 'flex',
-            flexDirection: 'column',
             transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
             transition: 'transform 0.2s ease',
           }}
@@ -308,12 +253,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   return (
     <aside
-      className="flex flex-col shrink-0"
-      style={{
-        width: 'var(--sidebar-width)',
-        background: 'var(--bg-sidebar)',
-        borderRight: '1px solid var(--border-color)',
-      }}
+      className="flex flex-col shrink-0 w-[var(--sidebar-width)] bg-sidebar border-r border-default"
     >
       {sidebarContent}
     </aside>

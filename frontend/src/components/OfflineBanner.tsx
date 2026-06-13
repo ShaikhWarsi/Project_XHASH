@@ -1,18 +1,18 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 
 const CACHE_KEYS = ['portfolio_data', 'signals_data', 'backtest_results', 'market_ticker']
 
 export function cacheData(key: string, data: unknown) {
   try {
     localStorage.setItem(`offline_${key}`, JSON.stringify({ data, timestamp: Date.now() }))
-  } catch {}
+  } catch { /* ignore */ }
 }
 
 export function getCachedData<T>(key: string): { data: T; timestamp: number } | null {
   try {
     const raw = localStorage.getItem(`offline_${key}`)
     if (raw) return JSON.parse(raw)
-  } catch {}
+  } catch { /* ignore */ }
   return null
 }
 
@@ -41,6 +41,13 @@ export default function OfflineBanner({ lastSync }: OfflineBannerProps) {
   const [cacheInfo, setCacheInfo] = useState('')
   const [failedEndpoints, setFailedEndpoints] = useState<string[]>([])
 
+  const updateCacheInfo = () => {
+    const cached = CACHE_KEYS.filter((k) => localStorage.getItem(`offline_${k}`))
+    if (cached.length > 0) {
+      setCacheInfo(`${cached.length} datasets cached`)
+    }
+  }
+
   useEffect(() => {
     const onOffline = () => { setOffline(true); updateCacheInfo() }
     const onOnline = () => { setOffline(false) }
@@ -51,13 +58,6 @@ export default function OfflineBanner({ lastSync }: OfflineBannerProps) {
       window.removeEventListener('online', onOnline)
     }
   }, [])
-
-  const updateCacheInfo = () => {
-    const cached = CACHE_KEYS.filter((k) => localStorage.getItem(`offline_${k}`))
-    if (cached.length > 0) {
-      setCacheInfo(`${cached.length} datasets cached`)
-    }
-  }
 
   useEffect(() => { if (offline) updateCacheInfo() }, [offline])
 

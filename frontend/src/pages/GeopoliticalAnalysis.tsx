@@ -4,7 +4,7 @@ import { useToastStore } from '../store/toast'
 
 function generateMeetingDates(year: number, firstMonth: number, dayOfWeek: number, count: number): string[] {
   const dates: string[] = []
-  let d = new Date(year, firstMonth, 1)
+  const d = new Date(year, firstMonth, 1)
   while (d.getDay() !== dayOfWeek) d.setDate(d.getDate() + 1)
   for (let i = 0; i < count; i++) {
     dates.push(d.toISOString().slice(0, 10))

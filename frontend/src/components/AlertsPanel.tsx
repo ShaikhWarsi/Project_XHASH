@@ -36,8 +36,6 @@ export default function AlertsPanel({ symbol: defaultSymbol }: { symbol?: string
   const [currentPrice, setCurrentPrice] = useState<number | null>(null)
   const [quoteError, setQuoteError] = useState(false)
 
-  // #89 — Formula alert fields
-  const [showFormula, setShowFormula] = useState(false)
   const [formulaSymbol, setFormulaSymbol] = useState(defaultSymbol || '')
   const [formulaExpr, setFormulaExpr] = useState('price > sma(20) AND rsi(14) < 30')
 
@@ -54,8 +52,6 @@ export default function AlertsPanel({ symbol: defaultSymbol }: { symbol?: string
 
   useEffect(() => {
     if (defaultSymbol) {
-      setNewSymbol(defaultSymbol)
-      setFormulaSymbol(defaultSymbol)
       setQuoteError(false)
       fetchQuote(defaultSymbol).then(q => setCurrentPrice(q.c)).catch(() => setQuoteError(true))
     }

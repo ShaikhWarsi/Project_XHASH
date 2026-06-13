@@ -12,10 +12,6 @@ export default function IntegrationsSettings() {
   const [integrations, setIntegrations] = useState<IntegrationStatus[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadIntegrations()
-  }, [])
-
   const loadIntegrations = async () => {
     setLoading(true)
     try {
@@ -26,6 +22,10 @@ export default function IntegrationsSettings() {
     }
     setLoading(false)
   }
+
+  useEffect(() => {
+    loadIntegrations()
+  }, [])
 
   const handleToggle = async (name: string, enabled: boolean) => {
     try {

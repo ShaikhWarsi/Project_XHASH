@@ -385,7 +385,7 @@ export default function Playground() {
     api.get('/openalgo/playground/api-docs').then((res) => {
       const data = res.data?.data
       if (data?.endpoints) setEndpoints(data.endpoints)
-    }).catch(() => {}).finally(() => setLoadingEndpoints(false))
+    }).catch((err) => console.warn('[Playground] failed:', err)).finally(() => setLoadingEndpoints(false))
   }, [])
 
   useEffect(() => {
@@ -404,7 +404,7 @@ export default function Playground() {
     setLoadingBrokers(true)
     api.get('/openalgo/playground/brokers').then((res) => {
       setBrokers(res.data?.data?.brokers || [])
-    }).catch(() => {}).finally(() => setLoadingBrokers(false))
+    }).catch((err) => console.warn('[Playground] failed:', err)).finally(() => setLoadingBrokers(false))
   }, [])
 
   const categories = useMemo(() => [...new Set(endpoints.map((e) => e.category))], [endpoints])

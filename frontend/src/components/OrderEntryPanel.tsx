@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { useLivePrices } from '../contexts/LivePricesContext'
 import { placeOrder } from '../api/client'
 import { useToastStore } from '../store/toast'
@@ -35,19 +35,21 @@ export default function OrderEntryPanel({ symbol: initialSymbol = '', currentPri
   const [bracketStopLoss, setBracketStopLoss] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  useEffect(() => {
-    if (initialSymbol) {
-      setSymbol(initialSymbol)
-      setQuantity('')
-      setSide('BUY')
-      setOrderType('MARKET')
-      setReduceOnly(false)
-    }
-  }, [initialSymbol])
+  const prevSymbolRef = useRef(initialSymbol)
+  if (initialSymbol && initialSymbol !== prevSymbolRef.current) {
+    prevSymbolRef.current = initialSymbol
+    setSymbol(initialSymbol)
+    setQuantity('')
+    setSide('BUY')
+    setOrderType('MARKET')
+    setReduceOnly(false)
+  }
 
-  useEffect(() => {
-    if (currentPrice) setPrice(currentPrice.toString())
-  }, [currentPrice])
+  const prevPriceRef = useRef(currentPrice)
+  if (currentPrice && currentPrice !== prevPriceRef.current) {
+    prevPriceRef.current = currentPrice
+    setPrice(currentPrice.toString())
+  }
 
   const livePrice = symbol ? getPrice(symbol.toUpperCase()) : null
   const displayPrice = currentPrice || livePrice?.price || 0
@@ -79,8 +81,9 @@ export default function OrderEntryPanel({ symbol: initialSymbol = '', currentPri
       await placeOrder(order)
       addToast(`Order placed: ${side} ${quantity} ${symbol.toUpperCase()}`, 'success')
       onOrderPlaced?.()
-    } catch (err: any) {
-      addToast(`Order failed: ${err?.response?.data?.detail || err?.message || 'Unknown error'}`, 'error')
+    } catch (err: unknown) {
+      const e = err as any
+      addToast(`Order failed: ${e?.response?.data?.detail || e?.message || 'Unknown error'}`, 'error')
     } finally {
       setSubmitting(false)
     }
@@ -90,11 +93,11 @@ export default function OrderEntryPanel({ symbol: initialSymbol = '', currentPri
 
   return (
     <div className="bg-card border border-default rounded-lg overflow-hidden">
-      <div style={{ padding: 'var(--card-padding)' }} className="border-b border-default">
+      <div className="px-3 py-1.5 border-b border-default">
         <h3 className="text-sm font-semibold text-primary">Order Entry</h3>
       </div>
 
-      <div className="space-y-3" style={{ padding: 'var(--card-padding)' }}>
+      <div className="space-y-3 p-3">
         <div className="grid grid-cols-2 gap-2">
           {(['MARKET', 'LIMIT', 'STOP', 'STOP_LIMIT', 'TRAILING_STOP', 'OCO'] as OrderType[]).map((t) => (
             <button
@@ -140,7 +143,7 @@ export default function OrderEntryPanel({ symbol: initialSymbol = '', currentPri
             onChange={(e) => setSymbol(e.target.value.toUpperCase())}
             placeholder="e.g. AAPL"
             aria-label="Symbol"
-            className="w-full border border-default rounded-sm px-2 py-1.5 text-xs text-primary" style={{ background: 'var(--bg-primary)' }}
+            className="w-full border border-default rounded-sm px-2 py-1.5 text-xs bg-primary text-primary"
           />
         </div>
 
@@ -153,7 +156,7 @@ export default function OrderEntryPanel({ symbol: initialSymbol = '', currentPri
             step="any"
             placeholder="0"
             aria-label="Quantity"
-            className="w-full border border-default rounded-sm px-2 py-1.5 text-xs text-primary" style={{ background: 'var(--bg-primary)' }}
+            className="w-full border border-default rounded-sm px-2 py-1.5 text-xs bg-primary text-primary"
           />
         </div>
 
@@ -167,7 +170,7 @@ export default function OrderEntryPanel({ symbol: initialSymbol = '', currentPri
               step="0.01"
               placeholder={displayPrice ? `$${displayPrice}` : '0.00'}
               aria-label="Price"
-              className="w-full border border-default rounded-sm px-2 py-1.5 text-xs text-primary" style={{ background: 'var(--bg-primary)' }}
+              className="w-full border border-default rounded-sm px-2 py-1.5 text-xs bg-primary text-primary"
             />
           </div>
         )}
@@ -182,7 +185,7 @@ export default function OrderEntryPanel({ symbol: initialSymbol = '', currentPri
               step="0.01"
               placeholder="0.00"
               aria-label="Stop price"
-              className="w-full border border-default rounded-sm px-2 py-1.5 text-xs text-primary" style={{ background: 'var(--bg-primary)' }}
+              className="w-full border border-default rounded-sm px-2 py-1.5 text-xs bg-primary text-primary"
             />
           </div>
         )}
@@ -197,7 +200,7 @@ export default function OrderEntryPanel({ symbol: initialSymbol = '', currentPri
               step="0.01"
               placeholder="0.00"
               aria-label="Limit price"
-              className="w-full border border-default rounded-sm px-2 py-1.5 text-xs text-primary" style={{ background: 'var(--bg-primary)' }}
+              className="w-full border border-default rounded-sm px-2 py-1.5 text-xs bg-primary text-primary"
             />
           </div>
         )}
@@ -212,7 +215,7 @@ export default function OrderEntryPanel({ symbol: initialSymbol = '', currentPri
               step="0.1"
               placeholder="2.0"
               aria-label="Trailing stop percentage"
-              className="w-full border border-default rounded-sm px-2 py-1.5 text-xs text-primary" style={{ background: 'var(--bg-primary)' }}
+              className="w-full border border-default rounded-sm px-2 py-1.5 text-xs bg-primary text-primary"
             />
           </div>
         )}
@@ -273,7 +276,7 @@ export default function OrderEntryPanel({ symbol: initialSymbol = '', currentPri
         </label>
 
         {displayPrice > 0 && quantity && (
-          <div className="p-2 rounded-sm text-[11px]" style={{ background: 'var(--bg-hover)' }}>
+          <div className="p-2 rounded-sm text-[11px] bg-hover">
             <div className="flex justify-between text-secondary">
               <span>Est. Value</span>
               <span className="text-primary font-semibold">${orderValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>

@@ -34,7 +34,7 @@ export async function cancelRun(runId: string): Promise<{ success: boolean; mess
   return data
 }
 
-export async function getRunEvents(runId: string, limit = 200): Promise<{ events: any[]; total: number }> {
+export async function getRunEvents(runId: string, limit = 200): Promise<{ events: unknown[]; total: number }> {
   const { data } = await api.get(`/v1/tradingagents/runs/${runId}/events?limit=${limit}`)
   return data
 }
@@ -44,7 +44,7 @@ export async function listRuns(limit = 20): Promise<RunSummary[]> {
   return data.runs
 }
 
-export async function getDebugInfo(): Promise<any> {
+export async function getDebugInfo(): Promise<unknown> {
   const { data } = await api.get('/v1/tradingagents/debug')
   return data
 }

@@ -8,7 +8,7 @@ export default function NewsCoMovement() {
   const [headline, setHeadline] = useState('')
   const [tickersInput, setTickersInput] = useState('AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA')
   const [priceChangesInput, setPriceChangesInput] = useState('')
-  const [result, setResult] = useState<{ co_movements: any[]; source: string } | null>(null)
+  const [result, setResult] = useState<{ co_movements: unknown[]; source: string } | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -78,7 +78,9 @@ export default function NewsCoMovement() {
             <div className="text-xs text-muted">No significant co-movements detected.</div>
           ) : (
             <div className="space-y-1.5">
-              {result.co_movements.map((m: any, i: number) => (
+              {result.co_movements.map((mRaw, i) => {
+                const m = mRaw as { ticker: string; co_move_direction: string; confidence: number; reasoning: string }
+                return (
                 <div key={i} className="flex items-center gap-2 bg-[var(--bg-hover)] border border-default rounded px-2 py-1.5">
                   <span className="font-mono font-bold text-xs text-primary w-16">{m.ticker}</span>
                   {m.co_move_direction === 'up' ? <TrendingUp size={14} className="text-accent-green" /> : m.co_move_direction === 'down' ? <TrendingDown size={14} className="text-accent-red" /> : <Minus size={14} className="text-muted" />}
@@ -90,7 +92,8 @@ export default function NewsCoMovement() {
                     <div className="text-[9px] text-muted">{m.reasoning}</div>
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>

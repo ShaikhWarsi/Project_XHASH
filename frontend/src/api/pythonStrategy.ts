@@ -88,7 +88,7 @@ export async function clearLogs(id: string): Promise<void> {
   await api.post(`/openalgo/python-strategy/strategies/${id}/logs/clear`)
 }
 
-export function subscribeToSSE(onEvent: (data: any) => void): () => void {
+export function subscribeToSSE(onEvent: (data: unknown) => void): () => void {
   const token = localStorage.getItem('token')
   const url = token
     ? `/api/openalgo/python-strategy/events?token=${token}`
@@ -97,6 +97,6 @@ export function subscribeToSSE(onEvent: (data: any) => void): () => void {
   es.onmessage = (e) => {
     try { onEvent(JSON.parse(e.data)) } catch {}
   }
-  es.onerror = () => {}
+  es.onerror = () => {/* SSE error */}
   return () => es.close()
 }

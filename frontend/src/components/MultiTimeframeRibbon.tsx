@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react'
-import { createChart, LineSeries, CandlestickSeries, type IChartApi, type CandlestickData } from 'lightweight-charts'
+import { createChart, type IChartApi, type CandlestickData } from 'lightweight-charts'
 import { fetchOHLCV } from '../api/client'
 import type { BarData } from '../api/types'
 
@@ -11,7 +11,7 @@ const TIMEFRAMES = ['1m', '5m', '15m', '1h', '4h', '1d']
 
 function barsToCandles(bars: BarData[]): CandlestickData[] {
   return bars.map((b) => ({
-    time: b.time as any,
+    time: b.time as unknown as CandlestickData['time'],
     open: b.open,
     high: b.high,
     low: b.low,
@@ -43,7 +43,7 @@ export default function MultiTimeframeRibbon({ symbol }: Props) {
 
       const range = tf === '1m' || tf === '5m' ? '1d' : tf === '15m' || tf === '1h' ? '5d' : tf === '4h' ? '1mo' : '6mo'
       const series = (chart as any).addSeries('Line', { color: '#3b82f6', lineWidth: 1 })
-      series.setData([{ time: 0 as any, value: 0 }])
+      series.setData([{ time: 0 as unknown as CandlestickData['time'], value: 0 }])
 
       fetchOHLCV(symbol, tf, range).then((bars) => {
         if (bars && bars.length > 0) {

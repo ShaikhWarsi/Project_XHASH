@@ -30,19 +30,51 @@ interface StructureState {
 }
 
 function safeMinMax(levels: number[]): [min: number, max: number] {
-  if (levels.length < 2) return [levels[0] - 10 || 90, levels[0] + 10 || 110]
-  return [Math.min(...levels), Math.max(...levels)]
+  return levels.length > 0
+    ? [Math.min(...levels), Math.max(...levels)]
+    : [0, 1]
 }
 
-function validateState(data: any): StructureState {
-  const defaults: StructureState = {
-    symbol: '', timeframe: '1h', composite_bias: 'NEUTRAL', composite_confidence: 0,
-    active_order_blocks: [], active_fvgs: [], liquidity_levels: [],
-    last_bos: null, last_choch: null, key_levels: [],
-    regime: '', total_signals: 0, bullish_count: 0, bearish_count: 0,
-  }
-  if (!data || typeof data !== 'object') return defaults
-  return { ...defaults, ...data }
+function directionColor(dir: string) {
+  return dir === 'bullish' ? 'var(--accent-green)' : 'var(--accent-red)'
+}
+
+function StructureSVGInner({ levels, orderBlocks, fvgs, liquidityLevels }: { levels: number[]; orderBlocks: StructureLevel[]; fvgs: { top: number; bottom: number; direction: string }[]; liquidityLevels: StructureLevel[] }) {
+  if (levels.length < 2) return null
+  const [minK, maxK] = safeMinMax(levels)
+  const range = maxK - minK || 1
+  return (
+    <div className="relative h-[320px] rounded p-3 overflow-hidden bg-secondary border border-default">
+      <div className="absolute inset-0 flex items-end px-4 pb-4">
+        <svg className="w-full h-full" viewBox="0 0 400 240" preserveAspectRatio="none">
+          {orderBlocks.map((ob, i) => (
+            <line key={`ob-${i}`}
+              x1={i * 120 + 40} y1={200 - (ob.level - minK) / range * 180 - 10}
+              x2={i * 120 + 40} y2={200 - (ob.level - minK) / range * 180 + 10}
+              style={{ stroke: directionColor(ob.direction), strokeWidth: 3, strokeOpacity: ob.confidence }} />
+          ))}
+          {fvgs.map((fvg, i) => (
+            <rect key={`fvg-${i}`}
+              x={i * 100 + 150}
+              y={200 - (Math.max(fvg.top, fvg.bottom) - minK) / range * 180}
+              width={20} height={Math.abs(fvg.top - fvg.bottom) / range * 180}
+              style={{ fill: directionColor(fvg.direction), fillOpacity: 0.3 }} />
+          ))}
+          {liquidityLevels.map((liq, i) => (
+            <line key={`liq-${i}`}
+              x1={i * 80 + 60} y1={200 - (liq.level - minK) / range * 180}
+              x2={i * 80 + 100} y2={200 - (liq.level - minK) / range * 180}
+              style={{ stroke: directionColor(liq.direction), strokeWidth: 2, strokeDasharray: '6 3' }} />
+          ))}
+        </svg>
+      </div>
+      <div className="absolute bottom-2 left-3 text-xs text-muted">
+        {levels.length > 0
+          ? `Key levels: ${levels.map((l) => `$${l.toFixed(1)}`).join(', ')}`
+          : 'No key levels'}
+      </div>
+    </div>
+  )
 }
 
 export default function Structure() {
@@ -66,7 +98,7 @@ export default function Structure() {
       try {
         setLoading(true)
         const data = await fetchStructure(symbol, timeframe)
-        if (mountedRef.current) setState(validateState(data))
+        if (mountedRef.current) setState(data as unknown as StructureState)
       } catch (e: any) {
         if (mountedRef.current) addToast(`Failed to load structure: ${e?.message || 'Unknown error'}`, 'error')
       } finally {
@@ -146,48 +178,6 @@ export default function Structure() {
     if (bias === 'BULLISH') return 'text-up'
     if (bias === 'BEARISH') return 'text-down'
     return 'text-accent-yellow'
-  }
-
-  function directionColor(dir: string) {
-    return dir === 'bullish' ? 'var(--accent-green)' : 'var(--accent-red)'
-  }
-
-  function StructureSVGInner({ levels, orderBlocks, fvgs, liquidityLevels }: { levels: number[]; orderBlocks: StructureLevel[]; fvgs: { top: number; bottom: number; direction: string }[]; liquidityLevels: StructureLevel[] }) {
-    if (levels.length < 2) return null
-    const [minK, maxK] = safeMinMax(levels)
-    const range = maxK - minK || 1
-    return (
-      <div className="relative h-[320px] rounded p-3 overflow-hidden bg-secondary border border-default">
-        <div className="absolute inset-0 flex items-end px-4 pb-4">
-          <svg className="w-full h-full" viewBox="0 0 400 240" preserveAspectRatio="none">
-            {orderBlocks.map((ob, i) => (
-              <line key={`ob-${i}`}
-                x1={i * 120 + 40} y1={200 - (ob.level - minK) / range * 180 - 10}
-                x2={i * 120 + 40} y2={200 - (ob.level - minK) / range * 180 + 10}
-                style={{ stroke: directionColor(ob.direction), strokeWidth: 3, strokeOpacity: ob.confidence }} />
-            ))}
-            {fvgs.map((fvg, i) => (
-              <rect key={`fvg-${i}`}
-                x={i * 100 + 150}
-                y={200 - (Math.max(fvg.top, fvg.bottom) - minK) / range * 180}
-                width={20} height={Math.abs(fvg.top - fvg.bottom) / range * 180}
-                style={{ fill: directionColor(fvg.direction), fillOpacity: 0.3 }} />
-            ))}
-            {liquidityLevels.map((liq, i) => (
-              <line key={`liq-${i}`}
-                x1={i * 80 + 60} y1={200 - (liq.level - minK) / range * 180}
-                x2={i * 80 + 100} y2={200 - (liq.level - minK) / range * 180}
-                style={{ stroke: directionColor(liq.direction), strokeWidth: 2, strokeDasharray: '6 3' }} />
-            ))}
-          </svg>
-        </div>
-        <div className="absolute bottom-2 left-3 text-xs text-muted">
-          {levels.length > 0
-            ? `Key levels: ${levels.map((l) => `$${l.toFixed(1)}`).join(', ')}`
-            : 'No key levels'}
-        </div>
-      </div>
-    )
   }
 
   return (

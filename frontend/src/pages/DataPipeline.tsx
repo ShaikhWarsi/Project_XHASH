@@ -105,7 +105,7 @@ export default function DataPipeline() {
           if (Array.isArray(res.data.runs)) setPipelineRuns(res.data.runs)
         }
       })
-      .catch(() => {})
+      .catch((err) => console.warn('[DataPipeline] failed:', err))
       .finally(() => setLoading(false))
   }, [])
 

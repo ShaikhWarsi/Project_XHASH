@@ -106,9 +106,9 @@ export default function SignalEngineDashboard() {
       const elapsed = (Date.now() - start) / 1000
       setEngines((prev) => prev.map((e) => e.id === engineId ? { ...e, lastFire: 'Just now', enabled: true } : e))
       addToast(`${engineId} test passed (${elapsed.toFixed(1)}s)`, 'success')
-    } catch (err: any) {
+    } catch (err: unknown) {
       const elapsed = (Date.now() - start) / 1000
-      addToast(`${engineId} test failed after ${elapsed.toFixed(1)}s: ${err.message}`, 'error')
+      addToast(`${engineId} test failed after ${elapsed.toFixed(1)}s: ${(err as Error).message}`, 'error')
     }
   }
 

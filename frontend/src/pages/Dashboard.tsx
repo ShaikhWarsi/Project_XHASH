@@ -287,12 +287,11 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col gap-1.5">
       {/* HEAT STRIP */}
-      <div className="flex bg-card border border-default overflow-hidden" style={{ height: 22 }}>
+      <div className="flex bg-card border border-default overflow-hidden h-[22px]">
         {heatStripData.map((h) => (
-          <div key={h.symbol} className="flex-1 flex items-center justify-center font-mono-data text-[9px]"
+          <div key={h.symbol} className="flex-1 flex items-center justify-center font-mono-data text-[9px] border-r border-default"
             style={{
               background: h.change >= 2 ? 'rgba(34,197,94,0.15)' : h.change <= -2 ? 'rgba(239,68,68,0.15)' : 'none',
-              borderRight: '1px solid var(--border-color)',
               color: h.change > 0 ? 'var(--accent-green)' : h.change < 0 ? 'var(--accent-red)' : 'var(--text-muted)',
             }}>
             {h.symbol} {h.change >= 0 ? '+' : ''}{h.change.toFixed(1)}%
@@ -333,12 +332,11 @@ export default function Dashboard() {
                   <button
                     key={t.id}
                     onClick={() => handleApplyTemplate(t.id)}
-                    className="font-mono-data text-[8px] px-1.5 py-0.5 cursor-pointer rounded-sm uppercase tracking-wider transition-colors"
-                    style={{
-                      backgroundColor: activeTemplate === t.id ? 'var(--accent-cyan)' : 'transparent',
-                      border: `1px solid ${activeTemplate === t.id ? 'var(--accent-cyan)' : 'var(--border-color)'}`,
-                      color: activeTemplate === t.id ? '#000' : 'var(--text-muted)',
-                    }}
+                    className={`font-mono-data text-[8px] px-1.5 py-0.5 cursor-pointer uppercase tracking-wider transition-colors ${
+                      activeTemplate === t.id
+                        ? 'bg-accent-cyan text-black border border-accent-cyan'
+                        : 'bg-transparent text-muted border border-default'
+                    }`}
                     title={t.description}
                   >
                     {t.name}
@@ -347,11 +345,7 @@ export default function Dashboard() {
               </div>
               <button
                 onClick={() => setShowAddWidget(true)}
-                className="font-mono-data text-[8px] px-2 py-0.5 cursor-pointer rounded-sm uppercase tracking-wider"
-                style={{
-                  border: '1px solid var(--border-color)',
-                  color: 'var(--accent-cyan)',
-                }}
+                  className="font-mono-data text-[8px] px-2 py-0.5 cursor-pointer uppercase tracking-wider text-accent-cyan border border-default"
               >
                 + WIDGET
               </button>
@@ -489,11 +483,11 @@ export default function Dashboard() {
                       </span>
                       <button
                         onClick={() => setShowBenchmark(!showBenchmark)}
-                        className="text-[9px] font-mono px-2 py-0.5 cursor-pointer rounded-sm border transition-colors"
+                        className={`text-[9px] font-mono px-2 py-0.5 cursor-pointer border transition-colors ${
+                          showBenchmark ? 'text-accent-blue' : 'text-muted'
+                        } border-default`}
                         style={{
                           background: showBenchmark ? 'color-mix(in srgb, var(--accent-blue) 15%, transparent)' : 'none',
-                          borderColor: 'var(--border-color)',
-                          color: showBenchmark ? 'var(--accent-blue)' : 'var(--text-muted)',
                         }}
                       >
                         {showBenchmark ? 'HIDE SPY' : 'VS SPY'}
@@ -548,7 +542,7 @@ export default function Dashboard() {
                       {snapshot.open_orders.slice(0, 4).map((o: any, i: number) => (
                         <div key={i} className="flex items-center justify-between font-mono-data text-[11px] text-primary py-px">
                           <span className="text-accent-cyan font-semibold">{o.symbol}</span>
-                          <span style={{ color: o.side === 'buy' ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+                          <span className={o.side === 'buy' ? 'text-up' : 'text-down'}>
                             {o.side?.toUpperCase()} {o.quantity} @ ${o.price?.toFixed(2)}
                           </span>
                         </div>
@@ -626,12 +620,12 @@ export default function Dashboard() {
                   {snapshot?.open_orders && snapshot.open_orders.length > 0 && (
                     <div>
                       <div className="text-[9px] font-mono-data tracking-wider text-muted mb-0.5 uppercase flex items-center gap-1">
-                        <span style={{ color: 'var(--accent-yellow)' }}>{'\u25CF'}</span> Open Orders
+                        <span className="text-accent-yellow">{'\u25CF'}</span> Open Orders
                       </div>
                       {snapshot.open_orders.slice(0, 5).map((o: any, i: number) => (
                         <div key={i} className="flex items-center justify-between font-mono-data text-[10px] text-primary py-px">
                           <span className="text-accent-cyan font-semibold">{o.symbol}</span>
-                          <span style={{ color: o.side === 'buy' ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+                          <span className={o.side === 'buy' ? 'text-up' : 'text-down'}>
                             {o.side?.toUpperCase()} {o.quantity} @ ${o.price?.toFixed(2)}
                           </span>
                         </div>
@@ -641,12 +635,12 @@ export default function Dashboard() {
                   {recentTrades.length > 0 && (
                     <div>
                       <div className="text-[9px] font-mono-data tracking-wider text-muted mb-0.5 uppercase flex items-center gap-1 mt-1">
-                        <span style={{ color: 'var(--accent-green)' }}>{'\u25CF'}</span> Recent Fills
+                        <span className="text-up">{'\u25CF'}</span> Recent Fills
                       </div>
                       {recentTrades.slice(0, 5).map((t, i) => (
                         <div key={i} className="flex items-center justify-between font-mono-data text-[10px] text-primary py-px">
                           <span className="text-accent-cyan font-semibold">{t.symbol}</span>
-                          <span style={{ color: t.side === 'buy' ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+                          <span className={t.side === 'buy' ? 'text-up' : 'text-down'}>
                             {t.side?.toUpperCase()} {t.quantity} @ ${t.price?.toFixed(2)}
                           </span>
                         </div>
@@ -675,21 +669,16 @@ export default function Dashboard() {
       <div className="fixed bottom-6 right-6 z-30">
         <button
           onClick={() => setShowActivity(!showActivity)}
-          className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all border"
-          style={{
-            background: showActivity ? 'var(--accent-blue)' : 'var(--bg-card)',
-            borderColor: 'var(--border-color)',
-            color: showActivity ? '#fff' : 'var(--text-secondary)',
-            boxShadow: 'var(--shadow-md)',
-          }}
+          className={`w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all border border-default shadow-card ${
+            showActivity ? 'bg-accent-blue text-white' : 'bg-card text-secondary'
+          }`}
           title="Activity Feed"
         >
           <span className="text-sm">⚡</span>
         </button>
         {showActivity && (
           <div
-            className="absolute bottom-full right-0 mb-2 w-[360px] max-h-[400px] overflow-y-auto bg-card border border-default shadow-lg"
-            style={{ borderRadius: 'var(--radius-md)' }}
+            className="absolute bottom-full right-0 mb-2 w-[360px] max-h-[400px] overflow-y-auto bg-card border border-default shadow-lg radius-md"
           >
             <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-default">
               <span className="text-[9px] font-mono-data tracking-wider text-muted uppercase">

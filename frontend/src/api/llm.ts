@@ -79,13 +79,13 @@ export async function llmCompleteStream(
   }
 }
 
-export async function briefingGet(): Promise<{ briefing: string; generated_at: string; data_summary: any }> {
+export async function briefingGet(): Promise<{ briefing: string; generated_at: string; data_summary: unknown }> {
   const res = await fetchWithTimeout('/api/ai/briefing')
   if (!res.ok) throw new Error('Failed to fetch briefing')
   return res.json()
 }
 
-export async function coMovementGet(headline: string, tickers: string[], priceChanges: Record<string, number>): Promise<{ co_movements: any[]; source: string }> {
+export async function coMovementGet(headline: string, tickers: string[], priceChanges: Record<string, number>): Promise<{ co_movements: unknown[]; source: string }> {
   const res = await fetchWithTimeout('/api/ai/co-movement', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -115,7 +115,7 @@ export async function generateStrategy(description: string, symbol?: string): Pr
   return res.json()
 }
 
-export async function evaluateStrategy(code: string, symbol?: string, start?: string, end?: string): Promise<{ symbol: string; signals: any[]; plots: any; trades: any[]; metrics: any }> {
+export async function evaluateStrategy(code: string, symbol?: string, start?: string, end?: string): Promise<{ symbol: string; signals: unknown[]; plots: unknown; trades: unknown[]; metrics: unknown }> {
   const res = await fetchWithTimeout('/api/ai/evaluate-strategy', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -135,7 +135,7 @@ export async function generateIndicator(description: string): Promise<{ code: st
   return res.json()
 }
 
-export async function inspectPattern(symbol: string, pattern: any, priceDataSummary?: string, recentSignals?: any[]): Promise<Response> {
+export async function inspectPattern(symbol: string, pattern: unknown, priceDataSummary?: string, recentSignals?: unknown[]): Promise<Response> {
   const res = await fetchWithTimeout('/api/ai/inspect-pattern', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -145,7 +145,7 @@ export async function inspectPattern(symbol: string, pattern: any, priceDataSumm
   return res
 }
 
-export async function strategyHealthCheck(strategyName: string, strategyCode: string, recentPerformance: any[], currentRegime: string): Promise<any> {
+export async function strategyHealthCheck(strategyName: string, strategyCode: string, recentPerformance: unknown[], currentRegime: string): Promise<unknown> {
   const res = await fetchWithTimeout('/api/ai/strategy-health', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ strategy_name: strategyName, strategy_code: strategyCode, recent_performance: recentPerformance, current_regime: currentRegime }),
@@ -154,7 +154,7 @@ export async function strategyHealthCheck(strategyName: string, strategyCode: st
   return res.json()
 }
 
-export async function autoTagTrades(trades: any[]): Promise<{ tagged_trades: any[] }> {
+export async function autoTagTrades(trades: unknown[]): Promise<{ tagged_trades: unknown[] }> {
   const res = await fetchWithTimeout('/api/ai/auto-tag-trades', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ trades }),
@@ -163,7 +163,7 @@ export async function autoTagTrades(trades: any[]): Promise<{ tagged_trades: any
   return res.json()
 }
 
-export async function explainPnL(period: string, trades: any[], portfolioValueHistory: any[], marketRegime: string, topPerformers: string[], worstPerformers: string[]): Promise<any> {
+export async function explainPnL(period: string, trades: unknown[], portfolioValueHistory: unknown[], marketRegime: string, topPerformers: string[], worstPerformers: string[]): Promise<unknown> {
   const res = await fetchWithTimeout('/api/ai/explain-pnl', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ period, trades, portfolio_value_history: portfolioValueHistory, market_regime: marketRegime, top_performers: topPerformers, worst_performers: worstPerformers }),
@@ -172,13 +172,13 @@ export async function explainPnL(period: string, trades: any[], portfolioValueHi
   return res.json()
 }
 
-export async function listPrompts(): Promise<{ prompts: any[]; total: number }> {
+export async function listPrompts(): Promise<{ prompts: unknown[]; total: number }> {
   const res = await fetchWithTimeout('/api/ai/prompts')
   if (!res.ok) throw new Error('Failed to list prompts')
   return res.json()
 }
 
-export async function createPrompt(data: any): Promise<any> {
+export async function createPrompt(data: unknown): Promise<unknown> {
   const res = await fetchWithTimeout('/api/ai/prompts', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -187,7 +187,7 @@ export async function createPrompt(data: any): Promise<any> {
   return res.json()
 }
 
-export async function updatePrompt(id: string, data: any): Promise<any> {
+export async function updatePrompt(id: string, data: unknown): Promise<unknown> {
   const res = await fetchWithTimeout(`/api/ai/prompts/${id}`, {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -201,13 +201,13 @@ export async function deletePrompt(id: string): Promise<void> {
   if (!res.ok) throw new Error('Failed to delete prompt')
 }
 
-export async function clonePrompt(id: string): Promise<any> {
+export async function clonePrompt(id: string): Promise<unknown> {
   const res = await fetchWithTimeout(`/api/ai/prompts/${id}/clone`, { method: 'POST' })
   if (!res.ok) throw new Error('Failed to clone prompt')
   return res.json()
 }
 
-export async function compareLeaderboard(aiTrades: any[], humanTrades: any[], period: string): Promise<any> {
+export async function compareLeaderboard(aiTrades: unknown[], humanTrades: unknown[], period: string): Promise<unknown> {
   const res = await fetchWithTimeout('/api/ai/leaderboard/compare', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ai_trades: aiTrades, human_trades: humanTrades, period }),
@@ -216,7 +216,7 @@ export async function compareLeaderboard(aiTrades: any[], humanTrades: any[], pe
   return res.json()
 }
 
-export async function explainStop(data: any): Promise<any> {
+export async function explainStop(data: unknown): Promise<unknown> {
   const res = await fetchWithTimeout('/api/ai/explain-stop', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -225,7 +225,7 @@ export async function explainStop(data: any): Promise<any> {
   return res.json()
 }
 
-export async function tradeCoach(trade: any, recentTrades: any[]): Promise<any> {
+export async function tradeCoach(trade: unknown, recentTrades: unknown[]): Promise<unknown> {
   const res = await fetchWithTimeout('/api/ai/trade-coach', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ trade, recent_trades: recentTrades }),
@@ -234,7 +234,7 @@ export async function tradeCoach(trade: any, recentTrades: any[]): Promise<any> 
   return res.json()
 }
 
-export async function generateRiskReport(email: string | null, period: string, portfolioData: any, trades: any[], marketRegime: string): Promise<any> {
+export async function generateRiskReport(email: string | null, period: string, portfolioData: unknown, trades: unknown[], marketRegime: string): Promise<unknown> {
   const res = await fetchWithTimeout('/api/ai/risk-report', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, period, portfolio_data: portfolioData, trades, market_regime: marketRegime }),

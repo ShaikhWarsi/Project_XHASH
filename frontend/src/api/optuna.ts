@@ -11,7 +11,7 @@ export interface OptunaStudy {
 export interface OptunaTrial {
   number: number
   value: number
-  params: Record<string, any>
+  params: Record<string, unknown>
   state: 'complete' | 'pruned' | 'failed'
   datetime_start: string
   datetime_complete?: string
@@ -39,7 +39,7 @@ export async function fetchTrials(studyId: string): Promise<{ trials: OptunaTria
   return res.json()
 }
 
-export async function suggestParams(studyId: string, params: Record<string, any>): Promise<Record<string, any>> {
+export async function suggestParams(studyId: string, params: Record<string, unknown>): Promise<Record<string, unknown>> {
   const res = await fetch(`/api/hyperopt/studies/${studyId}/suggest`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

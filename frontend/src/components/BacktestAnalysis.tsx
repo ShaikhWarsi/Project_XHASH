@@ -40,9 +40,9 @@ function generateMonteCarloPaths(equityCurve: number[], nPaths = 50, nSteps = 25
   return { paths, finalValues }
 }
 
-function PlotContainer({ data, layout, config: cfg = {} }: { data: any; layout: any; config?: any }) {
+function PlotContainer({ data, layout, config: cfg = {} }: { data: unknown; layout: unknown; config?: unknown }) {
   const ref = useRef<HTMLDivElement>(null)
-  const plotlyRef = useRef<any>(null)
+  const plotlyRef = useRef<unknown>(null)
   useEffect(() => {
     if (!ref.current) return
     let cancelled = false
@@ -55,14 +55,14 @@ function PlotContainer({ data, layout, config: cfg = {} }: { data: any; layout: 
         await Plotly.newPlot(ref.current, data, {
           paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
           font: { color: '#9aa0a6', size: 10 },
-          ...layout,
-        }, { responsive: true, displayModeBar: false, ...cfg })
+          ...(layout as any),
+        }, { responsive: true, displayModeBar: false, ...(cfg as any) })
       } catch { /* silent */ }
     }
     render()
     return () => { cancelled = true; if (ref.current) ref.current.innerHTML = '' }
   }, [data, layout, cfg])
-  return <div ref={ref} style={{ width: '100%', height: layout?.height ?? 300 }} />
+  return <div ref={ref} style={{ width: '100%', height: (layout as any)?.height ?? 300 }} />
 }
 
 export default function BacktestAnalysis({ results, labels }: BacktestAnalysisProps) {

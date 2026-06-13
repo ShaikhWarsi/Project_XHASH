@@ -46,7 +46,7 @@ export async function fetchGeopoliticalImpact(): Promise<{ events: { event: stri
   return res.json()
 }
 
-export async function runSqlQuery(query: string): Promise<{ columns: string[]; rows: any[][] }> {
+export async function runSqlQuery(query: string): Promise<{ columns: string[]; rows: unknown[][] }> {
   const res = await fetch('/api/analytics/sql', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

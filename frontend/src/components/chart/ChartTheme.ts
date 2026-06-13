@@ -113,7 +113,7 @@ export function storeTheme(theme: ThemeName): void {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ theme }),
-    }).catch(() => {})
+    }).catch((err) => console.warn('[ChartTheme] failed to persist theme:', err))
   } catch (e) { console.warn('[ChartTheme] failed to persist theme:', e) }
 }
 

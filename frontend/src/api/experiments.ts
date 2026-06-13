@@ -4,8 +4,8 @@ export interface Experiment {
   id: string
   name: string
   status: string
-  config: any
-  results?: any
+  config: unknown
+  results?: unknown
   created_at: string
 }
 
@@ -14,7 +14,7 @@ export async function fetchExperiments(): Promise<{ experiments: Experiment[] }>
   return data
 }
 
-export async function createExperiment(config: any): Promise<Experiment> {
+export async function createExperiment(config: unknown): Promise<Experiment> {
   const { data } = await api.post('/experiments', config)
   return data
 }
@@ -24,12 +24,12 @@ export async function runExperiment(id: string): Promise<Experiment> {
   return data
 }
 
-export async function structuredTune(config: any): Promise<Experiment> {
+export async function structuredTune(config: unknown): Promise<Experiment> {
   const { data } = await api.post('/experiments/structured-tune', config)
   return data
 }
 
-export async function aiOptimize(config: any): Promise<Experiment> {
+export async function aiOptimize(config: unknown): Promise<Experiment> {
   const { data } = await api.post('/experiments/ai-optimize', config)
   return data
 }

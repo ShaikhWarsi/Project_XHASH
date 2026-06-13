@@ -6,13 +6,13 @@ const STORAGE_KEY = 'chart_templates'
 interface Template {
   id: string
   name: string
-  config: any
+  config: unknown
   createdAt: string
 }
 
 interface ChartTemplatesProps {
-  currentConfig: any
-  onLoadConfig: (config: any) => void
+  currentConfig: unknown
+  onLoadConfig: (config: unknown) => void
 }
 
 function loadTemplates(): Template[] {

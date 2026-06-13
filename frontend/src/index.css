@@ -4,8 +4,12 @@
   .text-secondary { color: var(--text-secondary); }
   .text-muted { color: var(--text-muted); }
   .text-primary { color: var(--text-primary); }
+  .bg-primary { background: var(--bg-primary); }
+  .bg-secondary { background: var(--bg-secondary); }
+  .bg-sidebar { background: var(--bg-sidebar); }
   .bg-card { background: var(--bg-card); }
   .bg-hover { background: var(--bg-hover); }
+  .text-secondary { color: var(--text-secondary); }
   .bg-input { background: var(--input-bg); }
   .border-default { border-color: var(--border-color); }
   .border-input { border-color: var(--input-border); }
@@ -15,6 +19,16 @@
   .text-down { color: var(--accent-red); }
   .text-accent-blue { color: var(--accent-blue); }
   .text-accent-cyan { color: var(--accent-cyan); }
+  .text-accent-green { color: var(--accent-green); }
+  .text-accent-red { color: var(--accent-red); }
+  .text-accent-blue { color: var(--accent-blue); }
+  .bg-accent-cyan { background: var(--accent-cyan); }
+  .bg-accent-blue { background: var(--accent-blue); }
+  .border-accent-cyan { border-color: var(--accent-cyan); }
+  .border-accent-blue { border-color: var(--accent-blue); }
+  .shadow-card { box-shadow: var(--shadow-md); }
+  .radius-md { border-radius: var(--radius-md); }
+  .radius-lg { border-radius: var(--radius-lg); }
   .text-accent-purple { color: var(--accent-purple); }
   .text-accent-yellow { color: var(--accent-yellow); }
   .border-accent { border-color: var(--accent-blue); }
@@ -43,75 +57,71 @@
 }
 
 :root {
-  --bg-primary: #0f1118;
-  --bg-secondary: #1a1d2e;
-  --bg-card: #1e2235;
-  --bg-hover: #2a2d3e;
-  --bg-sidebar: #1a1d2e;
-  --text-primary: #e8eaed;
-  --text-secondary: #9aa0a6;
-  --text-muted: #8b8f97;
-  --accent-green: #22c55e;
-  --accent-red: #ef4444;
-  --accent-blue: #3b82f6;
-  --accent-yellow: #eab308;
-  --accent-orange: #ea580c;
-  --accent-cyan: #06b6d4;
-  --accent-purple: #a855f7;
-  --border-color: #2a2d3e;
-  --ticker-bg: #0a0c14;
-  --ticker-text: #e8eaed;
-  --sidebar-width: 220px;
-  --sidebar-collapsed-width: 60px;
-  --card-padding: 1rem;
-  --card-radius: 0.75rem;
-  --header-height: 36px;
-  --chart-bg: #1e2235;
-  --chart-text: #9aa0a6;
-  --chart-grid: #2a2d3e;
-  --chart-border: #2a2d3e;
-  --chart-candle-up: #22c55e;
-  --chart-candle-down: #ef4444;
-  --chart-volume: #3b82f6;
-  --chart-line: #22c55e;
-  --input-bg: #2a2d3e;
-  --input-border: #3a3d4e;
-  --input-text: #ffffff;
-  --input-focus: #3b82f6;
+  --bg-primary: #000000;
+  --bg-secondary: #080808;
+  --bg-card: #0d0d0d;
+  --bg-hover: #141414;
+  --bg-sidebar: #080808;
+  --text-primary: #c8c8c8;
+  --text-secondary: #888888;
+  --text-muted: #555555;
+  --accent-green: #4caf50;
+  --accent-red: #f44336;
+  --accent-blue: #2196f3;
+  --accent-yellow: #ff9800;
+  --accent-orange: #e65100;
+  --accent-cyan: #00bcd4;
+  --accent-purple: #ab47bc;
+  --border-color: #1a1a1a;
+  --ticker-bg: #000000;
+  --ticker-text: #c8c8c8;
+  --sidebar-width: 180px;
+  --sidebar-collapsed-width: 48px;
+  --card-padding: 0.5rem;
+  --card-radius: 0;
+  --header-height: 28px;
+  --chart-bg: #080808;
+  --chart-text: #888888;
+  --chart-grid: #1a1a1a;
+  --chart-border: #1a1a1a;
+  --chart-candle-up: #4caf50;
+  --chart-candle-down: #f44336;
+  --chart-volume: #2196f3;
+  --chart-line: #4caf50;
+  --input-bg: #1a1a1a;
+  --input-border: #2a2a2a;
+  --input-text: #c8c8c8;
+  --input-focus: #4caf50;
   --font-family-data: 'JetBrains Mono', monospace;
 
-  --text-xs: 12px;
-  --text-sm: 13px;
-  --text-base: 16px;
-  --text-lg: 18px;
-  --text-xl: 24px;
-  --text-2xl: 30px;
-  --text-3xl: 36px;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 12px;
+  --text-lg: 14px;
+  --text-xl: 18px;
+  --text-2xl: 24px;
+  --text-3xl: 30px;
 
-  --font-size-base: var(--text-sm);
-  --font-size-xs: 11px;
-  --font-size-sm: 13px;
-  --font-size-lg: var(--text-lg);
-  --font-size-xl: var(--text-xl);
+  --font-size-base: 12px;
+  --font-size-xs: 10px;
+  --font-size-sm: 12px;
+  --font-size-lg: 14px;
+  --font-size-xl: 18px;
 
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-8: 32px;
-  --space-10: 40px;
-  --space-12: 48px;
+  --space-1: 3px;
+  --space-2: 6px;
+  --space-3: 10px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 20px;
+  --space-8: 28px;
+  --space-10: 36px;
+  --space-12: 44px;
 
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
-  --shadow-md: 0 4px 6px rgba(0,0,0,0.3);
-  --shadow-lg: 0 8px 24px rgba(0,0,0,0.4);
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
 
   --z-sidebar: 40;
   --z-overlay: 50;
@@ -119,16 +129,9 @@
   --z-toast: 70;
   --z-tooltip: 80;
 
-  --statusbar-height: 30px;
-  --widget-shadow: 0 1px 3px rgba(0,0,0,0.3);
-  --widget-shadow-hover: 0 4px 12px rgba(0,0,0,0.5);
-  --glow-blue: 0 0 8px rgba(59,130,246,0.4);
-  --glow-green: 0 0 8px rgba(34,197,94,0.4);
-  --glow-red: 0 0 8px rgba(239,68,68,0.4);
-  --bg-pattern: radial-gradient(circle at 25% 25%, rgba(255,255,255,0.015) 1px, transparent 1px);
-  --bg-pattern-size: 24px 24px;
-  --menubar-height: 28px;
-  --tabbar-height: 26px;
+  --statusbar-height: 20px;
+  --menubar-height: 24px;
+  --tabbar-height: 22px;
 }
 
 .theme-classic {
@@ -429,12 +432,10 @@ html {
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   background-color: var(--bg-primary);
-  background-image: var(--bg-pattern);
-  background-size: var(--bg-pattern-size);
   color: var(--text-primary);
   min-height: 100vh;
   font-size: var(--font-size-base);
-  line-height: 1.35;
+  line-height: 1.3;
 }
 
 #root {

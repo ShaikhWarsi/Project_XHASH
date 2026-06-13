@@ -57,7 +57,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ theme: t }),
-    }).catch(() => {})
+    }).catch((err) => console.warn('[ThemeContext] failed:', err))
     try {
       const channel = new BroadcastChannel('te-sync')
       channel.postMessage({ type: 'THEME_CHANGED', payload: { theme: t }, tabId: 'theme', timestamp: Date.now() })

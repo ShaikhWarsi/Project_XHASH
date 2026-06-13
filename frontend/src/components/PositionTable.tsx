@@ -31,8 +31,8 @@ export default function PositionTable({ positions, onClose, onUpdate, showBeta =
   [positions, getPrice])
 
   const sorted = [...livePositions].sort((a, b) => {
-    const aVal = (a as any)[sortBy] ?? 0
-    const bVal = (b as any)[sortBy] ?? 0
+    const aVal = (a as unknown as Record<string, unknown>)[sortBy] ?? 0
+    const bVal = (b as unknown as Record<string, unknown>)[sortBy] ?? 0
     if (typeof aVal === 'string') return sortDir === 'asc' ? (aVal as string).localeCompare(bVal as string) : (bVal as string).localeCompare(aVal as string)
     return sortDir === 'asc' ? (aVal as number) - (bVal as number) : (bVal as number) - (aVal as number)
   })
@@ -44,7 +44,7 @@ export default function PositionTable({ positions, onClose, onUpdate, showBeta =
 
   if (positions.length === 0) {
     return (
-      <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: 'var(--font-size-sm)' }}>
+      <div className="p-6 text-center text-muted text-xs">
         No open positions
       </div>
     )
@@ -58,15 +58,16 @@ export default function PositionTable({ positions, onClose, onUpdate, showBeta =
     : ['symbol', 'side', 'quantity', 'entryPrice', 'currentPrice', 'marketValue', 'unrealizedPnl', 'dayPnl', 'stopLoss', 'takeProfit', 'trailingStop', '']
 
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }} aria-label="Positions table">
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse text-xs" aria-label="Positions table">
         <thead>
-          <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+          <tr className="border-b border-default">
             {headers.map((h, i) => (
               <th
                 key={h}
                 onClick={() => sortKeys[i] && toggleSort(sortKeys[i])}
-                style={{ padding: '8px 12px', textAlign: i < 2 ? 'left' : 'right', color: 'var(--text-muted)', fontWeight: 500, cursor: sortKeys[i] ? 'pointer' : 'default', whiteSpace: 'nowrap' }}
+                className="px-3 py-2 text-muted font-medium whitespace-nowrap"
+                style={{ textAlign: i < 2 ? 'left' : 'right', cursor: sortKeys[i] ? 'pointer' : 'default' }}
                 aria-label={`${h}${sortBy === sortKeys[i] ? `, sorted ${sortDir}ending` : ''}`}
               >
                 {h}
@@ -109,39 +110,39 @@ export default function PositionTable({ positions, onClose, onUpdate, showBeta =
               )
             }
             return (
-            <tr key={pos.symbol} style={{ borderBottom: '1px solid var(--border-color)' }} className="hover:bg-[#2a2d3e]/30 transition-colors">
-              <td style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-primary)' }}>{pos.symbol}</td>
-              <td style={{ padding: '10px 12px' }}>
+            <tr key={pos.symbol} className="border-b border-default hover:bg-[#2a2d3e]/30 transition-colors">
+              <td className="px-3 py-2.5 font-semibold text-primary">{pos.symbol}</td>
+              <td className="px-3 py-2.5">
                 <span style={{ color: pos.side === 'LONG' ? 'var(--accent-green)' : 'var(--accent-red)', fontWeight: 600 }}>
                   {pos.side}
                 </span>
               </td>
-              <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--text-primary)' }}>{pos.quantity}</td>
-              <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--text-primary)' }}>${pos.entryPrice.toFixed(2)}</td>
-              <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--text-primary)' }}>${pos.currentPrice.toFixed(2)}</td>
-              <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--text-primary)' }}>${pos.marketValue.toLocaleString()}</td>
-              <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+              <td className="px-3 py-2.5 text-right text-primary">{pos.quantity}</td>
+              <td className="px-3 py-2.5 text-right text-primary">${pos.entryPrice.toFixed(2)}</td>
+              <td className="px-3 py-2.5 text-right text-primary">${pos.currentPrice.toFixed(2)}</td>
+              <td className="px-3 py-2.5 text-right text-primary">${pos.marketValue.toLocaleString()}</td>
+              <td className="px-3 py-2.5 text-right">
                 <span style={{ color: pos.unrealizedPnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)' }}>
                   ${pos.unrealizedPnl.toFixed(2)}
                   <span className="ml-1">({pos.unrealizedPnlPercent >= 0 ? '+' : ''}{pos.unrealizedPnlPercent.toFixed(2)}%)</span>
                 </span>
               </td>
-              <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+              <td className="px-3 py-2.5 text-right">
                 <span style={{ color: pos.dayPnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)' }}>
                   ${pos.dayPnl.toFixed(2)}
                 </span>
               </td>
-              <td style={{ padding: '10px 12px', textAlign: 'right' }}>{renderEditable('stopLoss', (pos as any).stopLoss, 'Stop')}</td>
-              <td style={{ padding: '10px 12px', textAlign: 'right' }}>{renderEditable('takeProfit', (pos as any).takeProfit, 'Target')}</td>
-              <td style={{ padding: '10px 12px', textAlign: 'right' }}>{renderEditable('trailingStop', (pos as any).trailingStop, 'Trail')}</td>
+              <td className="px-3 py-2.5 text-right">{renderEditable('stopLoss', (pos as unknown as Record<string, unknown>).stopLoss as number, 'Stop')}</td>
+              <td className="px-3 py-2.5 text-right">{renderEditable('takeProfit', (pos as unknown as Record<string, unknown>).takeProfit as number, 'Target')}</td>
+              <td className="px-3 py-2.5 text-right">{renderEditable('trailingStop', (pos as unknown as Record<string, unknown>).trailingStop as number, 'Trail')}</td>
               {showBeta && (
-                <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--text-secondary)' }}>{pos.beta.toFixed(2)}</td>
+                <td className="px-3 py-2.5 text-right text-secondary">{pos.beta.toFixed(2)}</td>
               )}
-              <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+              <td className="px-3 py-2.5 text-right">
                 {onClose && (
                   <button
                     onClick={() => onClose(pos.symbol)}
-                    style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--accent-red)', border: 'none', borderRadius: 'var(--radius-sm)', padding: '4px 8px', fontSize: '10px', cursor: 'pointer' }}
+                    className="bg-red-900/20 text-red-400 border-none rounded px-2 py-1 text-[10px] cursor-pointer"
                     aria-label={`Close position ${pos.symbol}`}
                   >
                     Close

@@ -16,17 +16,18 @@ const COLORS = ['#3b82f6', '#22c55e', '#ef4444', '#f59e0b', '#a855f7', '#06b6d4'
 const PARTICLE_COUNT = 100
 
 export default function Confetti({ active, onComplete }: { active: boolean; onComplete?: () => void }) {
-  const [particles, setParticles] = useState<Particle[]>([])
+  const [tick, setTick] = useState(0)
   const animRef = useRef<number | null>(null)
   const particlesRef = useRef<Particle[]>([])
 
   useEffect(() => {
     if (!active) {
-      setParticles([])
+      particlesRef.current = []
+      setTick((t) => t + 1)
       return
     }
 
-    const initial: Particle[] = Array.from({ length: PARTICLE_COUNT }, () => ({
+    particlesRef.current = Array.from({ length: PARTICLE_COUNT }, () => ({
       x: Math.random() * window.innerWidth,
       y: -20 - Math.random() * 200,
       vx: (Math.random() - 0.5) * 8,
@@ -37,9 +38,7 @@ export default function Confetti({ active, onComplete }: { active: boolean; onCo
       rotation: Math.random() * 360,
       rotationSpeed: (Math.random() - 0.5) * 10,
     }))
-
-    particlesRef.current = initial
-    setParticles(initial)
+    setTick((t) => t + 1)
     let completed = false
 
     const animate = () => {
@@ -55,7 +54,7 @@ export default function Confetti({ active, onComplete }: { active: boolean; onCo
         .filter(p => p.life > 0)
 
       particlesRef.current = updated
-      setParticles(updated)
+      setTick((t) => t + 1)
 
       if (updated.length > 0) {
         animRef.current = requestAnimationFrame(animate)
@@ -72,14 +71,14 @@ export default function Confetti({ active, onComplete }: { active: boolean; onCo
     }
   }, [active, onComplete])
 
-  if (!active || particles.length === 0) return null
+  if (!active || particlesRef.current.length === 0) return null
 
   return (
     <div style={{
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
       pointerEvents: 'none', zIndex: 9999, overflow: 'hidden',
     }}>
-      {particles.map((p, i) => (
+      {particlesRef.current.map((p, i) => (
         <div
           key={i}
           style={{

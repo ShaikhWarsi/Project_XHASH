@@ -138,7 +138,6 @@ export default function IndicatorCompare({ indicators }: IndicatorCompareProps) 
       ctx.fillText(formatTime(times[i]), x, h - 4)
     }
 
-    setTooltip(null)
   }, [indicators, visible])
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {

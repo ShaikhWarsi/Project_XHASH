@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 interface VoteData {
   agent: string
@@ -77,7 +77,7 @@ function RadarChart({ bullish, bearish, neutral }: { bullish: number; bearish: n
   return <canvas ref={canvasRef} className="shrink-0" />
 }
 
-function TypewriterText({ text, speed = 25 }: { text: string; speed?: number }) {
+function _TypewriterText({ text, speed = 25 }: { text: string; speed?: number }) {
   const [displayed, setDisplayed] = useState('')
   const [done, setDone] = useState(false)
   const indexRef = useRef(0)
@@ -108,12 +108,6 @@ function TypewriterText({ text, speed = 25 }: { text: string; speed?: number }) 
 
 function VoteBar({ label, count, total, color }: { label: string; count: number; total: number; color: string }) {
   const pct = total > 0 ? (count / total) * 100 : 0
-  const [width, setWidth] = useState(0)
-
-  useEffect(() => {
-    const raf = requestAnimationFrame(() => setWidth(pct))
-    return () => cancelAnimationFrame(raf)
-  }, [pct])
 
   return (
     <div className="flex items-center gap-2">
@@ -121,7 +115,7 @@ function VoteBar({ label, count, total, color }: { label: string; count: number;
       <div className="flex-1 h-5 rounded-sm overflow-hidden" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
         <div
           className="h-full transition-all duration-700 ease-out rounded-sm"
-          style={{ width: `${width}%`, background: color, opacity: 0.6 }}
+          style={{ width: `${pct}%`, background: color, opacity: 0.6 }}
         />
       </div>
       <span className="text-xs w-10 shrink-0 font-mono" style={{ color }}>{count}</span>
@@ -141,7 +135,9 @@ export default function PersonaVoteAnimation({ opinions, loading }: PersonaVoteA
       const timer = setTimeout(() => setVisible(true), 100)
       return () => clearTimeout(timer)
     }
-    setVisible(false)
+  }, [opinions.length])
+  useEffect(() => {
+    if (opinions.length === 0) setVisible(false)
   }, [opinions.length])
 
   if (!visible && !loading) return null

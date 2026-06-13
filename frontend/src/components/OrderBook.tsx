@@ -30,7 +30,6 @@ const EMPTY_DEPTH: OrderBookLevel[] = []
 export default function OrderBook({ symbol = '', levels = 12 }: OrderBookProps) {
   const { getPrice, connected: lpConnected } = useLivePrices()
   const livePrice = symbol ? getPrice(symbol.toUpperCase()) : null
-  const centerPrice = livePrice?.price ?? 100
 
   const [wsBids, setWsBids] = useState<OrderBookLevel[] | null>(null)
   const [wsAsks, setWsAsks] = useState<OrderBookLevel[] | null>(null)

@@ -4,7 +4,7 @@ export interface BotStatus {
   enabled: boolean
   connected: boolean
   last_active?: string
-  config: Record<string, any>
+  config: Record<string, unknown>
 }
 
 export async function fetchBots(): Promise<{ bots: BotStatus[] }> {

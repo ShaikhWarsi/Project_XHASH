@@ -35,7 +35,7 @@ export default function HistorifyCharts() {
     if (!symbol) return
     setLoading(true)
     try {
-      const res = await fetchOHLCV(symbol, exchange, timeframe)
+      const res: any = await fetchOHLCV(symbol, exchange, timeframe)
       setData(res.data || [])
     } catch (err: any) {
       addToast(`Failed to load chart data: ${err?.message}`, 'error')

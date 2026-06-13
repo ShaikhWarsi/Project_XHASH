@@ -56,9 +56,9 @@ export default function PythonStrategyLogs() {
 
   const autoRefresh = () => {
     if (id) {
-      fetchLogFiles(id).then(setLogFiles).catch(() => {})
+      fetchLogFiles(id).then(setLogFiles).catch((err) => console.warn('[PythonStrategyLogs] failed:', err))
       if (selectedLog) {
-        fetchLogContent(id, selectedLog).then(setLogContent).catch(() => {})
+        fetchLogContent(id, selectedLog).then(setLogContent).catch((err) => console.warn('[PythonStrategyLogs] failed:', err))
       }
     }
   }

@@ -32,27 +32,21 @@ export const api = axios.create({
 
 const NO_RETRY_PATTERNS = [/\/market\/(news|quotes)/, /\/signals\//]
 
-const ERROR_SUGGESTIONS: Record<string, string> = {
-  'NetworkError': 'Cannot reach the server. Is the API running? Try: python scripts/dashboard.py',
-  'ERR_CONNECTION_REFUSED': 'Connection refused. The API server may not be running.',
-  'ERR_NETWORK': 'Network error. Check your internet connection.',
-  'timeout': 'The request timed out. The server may be overloaded.',
-}
-
-function getUserFriendlyError(error: any): { message: string; suggestion?: string } {
-  const response = error?.response
+function getUserFriendlyError(error: unknown): { message: string; suggestion?: string } {
+  const e = error as any
+  const response = e?.response
   const data = response?.data
   const status = response?.status
-  const url = error?.config?.url || ''
+  const url = e?.config?.url || ''
 
-  if (!response || error.code === 'ERR_NETWORK') {
+  if (!response || e.code === 'ERR_NETWORK') {
     return {
       message: 'Cannot connect to the API server.',
       suggestion: 'Make sure the API server is running on port 8000.\nRun: python scripts/dashboard.py',
     }
   }
 
-  if (error.code === 'ECONNABORTED') {
+  if (e.code === 'ECONNABORTED') {
     return {
       message: 'Request timed out.',
       suggestion: 'The server may be overloaded. Try again in a moment.',
@@ -60,7 +54,7 @@ function getUserFriendlyError(error: any): { message: string; suggestion?: strin
   }
 
   if (data?.suggestion) {
-    return { message: data.message || data.detail || error.message, suggestion: data.suggestion }
+    return { message: data.message || data.detail || e.message, suggestion: data.suggestion }
   }
 
   const statusSuggestions: Record<number, string> = {
@@ -74,7 +68,7 @@ function getUserFriendlyError(error: any): { message: string; suggestion?: strin
     503: 'Service temporarily unavailable. The server may be starting up.',
   }
 
-  const msg = data?.message || data?.detail || data?.error || error.message
+  const msg = data?.message || data?.detail || data?.error || e.message
   const suggestion = statusSuggestions[status] || ''
 
   return { message: msg, suggestion }
@@ -112,7 +106,7 @@ api.interceptors.response.use(
   },
 )
 
-const DEDUP_MAP = new Map<string, { promise: Promise<any>; ts: number }>()
+const DEDUP_MAP = new Map<string, { promise: Promise<unknown>; ts: number }>()
 const DEDUP_MAX = 100
 const DEDUP_TTL = 30_000
 let _dedupCleanupTimer: ReturnType<typeof setInterval> | null = null
@@ -131,7 +125,7 @@ function _ensureDedupCleanup() {
   }, DEDUP_TTL)
 }
 
-export function dedupGet<T = any>(url: string, params?: Record<string, any>): Promise<T> {
+export function dedupGet<T = unknown>(url: string, params?: Record<string, unknown>): Promise<T> {
   const key = url + '?' + JSON.stringify(params ?? {})
   const now = Date.now()
   _ensureDedupCleanup()
@@ -140,7 +134,7 @@ export function dedupGet<T = any>(url: string, params?: Record<string, any>): Pr
     if (oldest) DEDUP_MAP.delete(oldest)
   }
   const existing = DEDUP_MAP.get(key)
-  if (existing && now - existing.ts < DEDUP_TTL) return existing.promise
+  if (existing && now - existing.ts < DEDUP_TTL) return existing.promise as Promise<T>
   const p = api.get(url, { params }).then((res) => {
     DEDUP_MAP.delete(key)
     if (DEDUP_MAP.size === 0 && _dedupCleanupTimer) {
@@ -487,7 +481,7 @@ export async function fetchTAChart(
   interval: string,
   periodDays: number,
   indicators: Record<string, Record<string, number | number[]>>
-): Promise<{ figure_json: any; symbol: string }> {
+): Promise<{ figure_json: unknown; symbol: string }> {
   const { data } = await api.post('/chart/ta', {
     symbol,
     interval,
@@ -498,7 +492,7 @@ export async function fetchTAChart(
   return data
 }
 
-export async function fetchAvailableIndicators(): Promise<{ indicators: Record<string, any>; categories: string[] }> {
+export async function fetchAvailableIndicators(): Promise<{ indicators: Record<string, unknown>; categories: string[] }> {
   const { data } = await api.get('/chart/ta/available-indicators')
   return data
 }
@@ -664,15 +658,15 @@ export async function trainRL(
 
 // ── Screener ─────────────────────────────────────────────
 
-export async function getScreenerPresets(): Promise<Record<string, { name: string; description: string; filters: Record<string, any> }>> {
+export async function getScreenerPresets(): Promise<Record<string, { name: string; description: string; filters: Record<string, unknown> }>> {
   const { data } = await api.get('/screener/presets')
   return data.presets
 }
 
 export async function scanSymbols(
   symbols: string[],
-  filters?: Record<string, any>,
-): Promise<{ results: any[]; total: number; matches: number; errors: string[] }> {
+  filters?: Record<string, unknown>,
+): Promise<{ results: unknown[]; total: number; matches: number; errors: string[] }> {
   const { data } = await api.get('/screener/scan', {
     params: { symbols: symbols.join(','), ...filters },
   })
@@ -682,7 +676,7 @@ export async function scanSymbols(
 export async function scanWithPreset(
   presetName: string,
   symbols = 'AAPL,MSFT,GOOGL,AMZN,TSLA,META,NVDA',
-): Promise<{ results: any[]; total: number; matches: number; errors: string[] }> {
+): Promise<{ results: unknown[]; total: number; matches: number; errors: string[] }> {
   const { data } = await api.get(`/screener/preset/${presetName}`, {
     params: { symbols },
   })
@@ -693,11 +687,11 @@ export async function scanWithPreset(
 
 export async function computeIndicators(
   symbol: string,
-  indicators: Record<string, any>,
+  indicators: Record<string, unknown>,
   interval = '1d',
   periodDays = 100,
   signals = false,
-): Promise<{ symbol: string; indicators: Record<string, any>; signals?: Record<string, any> }> {
+): Promise<{ symbol: string; indicators: Record<string, unknown>; signals?: Record<string, unknown> }> {
   const { data } = await api.post('/chart/ta/compute', {
     symbol, interval, period_days: periodDays, indicators, signals,
   })

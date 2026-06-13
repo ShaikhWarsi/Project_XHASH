@@ -36,7 +36,7 @@ export default function OptionsBuilder() {
 
   const updateLeg = (i: number, field: keyof Leg, value: string | number) => {
     const copy = [...legs]
-    ;(copy[i] as any)[field] = value
+    ;(copy[i] as unknown as Record<string, unknown>)[field] = value
     setLegs(copy)
   }
 
@@ -45,7 +45,7 @@ export default function OptionsBuilder() {
   useEffect(() => {
     if (!payoffRef.current || legs.length === 0) return
     let cancelled = false
-    import('plotly.js-dist-min').then((mod: any) => {
+    import('plotly.js-dist-min').then((mod: unknown) => {
       if (cancelled) return
       const atm = legs.reduce((s, l) => s + l.strike, 0) / legs.length
       const prices = Array.from({ length: 200 }, (_, i) => atm * 0.5 + (atm * 1.5 - atm * 0.5) * i / 199)
@@ -53,7 +53,7 @@ export default function OptionsBuilder() {
       const zeroLine = prices.map(() => 0)
       const breakevens = prices.filter((p, i) => i > 0 && payoffs[i - 1] * payoffs[i] <= 0).slice(0, 4)
 
-      mod.newPlot(payoffRef.current, [
+      ;(mod as any).newPlot(payoffRef.current, [
         { x: prices, y: payoffs, type: 'scatter', mode: 'lines', name: 'Payoff', line: { color: '#3b82f6', width: 2 }, fill: 'tozeroy', fillcolor: 'rgba(59,130,246,0.1)' },
         { x: prices, y: zeroLine, type: 'scatter', mode: 'lines', name: 'Breakeven', line: { color: '#ef4444', width: 1, dash: 'dash' } },
         ...breakevens.map((be, i) => ({

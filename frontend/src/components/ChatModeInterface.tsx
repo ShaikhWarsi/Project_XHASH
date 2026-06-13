@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { Send, Terminal, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useInterfaceMode } from '../contexts/InterfaceModeContext'
-import { api } from '../api/client'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -87,9 +86,10 @@ export default function ChatModeInterface() {
         })
       }
       handleToolCalls(replyContent)
-    } catch (err: any) {
-      if (err?.name === 'AbortError') return
-      const fallback: Message = { role: 'assistant', content: `Error: ${err?.message || 'Request failed'}`, timestamp: new Date() }
+    } catch (err: unknown) {
+      const e = err as { name?: string; message?: string }
+      if (e.name === 'AbortError') return
+      const fallback: Message = { role: 'assistant', content: `Error: ${e.message || 'Request failed'}`, timestamp: new Date() }
       setMessages((prev) => [...prev, fallback])
     } finally {
       setLoading(false)

@@ -84,7 +84,7 @@ export default function MarketScreener() {
       const symbols = symbolInput.split(',').map(s => s.trim()).filter(Boolean)
       const f = overrides ?? filters
       const res = await scanSymbols(symbols, Object.keys(f).length > 0 ? f : undefined)
-      setResults(res.results)
+      setResults(res.results as ScanResult[])
     } catch (e: any) {
       setError(e?.response?.data?.detail || e?.message || 'Scan failed')
     } finally {
@@ -108,7 +108,7 @@ export default function MarketScreener() {
     try {
       const symbols = symbolInput.split(',').map(s => s.trim()).filter(Boolean)
       const res = await scanWithPreset(name, symbols.join(','))
-      setResults(res.results)
+      setResults(res.results as ScanResult[])
       setFilters(presets[name]?.filters || {})
     } catch (e: any) {
       setError(e?.response?.data?.detail || e?.message || 'Scan failed')

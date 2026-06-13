@@ -35,14 +35,17 @@ export default function LLMPanel() {
   const responseRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    setLoading(true)
+    let cancelled = false
     fetchLLMModels()
       .then((res) => {
+        if (cancelled) return
         setModels(res.models)
         if (res.models.length > 0) setSelectedModel(res.models[0].id)
       })
-      .catch((err: any) => setError(err?.message || 'Failed to load models'))
-      .finally(() => setLoading(false))
+      .catch((err: unknown) => {
+        if (!cancelled) setError((err as Error)?.message || 'Failed to load models')
+      })
+    return () => { cancelled = true }
   }, [])
 
   useEffect(() => {
@@ -78,8 +81,8 @@ export default function LLMPanel() {
         }
         setMessages((prev) => [...prev, assistantMsg].slice(-MAX_HISTORY))
       }
-    } catch (err: any) {
-      addToast(err?.message || 'Request failed', 'error')
+    } catch (err: unknown) {
+      addToast((err as Error)?.message || 'Request failed', 'error')
     }
     setSending(false)
   }, [selectedModel, prompt, temperature, addToast, mode, messages])

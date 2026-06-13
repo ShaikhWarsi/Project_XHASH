@@ -129,125 +129,80 @@ export default function StatusBar() {
   return (
     <>
       {showDetail && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 30,
-            left: 0,
-            right: 0,
-            zIndex: 100,
-            background: 'var(--bg-card)',
-            borderTop: '1px solid var(--border-color)',
-            borderBottom: '1px solid var(--border-color)',
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: 9,
-            padding: '8px 12px',
-          }}
-        >
+        <div className="absolute bottom-[30px] left-0 right-0 z-[100] bg-card border-t border-default border-b border-default font-mono text-[9px] p-2">
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <span style={{ color: 'var(--text-muted)' }}>CPU: </span>
+              <span className="text-muted">CPU: </span>
               <span style={{ color: cpuUsage > 80 ? 'var(--accent-red)' : 'var(--accent-green)' }}>{cpuUsage}%</span>
             </div>
             <div>
-              <span style={{ color: 'var(--text-muted)' }}>MEM: </span>
+              <span className="text-muted">MEM: </span>
               <span style={{ color: memUsage > 80 ? 'var(--accent-red)' : 'var(--accent-green)' }}>{memUsage}%</span>
             </div>
             <div>
-              <span style={{ color: 'var(--text-muted)' }}>API: </span>
+              <span className="text-muted">API: </span>
               <span style={{ color: status.api ? 'var(--accent-green)' : 'var(--accent-red)' }}>{status.api ? 'Connected' : 'Disconnected'}</span>
             </div>
             <div>
-              <span style={{ color: 'var(--text-muted)' }}>WS: </span>
+              <span className="text-muted">WS: </span>
               <span style={{ color: status.api ? 'var(--accent-green)' : 'var(--accent-red)' }}>{status.api ? 'Connected' : 'Disconnected'}</span>
             </div>
             <div>
-              <span style={{ color: 'var(--text-muted)' }}>Positions: </span>
-              <span style={{ color: 'var(--text-primary)' }}>{status.portfolio}</span>
+              <span className="text-muted">Positions: </span>
+              <span className="text-primary">{status.portfolio}</span>
             </div>
             <div>
-              <span style={{ color: 'var(--text-muted)' }}>Orders: </span>
-              <span style={{ color: 'var(--text-primary)' }}>{status.ordersCount}</span>
+              <span className="text-muted">Orders: </span>
+              <span className="text-primary">{status.ordersCount}</span>
             </div>
           </div>
-          <div style={{ marginTop: 6, color: 'var(--text-muted)', fontSize: 8 }}>
-            Portfolio: <span style={{ color: 'var(--accent-cyan)' }}>{status.portfolioValue || '—'}</span>
-            <span style={{ margin: '0 8px' }}>|</span>
-            Latency: <span style={{ color: latency != null && latency < 100 ? 'var(--accent-green)' : 'var(--accent-red)' }}>{latency != null ? `${latency}ms` : '—'}</span>
+          <div className="mt-1.5 text-muted text-[8px]">
+            Portfolio: <span className="text-accent-cyan">{status.portfolioValue || '\u2014'}</span>
+            <span className="mx-2">|</span>
+            Latency: <span style={{ color: latency != null && latency < 100 ? 'var(--accent-green)' : 'var(--accent-red)' }}>{latency != null ? `${latency}ms` : '\u2014'}</span>
           </div>
         </div>
       )}
-      <div
-        className="flex items-center justify-between shrink-0"
-        style={{
-          background: 'var(--bg-secondary)',
-          borderTop: '1px solid var(--border-color)',
-          fontSize: 9,
-          fontFamily: "'JetBrains Mono', monospace",
-          height: 30,
-          padding: '0 12px',
-          letterSpacing: '0.02em',
-          position: 'relative',
-        }}
-      >
+      <div className="flex items-center justify-between shrink-0 bg-secondary border-t border-default text-[9px] font-mono h-[30px] px-3 tracking-wide relative">
         <div className="flex items-center gap-2.5">
           <div className="flex items-center gap-1">
             <AnimatedDot connected={status.api} />
-            <span style={{ color: status.api ? 'var(--accent-green)' : 'var(--accent-red)', fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <span className={`text-[8px] uppercase tracking-wider ${status.api ? 'text-up' : 'text-down'}`}>
               {status.api ? 'LIVE' : 'DOWN'}
             </span>
           </div>
           <button
             onClick={cycleMode}
-            style={{
-              background: MODE_COLORS[mode],
-              border: 'none',
-              color: '#000',
-              cursor: 'pointer',
-              padding: '1px 5px',
-              fontSize: 7,
-              fontFamily: "'JetBrains Mono', monospace",
-              fontWeight: 700,
-              borderRadius: 2,
-              letterSpacing: '0.05em',
-            }}
+            className="border-none cursor-pointer px-[5px] py-px text-[7px] font-mono font-bold tracking-wider text-black radius-md"
+            style={{ background: MODE_COLORS[mode] }}
             title="Click to cycle mode"
           >
             {mode}
           </button>
           {latency != null && (
-            <span style={{ color: latency < 100 ? 'var(--accent-green)' : latency < 300 ? 'var(--accent-yellow)' : 'var(--accent-red)', fontSize: 8 }}>
+            <span className="text-[8px]" style={{ color: latency < 100 ? 'var(--accent-green)' : latency < 300 ? 'var(--accent-yellow)' : 'var(--accent-red)' }}>
               {latency}ms
             </span>
           )}
           <ConnectionStatus />
-          <span style={{ color: 'var(--text-muted)', fontSize: 8 }}>|</span>
+          <span className="text-muted text-[8px]">|</span>
           {status.portfolioValue && (
             <>
-              <span style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>{status.portfolioValue}</span>
-              <span style={{ color: 'var(--text-muted)', fontSize: 8 }}>|</span>
+              <span className="text-accent-cyan font-semibold">{status.portfolioValue}</span>
+              <span className="text-muted text-[8px]">|</span>
             </>
           )}
-          <span style={{ color: 'var(--text-muted)' }}>POS: <span style={{ color: 'var(--text-primary)' }}>{status.portfolio}</span></span>
-          <span style={{ color: 'var(--text-muted)' }}>ORD: <span style={{ color: 'var(--text-primary)' }}>{status.ordersCount}</span></span>
-          <span style={{ color: 'var(--text-muted)' }}>SIG: <span style={{ color: 'var(--text-primary)' }}>{status.signals}</span></span>
-          <span style={{ color: 'var(--text-muted)', fontSize: 8 }}>|</span>
-          <span style={{ color: 'var(--text-secondary)' }}>{time}</span>
+          <span className="text-muted">POS: <span className="text-primary">{status.portfolio}</span></span>
+          <span className="text-muted">ORD: <span className="text-primary">{status.ordersCount}</span></span>
+          <span className="text-muted">SIG: <span className="text-primary">{status.signals}</span></span>
+          <span className="text-muted text-[8px]">|</span>
+          <span className="text-secondary">{time}</span>
         </div>
         <div className="flex items-center gap-3">
-          <span style={{ color: 'var(--text-muted)', fontSize: 8, letterSpacing: '0.03em' }}>? for help</span>
+          <span className="text-muted text-[8px] tracking-wider">? for help</span>
           <button
             onClick={() => setShowBriefing(true)}
-            className="flex items-center gap-1"
-            style={{
-              color: 'var(--text-muted)',
-              background: 'none', border: 'none', padding: '2px 6px',
-              fontFamily: "'JetBrains Mono', monospace", fontSize: 9,
-              cursor: 'pointer', borderRadius: 3,
-              transition: 'background 0.15s, color 0.15s',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)' }}
+            className="flex items-center gap-1 text-muted bg-transparent border-none px-1.5 py-0.5 cursor-pointer font-mono text-[9px] radius-md transition-colors hover:bg-hover hover:text-primary"
             title="AI Briefing"
           >
             <ScrollText size={10} />
@@ -256,16 +211,7 @@ export default function StatusBar() {
           <VoiceCommandButton />
           <button
             onClick={cycleTheme}
-            className="flex items-center gap-1"
-            style={{
-              color: 'var(--text-muted)',
-              background: 'none', border: 'none', padding: '2px 6px',
-              fontFamily: "'JetBrains Mono', monospace", fontSize: 9,
-              cursor: 'pointer', borderRadius: 3,
-              transition: 'background 0.15s, color 0.15s',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)' }}
+            className="flex items-center gap-1 text-muted bg-transparent border-none px-1.5 py-0.5 cursor-pointer font-mono text-[9px] radius-md transition-colors hover:bg-hover hover:text-primary"
             title={`Theme: ${theme}${theme === 'auto' ? ` (${resolvedTheme})` : ''}`}
           >
             <ThemeIcon size={10} />
@@ -273,17 +219,7 @@ export default function StatusBar() {
           </button>
           <button
             onClick={() => setShowDetail(!showDetail)}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--text-muted)',
-              cursor: 'pointer',
-              padding: '2px 4px',
-              display: 'flex',
-              alignItems: 'center',
-              fontSize: 8,
-              borderRadius: 2,
-            }}
+            className="bg-transparent border-none text-muted cursor-pointer p-0.5 flex items-center text-[8px] radius-md"
             title={showDetail ? 'Collapse' : 'Expand detail'}
           >
             {showDetail ? <ChevronDown size={10} /> : <ChevronUp size={10} />}

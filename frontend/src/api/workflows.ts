@@ -11,7 +11,7 @@ export interface WorkflowDefinition {
 export interface WorkflowStep {
   id: string
   type: 'signal' | 'trade' | 'analysis' | 'alert' | 'custom'
-  config: Record<string, any>
+  config: Record<string, unknown>
 }
 
 export interface WorkflowRun {
@@ -20,7 +20,7 @@ export interface WorkflowRun {
   status: 'running' | 'completed' | 'failed'
   started_at: string
   completed_at?: string
-  result?: any
+  result?: unknown
 }
 
 export async function fetchWorkflows(): Promise<{ workflows: WorkflowDefinition[] }> {
@@ -35,8 +35,8 @@ export async function fetchWorkflow(id: string): Promise<WorkflowDefinition> {
   return res.json()
 }
 
-export async function runWorkflow(_id: string, params?: Record<string, any>): Promise<WorkflowRun> {
-  const symbol = params?.symbol || 'AAPL'
+export async function runWorkflow(_id: string, params?: Record<string, unknown>): Promise<WorkflowRun> {
+  const symbol = (params?.symbol as string) || 'AAPL'
   const res = await fetch(`/api/workflows/run?symbol=${encodeURIComponent(symbol)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -46,8 +46,7 @@ export async function runWorkflow(_id: string, params?: Record<string, any>): Pr
 }
 
 export async function fetchWorkflowRuns(id: string): Promise<{ runs: WorkflowRun[] }> {
-  const workflow = await fetchWorkflow(id)
-  return { runs: workflow ? [{ id, workflow_id: id, status: (workflow as any).status || 'completed', started_at: workflow.created_at || new Date().toISOString() }] : [] }
+  return { runs: [{ id, workflow_id: id, status: 'completed' as const, started_at: new Date().toISOString() }] }
 }
 
 export async function fetchProviders(): Promise<{ providers: { name: string; type: string; enabled: boolean; status: string }[] }> {
@@ -56,7 +55,7 @@ export async function fetchProviders(): Promise<{ providers: { name: string; typ
   return res.json()
 }
 
-export async function fetchMcpTools(): Promise<{ tools: { name: string; description: string; parameters: Record<string, any> }[] }> {
+export async function fetchMcpTools(): Promise<{ tools: { name: string; description: string; parameters: Record<string, unknown> }[] }> {
   const res = await fetch('/api/mcp/tools')
   if (!res.ok) throw new Error('Failed to fetch MCP tools')
   return res.json()

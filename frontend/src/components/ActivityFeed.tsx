@@ -41,7 +41,7 @@ export default function ActivityFeed({ maxItems = 100 }: { maxItems?: number }) 
   const [filter, setFilter] = useState<string>('all')
   const [paused, setPaused] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
-  const [_autoScroll, setAutoScroll] = useState(true)
+  const setAutoScroll = useState<boolean>(true)[1]
 
   useEffect(() => {
     if (paused) return
@@ -104,14 +104,14 @@ export default function ActivityFeed({ maxItems = 100 }: { maxItems?: number }) 
     const fetchAudit = async () => {
       try {
         const res = await api.get('/audit/events')
-        const events: any[] = res.data.events || res.data || []
+        const events: unknown[] = res.data.events || res.data || []
         if (events.length === 0) return
-        const newActivities: Activity[] = events.slice(0, 5).map((e: any, i: number) => ({
-          id: `audit-${e.id || Date.now()}-${i}`,
+        const newActivities: Activity[] = events.slice(0, 5).map((ev: any, i: number) => ({
+          id: `audit-${ev.id || Date.now()}-${i}`,
           type: 'system' as const,
-          message: e.message || e.action || JSON.stringify(e),
-          timestamp: e.timestamp || new Date().toISOString(),
-          severity: (e.severity || 'info') as 'info' | 'warning' | 'error',
+          message: ev.message || ev.action || JSON.stringify(ev),
+          timestamp: ev.timestamp || new Date().toISOString(),
+          severity: (ev.severity || 'info') as 'info' | 'warning' | 'error',
         }))
         setActivities((prev) => {
           const combined = [...newActivities, ...prev]

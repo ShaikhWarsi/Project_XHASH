@@ -70,7 +70,7 @@ export default function WhatsAppBotPage() {
   const loadAll = async () => {
     setLoading(true)
     try {
-      const [statusRes, configRes, statsRes, usersData] = await Promise.all([
+      const [statusRes, configRes, statsRes, usersData]: any[] = await Promise.all([
         getWhatsAppBotStatus(),
         getWhatsAppConfig(),
         getWhatsAppStats(),
@@ -91,7 +91,7 @@ export default function WhatsAppBotPage() {
 
   const handleStart = async () => {
     try {
-      const res = await startWhatsAppBot()
+      const res: any = await startWhatsAppBot()
       addToast(res.message || 'Bot started', 'success')
       loadAll()
     } catch (err: any) {
@@ -101,7 +101,7 @@ export default function WhatsAppBotPage() {
 
   const handleStop = async () => {
     try {
-      const res = await stopWhatsAppBot()
+      const res: any = await stopWhatsAppBot()
       addToast(res.message || 'Bot stopped', 'success')
       loadAll()
     } catch (err: any) {
@@ -116,7 +116,7 @@ export default function WhatsAppBotPage() {
     }
     setPairingInProgress(true)
     try {
-      const res = await pairWhatsApp(phoneInput.trim())
+      const res: any = await pairWhatsApp(phoneInput.trim())
       if (res.success) {
         setPairingCode(res.pairing_code || null)
         setPairingModal(true)
@@ -134,7 +134,7 @@ export default function WhatsAppBotPage() {
 
   const handleUnlink = async () => {
     try {
-      const res = await unlinkWhatsApp()
+      const res: any = await unlinkWhatsApp()
       addToast(res.message || 'Device unlinked', 'success')
       loadAll()
     } catch (err: any) {
@@ -144,7 +144,7 @@ export default function WhatsAppBotPage() {
 
   const handleUnlinkUser = async (jid: string) => {
     try {
-      const res = await unlinkWhatsAppUser(jid)
+      const res: any = await unlinkWhatsAppUser(jid)
       addToast(res.message || 'User unlinked', 'success')
       loadAll()
     } catch (err: any) {
@@ -156,7 +156,7 @@ export default function WhatsAppBotPage() {
     if (!messageText.trim()) return
     setSending(true)
     try {
-      const res = await sendWhatsAppMessage(status?.connected_jid || '', messageText.trim())
+      const res: any = await sendWhatsAppMessage(status?.connected_jid || '', messageText.trim())
       addToast(res.message || 'Message sent', res.success ? 'success' : 'error')
       if (res.success) setMessageText('')
       loadAll()
@@ -171,7 +171,7 @@ export default function WhatsAppBotPage() {
     if (!broadcastText.trim()) return
     setSending(true)
     try {
-      const res = await broadcastWhatsApp(broadcastText.trim())
+      const res: any = await broadcastWhatsApp(broadcastText.trim())
       addToast(`Broadcast sent to ${res.total} users`, 'success')
       setBroadcastText('')
       loadAll()
@@ -186,7 +186,7 @@ export default function WhatsAppBotPage() {
     if (!config) return
     try {
       const newConfig = { ...config, [key]: value }
-      const res = await updateWhatsAppConfig(newConfig)
+      const res: any = await updateWhatsAppConfig(newConfig)
       if (res.success) setConfig(res.config)
       addToast('Config updated', 'success')
     } catch (err: any) {

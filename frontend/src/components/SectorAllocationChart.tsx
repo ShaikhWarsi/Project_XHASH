@@ -44,20 +44,19 @@ export default function SectorAllocationChart({
   const total = useMemo(() => displayData.reduce((s, s2) => s + Math.abs(s2.exposure), 0), [displayData])
 
   const arcs = useMemo(() => {
-    let currentAngle = 0
-    return displayData.map((s, i) => {
+    return displayData.reduce<Array<{ name: string; exposure: number; color: string; startAngle: number; endAngle: number; percentage: number }>>((acc, s, i) => {
       const angle = (Math.abs(s.exposure) / (total || 1)) * 360
-      const arc = {
+      const prevEnd = acc.length > 0 ? acc[acc.length - 1].endAngle : 0
+      acc.push({
         name: s.name,
         exposure: s.exposure,
         color: s.color || DEFAULT_COLORS[i % DEFAULT_COLORS.length],
-        startAngle: currentAngle,
-        endAngle: currentAngle + angle,
+        startAngle: prevEnd,
+        endAngle: prevEnd + angle,
         percentage: (Math.abs(s.exposure) / (total || 1)) * 100,
-      }
-      currentAngle += angle
-      return arc
-    })
+      })
+      return acc
+    }, [])
   }, [displayData, total])
 
   const cx = size / 2

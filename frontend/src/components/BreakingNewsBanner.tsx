@@ -37,7 +37,7 @@ export default function BreakingNewsBanner() {
           timestamp: new Date(a.datetime * 1000).toISOString(),
         })))
       }
-    }).catch(() => {})
+    }).catch((err) => console.warn('[BreakingNewsBanner] failed:', err))
   }, [])
 
   useEffect(() => {

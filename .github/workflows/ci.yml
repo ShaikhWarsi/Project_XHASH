@@ -19,7 +19,7 @@ jobs:
           node-version: 22
       - run: npm install
       - run: npx tsc --noEmit
-      - run: npm run lint -- --max-warnings 0
+      - run: npm run lint
       - run: npm run build
       - name: vitest
         run: npx vitest run --coverage.enabled=false

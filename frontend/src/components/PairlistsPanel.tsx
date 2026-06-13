@@ -15,7 +15,7 @@ export default function PairlistsPanel() {
   const [filters, setFilters] = useState<PairlistFilter[]>([])
   const [symbolInput, setSymbolInput] = useState(DEFAULT_SYMBOLS)
   const [minVol, setMinVol] = useState(0)
-  const [maxVol, _setMaxVol] = useState(0)
+  const [maxVol] = useState(0)
   const [maxSpread, setMaxSpread] = useState(0.01)
   const [minPrice, setMinPrice] = useState(1)
   const [result, setResult] = useState<PairlistApplyResult | null>(null)
@@ -40,7 +40,7 @@ export default function PairlistsPanel() {
         min_price: minPrice,
       })
       setResult(res)
-    } catch (err) {
+    } catch {
       addToast('Pairlist filtering failed', 'error')
     }
     setLoading(false)

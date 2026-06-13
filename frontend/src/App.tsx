@@ -6,11 +6,9 @@ import ErrorBoundary from './components/ErrorBoundary'
 import ToastContainer from './components/Toast'
 import { LivePricesProvider } from './contexts/LivePricesContext'
 import { EventBusProvider } from './contexts/EventBusContext'
-import { WorkspaceProvider } from './contexts/WorkspaceContext'
 import { AudioAlertProvider } from './contexts/AudioAlertContext'
 import { InterfaceModeProvider } from './contexts/InterfaceModeContext'
 import { WebSocketProvider } from './contexts/WebSocketProvider'
-import { queryClient } from './main'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const ChartPage = lazy(() => import('./pages/Chart'))
@@ -25,7 +23,7 @@ const Portfolio = lazy(() => import('./pages/Portfolio'))
 const PaperTrading = lazy(() => import('./pages/PaperTrading'))
 const PortfolioOptimization = lazy(() => import('./pages/PortfolioOptimization'))
 const PortfolioWhatIf = lazy(() => import('./pages/PortfolioWhatIf'))
-const LiveTradingWizard = lazy(() => import('./pages/LiveTradingWizard'))
+
 const RiskDashboard = lazy(() => import('./pages/RiskDashboard'))
 const AttributionAnalysis = lazy(() => import('./pages/AttributionAnalysis'))
 const Backtest = lazy(() => import('./pages/Backtest'))
@@ -157,13 +155,11 @@ function LazyPage({ children, category = 'page' }: { children: ReactNode; catego
 export default function App() {
   return (
     <ErrorBoundary componentName="Global" category="page">
-    <QueryClientProvider client={queryClient}>
     <BrowserRouter>
       <InterfaceModeProvider>
       <WebSocketProvider>
       <LivePricesProvider>
         <EventBusProvider>
-          <WorkspaceProvider>
             <AudioAlertProvider>
               <ToastContainer />
               <Routes>
@@ -210,7 +206,6 @@ export default function App() {
                   <Route path="/data/pipeline" element={<LazyPage><DataPipeline /></LazyPage>} />
                   <Route path="/data/task-orchestration" element={<LazyPage><TaskOrch /></LazyPage>} />
                   <Route path="/data/signal-engines" element={<LazyPage><SignalEnginePage /></LazyPage>} />
-
                   <Route path="/data/china-markets" element={<LazyPage><ChinaMarketsPage /></LazyPage>} />
                   <Route path="/data/workflows" element={<LazyPage><WorkflowPage /></LazyPage>} />
                   <Route path="/settings" element={<LazyPage><Settings /></LazyPage>} />
@@ -288,13 +283,11 @@ export default function App() {
                 </Route>
               </Routes>
             </AudioAlertProvider>
-          </WorkspaceProvider>
         </EventBusProvider>
       </LivePricesProvider>
     </WebSocketProvider>
   </InterfaceModeProvider>
 </BrowserRouter>
-    </QueryClientProvider>
     </ErrorBoundary>
   )
 }

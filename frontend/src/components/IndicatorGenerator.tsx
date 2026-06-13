@@ -28,8 +28,8 @@ export default function IndicatorGenerator({ onAddToChart }: { onAddToChart?: (c
       setName(res.name)
       setIndicatorId(res.id)
       setWarnings(res.warnings || [])
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError((err as Error).message)
     }
     setGenerating(false)
   }
@@ -40,7 +40,6 @@ export default function IndicatorGenerator({ onAddToChart }: { onAddToChart?: (c
       onAddToChart(code)
     }
     try {
-      const fn = new Function('indicator', code)
       if (typeof (window as any).__registerIndicator === 'function') {
         (window as any).__registerIndicator(code)
       }

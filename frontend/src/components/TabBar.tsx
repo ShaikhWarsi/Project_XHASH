@@ -94,19 +94,7 @@ export default function TabBar() {
 
   if (tabs.length <= 1) {
     return (
-      <div
-        style={{
-          background: 'var(--bg-secondary)',
-          borderBottom: '1px solid var(--border-color)',
-          minHeight: 30,
-          display: 'flex',
-          alignItems: 'center',
-          padding: '0 12px',
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: 9,
-          color: 'var(--text-muted)',
-        }}
-      >
+      <div className="bg-secondary border-b border-default min-h-[30px] flex items-center px-3 font-mono text-[9px] text-muted">
         Dashboard
       </div>
     )
@@ -116,22 +104,8 @@ export default function TabBar() {
     <div
       ref={scrollRef}
       role="tablist"
-      style={{
-        display: 'flex',
-        overflowX: 'auto',
-        overflowY: 'hidden',
-        background: 'var(--bg-secondary)',
-        borderBottom: '1px solid var(--border-color)',
-        minHeight: 30,
-        scrollbarWidth: 'thin',
-        fontFamily: "'JetBrains Mono', monospace",
-        fontSize: 10,
-      }}
+      className="flex overflow-x-auto overflow-y-hidden bg-secondary border-b border-default min-h-[30px] [scrollbar-width:thin] font-mono text-[10px]"
     >
-      <style>{`
-        .tab-fkey { opacity: 0; transition: opacity 0.1s; }
-        .tab-item:hover .tab-fkey { opacity: 0.7; }
-      `}</style>
       {orderedTabs().map((tab, index) => {
         const isActive = tab.id === activeTab
         const health = tabHealth.get(tab.id)
@@ -141,75 +115,37 @@ export default function TabBar() {
             role="tab"
             aria-selected={isActive}
             data-active={isActive}
-            className="tab-item"
             draggable
             onDragStart={() => handleDragStart(tab.id)}
             onDragOver={(e) => handleDragOver(e, tab.id)}
             onDrop={handleDrop}
             tabIndex={isActive ? 0 : -1}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '0 8px',
-              minWidth: 80,
-              maxWidth: 180,
-              height: 30,
-              cursor: 'pointer',
-              userSelect: 'none',
-              borderRight: '1px solid var(--border-color)',
-              background: isActive ? 'var(--bg-card)' : 'transparent',
-              borderTop: isActive ? '2px solid var(--accent-cyan)' : '2px solid transparent',
-              color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
-              transition: 'background 0.1s, color 0.1s',
-              flexShrink: 0,
-              opacity: dragTab === tab.id ? 0.4 : 1,
-            }}
+            className={`flex items-center gap-1 px-2 min-w-[80px] max-w-[180px] h-[30px] cursor-pointer select-none border-r border-default shrink-0 transition-[background,color] duration-100 group ${
+              isActive
+                ? 'bg-card text-primary border-t-2 border-t-accent-cyan'
+                : 'bg-transparent text-muted border-t-2 border-t-transparent hover:bg-hover hover:text-secondary'
+            }`}
+            style={{ opacity: dragTab === tab.id ? 0.4 : 1 }}
             onClick={() => openTab(tab.path)}
-            onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-secondary)' } }}
-            onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)' } }}
             title={tab.label}
           >
             {index < 12 && (
-              <span className="tab-fkey" style={{
-                fontSize: 7, color: 'var(--text-muted)',
-                marginRight: 2, fontWeight: 500,
-                minWidth: 14, textAlign: 'right',
-              }}>
+              <span className="text-[7px] text-muted mr-0.5 font-medium min-w-[14px] text-right tab-fkey peer">
                 F{index + 1}
               </span>
             )}
-            <span
-              style={{
-                display: 'inline-block',
-                width: 5,
-                height: 5,
-                borderRadius: '50%',
-                backgroundColor: health === false ? 'var(--accent-red)' : 'var(--accent-green)',
-                flexShrink: 0,
-              }}
+            <span className="inline-block w-[5px] h-[5px] rounded-full shrink-0" style={{ backgroundColor: health === false ? 'var(--accent-red)' : 'var(--accent-green)' }}
               title={health === false ? 'Disconnected' : 'Connected'}
             />
-            {tab.id === '/' && <LayoutDashboard size={10} style={{ opacity: 0.6, flexShrink: 0 }} />}
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: isActive ? 600 : 400 }}>
+            {tab.id === '/' && <LayoutDashboard size={10} className="opacity-60 shrink-0" />}
+            <span className={`truncate ${isActive ? 'font-semibold' : ''}`}>
               {tab.label}
             </span>
             <button
               onClick={(e) => { e.stopPropagation(); togglePinTab(tab.id) }}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: tab.pinned ? 'var(--accent-yellow)' : 'transparent',
-                cursor: 'pointer',
-                padding: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: 2,
-                flexShrink: 0,
-              }}
-              onMouseEnter={(e) => { if (!tab.pinned) e.currentTarget.style.color = 'var(--text-muted)' }}
-              onMouseLeave={(e) => { if (!tab.pinned) e.currentTarget.style.color = 'transparent' }}
+              className={`bg-transparent border-none cursor-pointer p-0.5 flex items-center justify-center radius-md shrink-0 ${
+                tab.pinned ? 'text-accent-yellow' : 'text-transparent hover:text-muted'
+              }`}
               aria-label={tab.pinned ? `Unpin ${tab.label}` : `Pin ${tab.label}`}
               title={tab.pinned ? 'Unpin tab' : 'Pin tab'}
             >
@@ -218,19 +154,7 @@ export default function TabBar() {
             {!tab.pinned && tab.id !== '/' && (
               <button
                 onClick={(e) => { e.stopPropagation(); closeTab(tab.id) }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-muted)',
-                  cursor: 'pointer',
-                  padding: 2,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderRadius: 2,
-                  flexShrink: 0,
-                  opacity: 0.5,
-                }}
+                className="bg-transparent border-none text-muted cursor-pointer p-0.5 flex items-center justify-center radius-md shrink-0 opacity-50"
                 onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'color-mix(in srgb, var(--accent-red) 20%, transparent)' }}
                 onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.5'; e.currentTarget.style.background = 'transparent' }}
                 aria-label={`Close ${tab.label}`}
@@ -241,6 +165,10 @@ export default function TabBar() {
           </div>
         )
       })}
+      <style>{`
+        .tab-fkey { opacity: 0; transition: opacity 0.1s; }
+        .group:hover .tab-fkey, [data-active="true"] .tab-fkey { opacity: 0.7; }
+      `}</style>
     </div>
   )
 }

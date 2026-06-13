@@ -40,7 +40,7 @@ export default function StatusStrip() {
         lastTickRef.current = Date.now()
         setLastTick(`$${quotes.SPY.c.toFixed(2)}`)
       }
-    }).catch(() => {})
+    }).catch((err) => console.warn('[StatusStrip] failed:', err))
   }, [wsConnected])
 
   useEffect(() => {

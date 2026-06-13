@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
-import Card from './ui/Card'
+import { useState } from 'react'
 import StreamResponse from './StreamResponse'
 import { inspectPattern } from '../api/llm'
 
@@ -9,8 +8,8 @@ export interface InspectablePattern {
   confidence: number
   priceTarget: number
   stopLoss: number
-  startTime: any
-  endTime: any
+  startTime: unknown
+  endTime: unknown
 }
 
 export default function AIInspector({
@@ -98,11 +97,11 @@ export default function AIInspector({
                     try {
                       const parsed = JSON.parse(line.slice(6))
                       if (parsed.token) onToken(parsed.token)
-                    } catch { }
+                    } catch { /* ignore parse errors */ }
                   }
                 }
               }
-            } catch { }
+            } catch { /* ignore stream errors */ }
           }}
         />
       </div>

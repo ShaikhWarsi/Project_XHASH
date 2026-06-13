@@ -4,7 +4,7 @@ import Badge from './ui/Badge'
 import type { RiskMetrics } from '../api/types'
 
 export default function RiskAnalyticsCharts({ metrics }: { metrics?: RiskMetrics | null }) {
-  const plotlyRef = useRef<any>(null)
+  const plotlyRef = useRef<unknown>(null)
   const ddRef = useRef<HTMLDivElement>(null)
   const sharpRef = useRef<HTMLDivElement>(null)
   const betaRef = useRef<HTMLDivElement>(null)
@@ -166,7 +166,7 @@ export default function RiskAnalyticsCharts({ metrics }: { metrics?: RiskMetrics
       if (heatRef.current) {
         const years = Array.from({ length: 6 }, (_, i) => 2020 + i)
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-        const z = years.map((y) => months.map((_, mi) => {
+        const z = years.map((_) => months.map((__, mi) => {
           const baseRet = (metrics?.sharpeRatio || 0.5) * 0.02
           const seasonal = Math.sin((mi + 1) * Math.PI / 6) * 0.01
           const noise = (Math.random() - 0.48) * 0.05

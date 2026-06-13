@@ -76,7 +76,7 @@ export default function Debug() {
     }
     try {
       const d = await getDebugInfo()
-      setDebugInfo(d)
+      setDebugInfo(d as DebugInfo)
     } catch (e) {
       setDebugInfo(null)
     }

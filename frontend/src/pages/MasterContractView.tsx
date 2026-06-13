@@ -40,14 +40,14 @@ export default function MasterContractView() {
   useEffect(() => {
     getExchanges()
       .then(setExchanges)
-      .catch(() => {})
+      .catch((err) => console.warn('[MasterContractView] failed:', err))
   }, [])
 
   const doSearch = useCallback(async () => {
     if (!query.trim()) return
     setLoading(true)
     try {
-      const data = await searchSymbols(query, exchange || undefined, 50)
+      const data = await searchSymbols(query, exchange || undefined, 50) as SymbolRow[]
       const enriched = await Promise.all(
         data.map(async (r: SymbolRow) => {
           try {
@@ -68,7 +68,7 @@ export default function MasterContractView() {
 
   const loadHolidays = async () => {
     try {
-      const res = await getMarketHolidays(new Date().getFullYear())
+      const res: any = await getMarketHolidays(new Date().getFullYear())
       setHolidays(res.data || [])
       setShowSidebar('holidays')
     } catch (err: any) {

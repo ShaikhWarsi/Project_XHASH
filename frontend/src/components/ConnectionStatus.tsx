@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '../api/client'
-import { Wifi, WifiOff, AlertTriangle, Loader2, Cpu, FlaskConical } from 'lucide-react'
+import { Wifi, WifiOff, AlertTriangle, Loader2 } from 'lucide-react'
 
 interface HealthIssue {
   severity: 'error' | 'warning' | 'info'
@@ -17,18 +17,12 @@ interface HealthStatus {
   uptime_seconds: number
 }
 
-const SERVICE_ICONS: Record<string, typeof Cpu> = {
-  lm_studio: FlaskConical,
-  openai: Cpu,
-  server: Cpu,
-}
-
 export default function ConnectionStatus() {
   const [health, setHealth] = useState<HealthStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState(false)
 
-  const checkHealth = useCallback(async () => {
+  const checkHealth = async () => {
     try {
       const { data } = await api.get('/health/detailed', { timeout: 5000 })
       setHealth(data)
@@ -47,13 +41,13 @@ export default function ConnectionStatus() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }
 
   useEffect(() => {
     checkHealth()
     const interval = setInterval(checkHealth, 60000)
     return () => clearInterval(interval)
-  }, [checkHealth])
+  }, [])
 
   if (loading) {
     return (

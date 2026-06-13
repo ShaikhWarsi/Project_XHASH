@@ -99,7 +99,7 @@ export default function Historify() {
     if (!chartSymbol) return
     setLoading((p) => ({ ...p, data: true }))
     try {
-      const res = await fetchOHLCV(chartSymbol, chartExchange, chartTimeframe, undefined, undefined)
+      const res: any = await fetchOHLCV(chartSymbol, chartExchange, chartTimeframe, undefined, undefined)
       setOhlcvData(res.data || [])
     } catch (err: any) {
       addToast(`Failed to load data: ${err?.message}`, 'error')
@@ -111,7 +111,7 @@ export default function Historify() {
   const loadJobs = async () => {
     setLoading((p) => ({ ...p, jobs: true }))
     try {
-      const res = await fetchDownloadJobs()
+      const res: any = await fetchDownloadJobs()
       setJobs(res.jobs || [])
     } catch (err: any) {
       addToast(`Failed to load jobs: ${err?.message}`, 'error')
@@ -123,7 +123,7 @@ export default function Historify() {
   const loadWatchlist = async () => {
     setLoading((p) => ({ ...p, watchlist: true }))
     try {
-      const wl = await fetchWatchlist()
+      const wl: any = await fetchWatchlist()
       setWatchlist(wl || [])
     } catch (err: any) {
       addToast(`Failed to load watchlist: ${err?.message}`, 'error')
@@ -135,7 +135,7 @@ export default function Historify() {
   const loadSchedules = async () => {
     setLoading((p) => ({ ...p, schedules: true }))
     try {
-      const s = await fetchSchedules()
+      const s: any = await fetchSchedules()
       setSchedules(s || [])
     } catch (err: any) {
       addToast(`Failed to load schedules: ${err?.message}`, 'error')
@@ -150,7 +150,7 @@ export default function Historify() {
   const handleDownload = async () => {
     if (!symbol) { addToast('Enter a symbol', 'warning'); return }
     try {
-      const res = await downloadHistory(symbol, exchange, timeframe, fromDate || '2024-01-01', toDate || new Date().toISOString().slice(0, 10))
+      const res: any = await downloadHistory(symbol, exchange, timeframe, fromDate || '2024-01-01', toDate || new Date().toISOString().slice(0, 10))
       addToast(`Downloaded ${res.rows || 0} rows for ${symbol.toUpperCase()}`, 'success')
       loadJobs()
     } catch (err: any) {
@@ -171,7 +171,7 @@ export default function Historify() {
   const handleAddWatchlist = async () => {
     if (!wsSymbol) { addToast('Enter a symbol', 'warning'); return }
     try {
-      const res = await addToWatchlist(wsSymbol, exchange)
+      const res: any = await addToWatchlist(wsSymbol, exchange)
       setWatchlist(res.watchlist || [])
       setWsSymbol('')
       addToast('Added to watchlist', 'success')
@@ -182,7 +182,7 @@ export default function Historify() {
 
   const handleRemoveWatchlist = async (sym: string) => {
     try {
-      const res = await removeFromWatchlist(sym)
+      const res: any = await removeFromWatchlist(sym)
       setWatchlist(res.watchlist || [])
       addToast('Removed from watchlist', 'info')
     } catch (err: any) {
@@ -215,7 +215,7 @@ export default function Historify() {
   const handleExport = async () => {
     if (!chartSymbol) { addToast('Select a symbol first', 'warning'); return }
     try {
-      const csv = await exportCSV(chartSymbol, chartExchange, chartTimeframe)
+      const csv: any = await exportCSV(chartSymbol, chartExchange, chartTimeframe)
       const blob = new Blob([csv], { type: 'text/csv' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')

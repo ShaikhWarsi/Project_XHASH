@@ -42,7 +42,7 @@ export default function ProtectionsPanel() {
       })
       setResults(res.results)
       setAllPassed(res.passed)
-    } catch (err) {
+    } catch {
       addToast('Protection check failed', 'error')
     }
     setLoading(false)

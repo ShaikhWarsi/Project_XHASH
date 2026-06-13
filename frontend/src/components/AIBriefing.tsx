@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import Card from './ui/Card'
 import Skeleton from './Skeleton'
 import { briefingGet } from '../api/llm'
 
@@ -9,19 +8,21 @@ export default function AIBriefing({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<string | null>(null)
   const [dataSummary, setDataSummary] = useState<any>(null)
 
-  const load = () => {
+  useEffect(() => {
+    let cancelled = false
     setLoading(true)
     setError(null)
     briefingGet()
       .then((res) => {
-        setBriefing(res.briefing)
-        setDataSummary(res.data_summary)
+        if (!cancelled) {
+          setBriefing(res.briefing)
+          setDataSummary(res.data_summary)
+        }
       })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false))
-  }
-
-  useEffect(() => { load() }, [])
+      .catch((err) => { if (!cancelled) setError(err.message) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
 
   return (
     <div
@@ -55,12 +56,22 @@ export default function AIBriefing({ onClose }: { onClose: () => void }) {
             )}
           </div>
           <div className="flex gap-1.5">
-            <button
-              onClick={load}
-              className="bg-transparent border border-default text-muted font-mono-data text-[9px] px-2 py-0.5 cursor-pointer rounded-sm"
-            >
-              Refresh
-            </button>
+              <button
+                onClick={() => {
+                  setLoading(true)
+                  setError(null)
+                  briefingGet()
+                    .then((res) => {
+                      setBriefing(res.briefing)
+                      setDataSummary(res.data_summary)
+                    })
+                    .catch((err) => setError(err.message))
+                    .finally(() => setLoading(false))
+                }}
+                className="bg-transparent border border-default text-muted font-mono-data text-[9px] px-2 py-0.5 cursor-pointer rounded-sm"
+              >
+                Refresh
+              </button>
             <button
               onClick={onClose}
               className="bg-transparent border border-default text-muted font-mono-data text-[9px] px-2 py-0.5 cursor-pointer rounded-sm"

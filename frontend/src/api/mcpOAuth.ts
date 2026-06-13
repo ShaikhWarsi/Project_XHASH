@@ -1,11 +1,11 @@
-export async function fetchMCPOAuthClients(): Promise<any[]> {
+export async function fetchMCPOAuthClients(): Promise<unknown[]> {
   const res = await fetch('/api/mcp/oauth/clients')
   if (!res.ok) throw new Error(await res.text())
   const data = await res.json()
   return data.clients ?? []
 }
 
-export async function registerMCPClient(name: string, redirectUris: string[]): Promise<any> {
+export async function registerMCPClient(name: string, redirectUris: string[]): Promise<unknown> {
   const res = await fetch('/api/mcp/oauth/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -15,7 +15,7 @@ export async function registerMCPClient(name: string, redirectUris: string[]): P
   return res.json()
 }
 
-export async function fetchMCPDiscovery(): Promise<any> {
+export async function fetchMCPDiscovery(): Promise<unknown> {
   const res = await fetch('/.well-known/oauth-authorization-server')
   if (!res.ok) throw new Error(await res.text())
   return res.json()

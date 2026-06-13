@@ -8,17 +8,19 @@ export default function GlobalSymbolSearch() {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [recent, setRecent] = useState<string[]>([])
+  const [recent, setRecent] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('global_symbol_recent') || '[]')
+    } catch {
+      return []
+    }
+  })
   const [watchlist, setWatchlist] = useState<string[]>([])
   const [selectedIdx, setSelectedIdx] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    try {
-      const r = JSON.parse(localStorage.getItem('global_symbol_recent') || '[]')
-      setRecent(r)
-    } catch {}
-    fetchWatchlist('default').then((w) => setWatchlist(w.map((i: any) => i.symbol))).catch(() => {})
+    fetchWatchlist('default').then((w) => setWatchlist(w.map((i: any) => i.symbol))).catch((err) => console.warn('[GlobalSymbolSearch] failed:', err))
   }, [])
 
   useEffect(() => {
@@ -45,7 +47,10 @@ export default function GlobalSymbolSearch() {
     ? allSymbols.filter((s) => s.toLowerCase().includes(query.toLowerCase())).slice(0, 20)
     : allSymbols.slice(0, 20)
 
-  useEffect(() => { setSelectedIdx(0) }, [query])
+  const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuery(e.target.value)
+    setSelectedIdx(0)
+  }
 
   const selectSymbol = useCallback((symbol: string) => {
     const updated = [symbol, ...recent.filter((r) => r !== symbol)].slice(0, 10)
@@ -72,7 +77,7 @@ export default function GlobalSymbolSearch() {
         <input
           ref={inputRef}
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={handleQueryChange}
           onKeyDown={handleKeyDown}
           placeholder="Search symbol... (Ctrl+.)"
           className="w-full px-3 py-2 text-[11px] font-mono-data outline-none"

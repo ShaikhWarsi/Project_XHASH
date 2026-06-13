@@ -567,6 +567,18 @@ export default function ChartPage() {
     URL.revokeObjectURL(url)
   }, [symbol])
 
+  const handleIndicatorAddClick = useCallback(() => {
+    setShowInlineSearch(true)
+    setSelectedIndicatorPreset(null)
+    setInlineQuery('')
+    setShowInlineParams(false)
+  }, [])
+
+  const handleIndicatorRemove = useCallback((id: string) => {
+    setIndicators((prev) => prev.filter((i) => i.id !== id))
+    chartRef.current?.removeIndicator(id)
+  }, [])
+
   const chartMenuItems = useMemo<ContextMenuItem[]>(
     () => [
       {
@@ -634,7 +646,7 @@ export default function ChartPage() {
       },
       { label: 'Layout', onClick: () => setShowLayout(true) },
     ],
-    [handleToolSelect, handleIntervalChange, toggleFullscreen, handleExportDrawings, indicators],
+    [handleToolSelect, handleIntervalChange, toggleFullscreen, handleExportDrawings, indicators, handleIndicatorAddClick, handleIndicatorRemove],
   )
 
   const handleContextMenu = useCallback(
@@ -707,13 +719,6 @@ export default function ChartPage() {
     addToast(`Alert at ${payload.symbol} $${payload.price}`, 'info')
   }, [addToast])
 
-  const handleIndicatorAddClick = useCallback(() => {
-    setShowInlineSearch(true)
-    setSelectedIndicatorPreset(null)
-    setInlineQuery('')
-    setShowInlineParams(false)
-  }, [])
-
   const handleIndicatorConfirm = useCallback((preset?: IndicatorPreset, params?: Record<string, number>) => {
     const p = preset ?? selectedIndicatorPreset
     const pr = params ?? indicatorParams
@@ -750,11 +755,6 @@ export default function ChartPage() {
     setShowInlineParams(false)
     setShowInlineSearch(false)
     setInlineQuery('')
-  }, [])
-
-  const handleIndicatorRemove = useCallback((id: string) => {
-    setIndicators((prev) => prev.filter((i) => i.id !== id))
-    chartRef.current?.removeIndicator(id)
   }, [])
 
   const handleObjectSelect = useCallback((id: string | null) => {
@@ -1551,7 +1551,7 @@ export default function ChartPage() {
                 ))}
               </div>
               {templatesTab === 'chart' ? (
-                <ChartTemplates currentConfig={currentChartConfig} onLoadConfig={handleLoadChartConfig} />
+                <ChartTemplates currentConfig={currentChartConfig} onLoadConfig={handleLoadChartConfig as any} />
               ) : (
                 <DrawingTemplatePanel
                   currentDrawings={allDrawings}

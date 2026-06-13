@@ -1,5 +1,5 @@
 export interface TableInfo { name: string; columns: string[] }
-export interface QueryResult { columns: string[]; rows: any[][] }
+export interface QueryResult { columns: string[]; rows: unknown[][] }
 export interface DailyReturns { date: string; returns: Record<string, number> }
 
 export async function fetchTables(): Promise<{ tables: TableInfo[] }> {

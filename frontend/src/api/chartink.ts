@@ -52,17 +52,17 @@ export async function deleteChartinkSymbolMapping(id: string): Promise<void> {
   await api.delete(`/openalgo/chartink/symbols/${id}`)
 }
 
-export async function sendChartinkWebhook(payload: Record<string, any>): Promise<any> {
+export async function sendChartinkWebhook(payload: Record<string, unknown>): Promise<unknown> {
   const { data } = await api.post('/openalgo/chartink/webhook', payload)
   return data
 }
 
-export async function sendTradingViewWebhook(payload: Record<string, any>): Promise<any> {
+export async function sendTradingViewWebhook(payload: Record<string, unknown>): Promise<unknown> {
   const { data } = await api.post('/openalgo/tradingview/webhook', payload)
   return data
 }
 
-export async function sendGoChartingWebhook(payload: Record<string, any>): Promise<any> {
+export async function sendGoChartingWebhook(payload: Record<string, unknown>): Promise<unknown> {
   const { data } = await api.post('/openalgo/gocharting/webhook', payload)
   return data
 }

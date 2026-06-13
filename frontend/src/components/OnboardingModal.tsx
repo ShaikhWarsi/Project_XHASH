@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { X, Rocket, BarChart3, FlaskConical, Users, BookOpen, ArrowRight, Check } from 'lucide-react'
+import { X, Rocket, BarChart3, FlaskConical, Users, ArrowRight, Check } from 'lucide-react'
 
 const ONBOARDING_KEY = 'trading_engine_onboarding_done'
 
@@ -38,17 +38,15 @@ const STEPS: Step[] = [
 ]
 
 export default function OnboardingModal() {
-  const [open, setOpen] = useState(false)
   const [step, setStep] = useState(0)
-  const [dismissed, setDismissed] = useState(true)
-
-  useEffect(() => {
+  const [dismissed, setDismissed] = useState(() => {
     const done = localStorage.getItem(ONBOARDING_KEY)
-    if (!done) {
-      setOpen(true)
-      setDismissed(false)
-    }
-  }, [])
+    return !!done
+  })
+  const [open, setOpen] = useState(() => {
+    const done = localStorage.getItem(ONBOARDING_KEY)
+    return !done
+  })
 
   const complete = () => {
     localStorage.setItem(ONBOARDING_KEY, 'true')

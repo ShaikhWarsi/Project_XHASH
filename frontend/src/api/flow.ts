@@ -39,12 +39,12 @@ export async function deactivateWorkflow(id: string): Promise<void> {
   await api.post(`/openalgo/flow/workflows/${id}/deactivate`)
 }
 
-export async function executeWorkflow(id: string, webhookData?: any): Promise<any> {
+export async function executeWorkflow(id: string, webhookData?: unknown): Promise<unknown> {
   const { data } = await api.post(`/openalgo/flow/workflows/${id}/execute`, webhookData)
   return data
 }
 
-export async function fetchExecutions(id: string): Promise<any[]> {
+export async function fetchExecutions(id: string): Promise<unknown[]> {
   const { data } = await api.get(`/openalgo/flow/workflows/${id}/executions`)
   return data
 }

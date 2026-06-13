@@ -4,8 +4,6 @@ import Badge from './ui/Badge'
 import Skeleton from './Skeleton'
 import { fetchChinaStocks, fetchChinaIndices } from '../api/china'
 import type { ChinaMarketData } from '../api/china'
-import { useToastStore } from '../store/toast'
-
 const FONT_SM = { fontFamily: "'JetBrains Mono', monospace", fontSize: 10 }
 const FONT_DATA = { fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }
 const FONT_LABEL = { fontSize: 9, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.05em' }
@@ -50,12 +48,12 @@ function formatCNY(value: number): string {
 }
 
 export default function ChinaMarketsPanel() {
-  const addToast = useToastStore((s) => s.addToast)
   const [stocks, setStocks] = useState<ChinaMarketData[]>([])
   const [indices, setIndices] = useState<ChinaMarketData[]>([])
   const [loading, setLoading] = useState(true)
   const [ashareTicker, setAshareTicker] = useState('600519.SH')
   const [connectDirection, setConnectDirection] = useState<'north' | 'south'>('north')
+  const [tPlus1Date] = useState(() => new Date(Date.now() + 86400000).toLocaleDateString())
 
   useEffect(() => {
     setLoading(true)
@@ -70,7 +68,6 @@ export default function ChinaMarketsPanel() {
   const limitUp = mockPrevClose * 1.10
   const limitDown = mockPrevClose * 0.90
   const lotCost = mockPrice * 100
-  const tPlus1Date = new Date(Date.now() + 86400000).toLocaleDateString()
 
   const flowData = connectDirection === 'north' ? MOCK_NORTH_FLOW : MOCK_SOUTH_FLOW
 

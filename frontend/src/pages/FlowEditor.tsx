@@ -55,7 +55,7 @@ function FlowEditorContent() {
     if (!id) return
     try {
       await handleSave()
-      const result = await executeWorkflow(id)
+      const result: any = await executeWorkflow(id)
       setExecutionResult(result)
       addToast(`Executed: ${result.status} (${result.node_count || 0} nodes)`, 'success')
     } catch (err: any) {

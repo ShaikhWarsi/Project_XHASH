@@ -162,7 +162,7 @@ export default function ChartGPTPanel({
 
       {results.length > 0 && (
         <div style={{ maxHeight: 240, overflow: 'auto' }}>
-          {results.map((pattern, i) => (
+          {results.map((pattern) => (
             <div
               key={pattern.id}
               onClick={() => {

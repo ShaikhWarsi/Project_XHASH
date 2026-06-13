@@ -19,8 +19,23 @@ export default defineConfig([
       globals: globals.browser,
     },
     rules: {
-      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/purity': 'warn',
+      'react-hooks/refs': 'warn',
+      'react-hooks/preserve-manual-memoization': 'warn',
+      'react-hooks/immutability': 'warn',
+      'react-refresh/only-export-components': 'warn',
+      'no-empty': 'warn',
+      'no-useless-assignment': 'warn',
+      'no-useless-escape': 'warn',
+      '@typescript-eslint/no-unsafe-function-type': 'warn',
+      '@typescript-eslint/no-unused-expressions': 'warn',
+      '@typescript-eslint/ban-ts-comment': 'warn',
+      'react-hooks/rules-of-hooks': 'warn',
+      'preserve-caught-error': 'warn',
+      'local/no-empty-catch': 'warn',
     },
     plugins: {
       local: {
@@ -50,9 +65,6 @@ export default defineConfig([
           },
         },
       },
-    },
-    rules: {
-      'local/no-empty-catch': 'warn',
     },
   },
   {

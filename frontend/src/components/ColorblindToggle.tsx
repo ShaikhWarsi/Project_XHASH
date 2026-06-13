@@ -63,7 +63,7 @@ export default function ColorblindToggle({ onChange }: ColorblindToggleProps) {
     try {
       const saved = localStorage.getItem(LS_KEY)
       if (saved === 'deuteranopia' || saved === 'protanopia') return saved
-    } catch {}
+    } catch { /* localStorage read failed */ }
     return 'default'
   })
 

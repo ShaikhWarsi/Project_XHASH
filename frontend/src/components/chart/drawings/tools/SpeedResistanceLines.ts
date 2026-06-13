@@ -17,8 +17,8 @@ export class SpeedResistanceLines extends DrawingTool {
 
     const startY = y1
     const startX = x1
-    let endX = x2
-    let endY = y2
+    const endX = x2
+    const endY = y2
 
     const extendFactor = 3
     const projX = startX + (endX - startX) * extendFactor

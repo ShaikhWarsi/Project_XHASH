@@ -21,7 +21,7 @@ const DIVERGING_COLORS = [
 
 export default function CorrelationHeatmap({ data, height = 500, draggable, onReorder }: CorrelationHeatmapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const chartRef = useRef<any>(null)
+  const chartRef = useRef<unknown>(null)
   const resizeRef = useRef<ResizeObserver | null>(null)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [hoveredSymbol, setHoveredSymbol] = useState<number | null>(null)
@@ -29,10 +29,7 @@ export default function CorrelationHeatmap({ data, height = 500, draggable, onRe
   const [orderedSymbols, setOrderedSymbols] = useState<string[]>(data.symbols)
   const [orderedMatrix, setOrderedMatrix] = useState<number[][]>(data.matrix)
 
-  useEffect(() => {
-    setOrderedSymbols(data.symbols)
-    setOrderedMatrix(data.matrix)
-  }, [data])
+
 
   const displayData = useMemo(() => ({ symbols: orderedSymbols, matrix: orderedMatrix }), [orderedSymbols, orderedMatrix])
 
@@ -66,16 +63,17 @@ export default function CorrelationHeatmap({ data, height = 500, draggable, onRe
   useEffect(() => {
     if (!containerRef.current || orderedSymbols.length === 0) return
 
-    const Plotly = (window as any).Plotly
+    const Plotly = (window as unknown as Record<string, unknown>).Plotly
     if (!Plotly) {
-      import('plotly.js-dist-min' as string).then((mod: any) => {
-        renderChart(mod.default || mod)
+      import('plotly.js-dist-min' as string).then((mod: unknown) => {
+        const p = (mod as Record<string, unknown>).default || mod
+        renderChart(p as Record<string, unknown>)
       })
       return
     }
-    renderChart(Plotly)
+    renderChart(Plotly as Record<string, unknown>)
 
-    function renderChart(Plotly: any) {
+    function renderChart(Plotly: Record<string, unknown>) {
       const container = containerRef.current!
       const gridColor = isDark ? '#1a2332' : '#e0e0e0'
 
@@ -101,7 +99,7 @@ export default function CorrelationHeatmap({ data, height = 500, draggable, onRe
           gridcolor: draggable ? 'transparent' : gridColor,
           linecolor: draggable ? 'transparent' : gridColor,
           zerolinecolor: gridColor,
-          autorange: 'reversed' as any,
+          autorange: 'reversed' as const,
         },
         width: container.clientWidth,
         height: plotHeight,
@@ -126,12 +124,12 @@ export default function CorrelationHeatmap({ data, height = 500, draggable, onRe
           [0.8, DIVERGING_COLORS[8]],
           [0.9, DIVERGING_COLORS[9]],
           [1, DIVERGING_COLORS[10]],
-        ] as any,
+        ] as unknown as Record<string, unknown>[],
         zmin: -1,
         zmax: 1,
         zmid: 0,
         text: traceData.hovertext,
-        hoverinfo: 'text' as any,
+        hoverinfo: 'text' as const,
         hovertemplate: '%{text}<extra></extra>',
         showscale: true,
         colorbar: {
@@ -145,16 +143,16 @@ export default function CorrelationHeatmap({ data, height = 500, draggable, onRe
 
       try {
         if (chartRef.current) {
-          Plotly.react(container, [trace], layout, { responsive: true, displayModeBar: false })
+          (Plotly as any).react(container, [trace], layout, { responsive: true, displayModeBar: false })
         } else {
-          Plotly.newPlot(container, [trace], layout, { responsive: true, displayModeBar: false })
+          (Plotly as any).newPlot(container, [trace], layout, { responsive: true, displayModeBar: false })
         }
         chartRef.current = container
       } catch (e) { console.warn('[CorrelationHeatmap] Plotly render failed:', e) }
 
       if (resizeRef.current) resizeRef.current.disconnect()
       resizeRef.current = new ResizeObserver(() => {
-        Plotly.Plots.resize(container)
+        (Plotly as any).Plots.resize(container)
       })
       resizeRef.current.observe(container!)
     }
@@ -166,8 +164,8 @@ export default function CorrelationHeatmap({ data, height = 500, draggable, onRe
       }
       if (chartRef.current) {
         try {
-          const Plotly = (window as any).Plotly
-          Plotly?.purge?.(chartRef.current)
+          const Plotly = (window as unknown as Record<string, unknown>).Plotly
+          ;(Plotly as Record<string, Function>)?.purge?.(chartRef.current)
         } catch (e) { console.warn('[CorrelationHeatmap] Plotly purge failed:', e) }
         chartRef.current = null
       }
