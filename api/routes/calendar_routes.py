@@ -54,7 +54,7 @@ async def get_earnings(symbols: str = "", days_ahead: int = Query(30, ge=1, le=9
                         "type": "earnings",
                     })
         except Exception:
-            pass
+            logger.debug("Failed to fetch earnings for %s", s)
 
     return {"events": sorted(results, key=lambda x: x["date"])}
 
@@ -92,7 +92,7 @@ async def get_dividends(symbols: str = "", days_ahead: int = Query(90, ge=1, le=
                     "type": "dividend",
                 })
         except Exception:
-            pass
+            logger.debug("Failed to fetch dividends for %s", s)
 
     return {"events": sorted(results, key=lambda x: x.get("exDate", ""))}
 

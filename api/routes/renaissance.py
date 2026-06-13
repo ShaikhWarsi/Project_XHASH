@@ -61,6 +61,7 @@ async def _fetch_price_data(symbols: list[str]) -> dict[str, pd.DataFrame]:
                 prices_df[s] = df
             await asyncio.sleep(0.1)
         except Exception:
+            logger.debug("Failed to fetch price data for %s", s)
             continue
     return prices_df
 

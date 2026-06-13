@@ -23,6 +23,7 @@ async def list_mcp_tools():
                 "parameters": tool.parameters,
             })
     except Exception:
+        logger.warning("Failed to list MCP tools", exc_info=True)
         return {"tools": [], "count": 0}
     return {"tools": tools, "count": len(tools)}
 

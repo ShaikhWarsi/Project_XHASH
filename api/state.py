@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import os
 import concurrent.futures
 from copy import deepcopy
 from datetime import datetime, timezone
@@ -18,6 +20,9 @@ logger = logging.getLogger(__name__)
 _sync_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
 _shared_loop: asyncio.AbstractEventLoop | None = None
 
+_STATE_PERSIST_PATH = os.getenv("TRADING_STATE_PATH", os.path.join(os.path.dirname(__file__), "..", "db", "app_state.json"))
+_PERSIST_INTERVAL = int(os.getenv("TRADING_STATE_PERSIST_INTERVAL", "60"))
+
 
 def _init_shared_loop():
     global _shared_loop
@@ -27,13 +32,14 @@ def _init_shared_loop():
 
 
 def _sync_run(coro):
-    """Run a coroutine from sync code, reusing a single shared loop."""
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        _init_shared_loop()
-        return asyncio.run_coroutine_threadsafe(coro, _shared_loop).result()
-    future = asyncio.run_coroutine_threadsafe(coro, loop)
+    """Run a coroutine from sync code via a dedicated shared loop.
+
+    Always uses a dedicated thread + event loop to avoid deadlocking
+    when called from within an async context (e.g., property accessors
+    invoked from async route handlers that hold the main loop).
+    """
+    _init_shared_loop()
+    future = asyncio.run_coroutine_threadsafe(coro, _shared_loop)
     return future.result()
 
 MAX_HISTORY_SIZE = 500
@@ -113,11 +119,54 @@ class AppState:
         async with self._lock:
             return deepcopy(self._trades)
 
+    async def async_set_trades(self, trades: list[dict]):
+        async with self._lock:
+            self._trades = deepcopy(trades)
+
+    async def async_set_portfolio_history(self, history: list[dict]):
+        async with self._lock:
+            self._portfolio_history = deepcopy(history)
+
     async def async_add_trade(self, trade: dict):
         async with self._lock:
             self._trades.append(deepcopy(trade))
             if len(self._trades) > MAX_HISTORY_SIZE:
                 self._trades = self._trades[-MAX_HISTORY_SIZE:]
+
+    # ── State Persistence ──
+
+    async def persist(self, path: str = _STATE_PERSIST_PATH):
+        async with self._lock:
+            data = dict(
+                trades=list(self._trades),
+                portfolio_history=list(self._portfolio_history),
+                open_orders=list(self._open_orders),
+            )
+        try:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w") as f:
+                json.dump(data, f, default=str)
+        except Exception as e:
+            logger.warning("Failed to persist app state: %s", e)
+
+    async def restore(self, path: str = _STATE_PERSIST_PATH):
+        try:
+            if not os.path.exists(path):
+                return
+            with open(path) as f:
+                data = json.load(f)
+            async with self._lock:
+                self._trades = data.get("trades", [])
+                self._portfolio_history = data.get("portfolio_history", [])
+                self._open_orders = data.get("open_orders", [])
+            logger.info("Restored app state: %d trades, %d history entries", len(self._trades), len(self._portfolio_history))
+        except Exception as e:
+            logger.warning("Failed to restore app state: %s", e)
+
+    async def persist_loop(self, interval: float = _PERSIST_INTERVAL):
+        while True:
+            await asyncio.sleep(interval)
+            await self.persist()
 
     async def async_snapshot(self) -> dict:
         async with self._lock:
@@ -357,12 +406,12 @@ async def seed_demo_data():
             "cash": 84500.0 - (i / 90) * 5000.0,
         })
 
-    # --- Apply all seed data ---
+    # --- Apply all seed data through async setters (lock-safe) ---
     await app_state.async_set_portfolio(portfolio)
     await app_state.async_set_signals(signals)
     await app_state.async_set_metrics(metrics)
     await app_state.async_set_attribution(attribution)
     await app_state.async_set_open_orders(open_orders)
-    app_state._trades = trades
-    app_state._portfolio_history = history
+    await app_state.async_set_trades(trades)
+    await app_state.async_set_portfolio_history(history)
     logger.info("Demo data seeded: %d positions, %d signals, %d trades", len(positions), 5, len(trades))

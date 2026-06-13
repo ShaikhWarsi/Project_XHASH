@@ -57,7 +57,13 @@ function getErrorTip(error: Error | null): { message: string; suggestion: string
   if (!error) return null
   const msg = error.message || ''
   for (const [key, tip] of Object.entries(ERROR_TIPS)) {
-    if (msg.includes(key)) return tip
+    if (key === '500' && /\b500\b/.test(msg)) return tip
+    if (key === '503' && /\b503\b/.test(msg)) return tip
+    if (key === '429' && /\b429\b/.test(msg)) return tip
+    if (key === '404' && /\b404\b/.test(msg)) return tip
+    if (key === 'NetworkError' && /^NetworkError$/i.test(msg)) return tip
+    if (key === 'ERR_CONNECTION_REFUSED' && msg === 'ERR_CONNECTION_REFUSED') return tip
+    if (key === 'ERR_NETWORK' && msg === 'ERR_NETWORK') return tip
   }
   return null
 }

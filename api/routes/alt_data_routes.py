@@ -324,6 +324,7 @@ async def funding_rates():
                                     "indexPrice": info.get("indexPrice"),
                                 })
                         except Exception:
+                            logger.debug("Failed to fetch funding rate for %s", sym)
                             continue
                     if funding_data:
                         results.append({
@@ -399,6 +400,7 @@ async def stablecoin_depeg():
                         "status": "live",
                     })
                 except Exception:
+                    logger.debug("Failed to fetch stablecoin data for %s", coin['symbol'])
                     results.append({
                         **coin,
                         "price": coin["peg"],
@@ -459,7 +461,7 @@ async def crypto_dominance():
                         "change24h": round(change_pct, 2),
                     })
                 except Exception:
-                    pass
+                    logger.debug("Failed to fetch ticker for %s", coin['symbol'])
 
             if not coin_data:
                 return {"coins": [], "totalMarketCap": 0}
@@ -668,6 +670,7 @@ async def options_greeks(symbol: str = "AAPL"):
                     gamma = _bs_gamma(S, K, T, r, iv)
                     theta = _bs_theta(S, K, T, r, iv, "call")
                 except Exception:
+                    logger.debug("Failed to compute greeks for strike %s", K)
                     delta = gamma = theta = 0
                 options.append({
                     "strike": K, "type": "call",

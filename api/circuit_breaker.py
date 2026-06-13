@@ -77,7 +77,6 @@ class CircuitBreaker:
                 logger.info("Circuit %s: HALF_OPEN -> CLOSED (probe succeeded)", self.name)
                 self._half_open_calls = 0
             else:
-                self._half_open_calls += 1
                 self._failure_count = 0
 
         return result

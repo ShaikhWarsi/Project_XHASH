@@ -56,7 +56,7 @@ def _gather_portfolio_context() -> dict[str, Any]:
                 "positions": pos_list,
             }
     except Exception:
-        pass
+        logger.debug("Failed to gather portfolio context for LLM query")
     return {"total_value": 0, "cash": 0, "positions": []}
 
 
@@ -70,7 +70,7 @@ def _gather_risk_context() -> dict[str, Any]:
                 "sharpe_ratio": _demo_portfolio.get("sharpe_ratio", "—"),
             }
     except Exception:
-        pass
+        logger.debug("Failed to gather risk context for LLM query")
     return {}
 
 
@@ -80,7 +80,7 @@ def _gather_trade_context() -> list[dict[str, Any]]:
         if _demo_portfolio:
             return _demo_portfolio.get("recent_trades", [])
     except Exception:
-        pass
+        logger.debug("Failed to gather trade context for LLM query")
     return []
 
 

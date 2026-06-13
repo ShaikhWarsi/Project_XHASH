@@ -44,7 +44,7 @@ def _gather_portfolio_summary() -> dict[str, Any]:
                 "worst_position": worst,
             }
     except Exception:
-        pass
+        logger.debug("Failed to gather portfolio summary")
     return {"total_value": 0, "cash": 0, "position_count": 0}
 
 
@@ -87,6 +87,7 @@ def _gather_top_movers() -> list[dict[str, Any]]:
                     if abs(pct) > 0.5:
                         movers.append({"symbol": sym, "change_pct": round(pct, 1), "price": round(price, 2)})
             except Exception:
+                logger.debug("Failed to fetch mover data for %s", sym)
                 continue
         movers.sort(key=lambda x: abs(x["change_pct"]), reverse=True)
         return movers[:5]

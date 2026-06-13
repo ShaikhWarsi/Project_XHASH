@@ -22,26 +22,31 @@ from slowapi.middleware import SlowAPIMiddleware
 request_id_var: ContextVar[str] = ContextVar("request_id", default="")
 _shutting_down = False
 
+import re as _re
+
 # ── PII redaction ──
 _PII_PATTERNS = [
-    (r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', '***EMAIL***'),
-    (r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b', '***PHONE***'),
-    (r'(api[_-]?key|apikey|secret|password|token)["\s:=]+\S+', r'\1=***REDACTED***'),
-    (r'Bearer\s+\S+', 'Bearer ***REDACTED***'),
+    (_re.compile(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', _re.IGNORECASE), '***EMAIL***'),
+    (_re.compile(r'(?<!\d)(\d{3}[-.]?\d{3}[-.]?\d{4})(?!\d)', _re.IGNORECASE), '***PHONE***'),
+    (_re.compile(r'(api[_-]?key|apikey|secret|password|token)["\s:=]+\S+', _re.IGNORECASE), lambda m: m.group(1) + '=***REDACTED***'),
+    (_re.compile(r'Bearer\s+\S+', _re.IGNORECASE), 'Bearer ***REDACTED***'),
 ]
 
 
 class PiiRedactFilter(logging.Filter):
+    def _redact(self, text: str) -> str:
+        for pattern, replacement in _PII_PATTERNS:
+            text = pattern.sub(replacement, text)
+        return text
+
     def filter(self, record):
         if hasattr(record, 'msg') and isinstance(record.msg, str):
-            for pattern, replacement in _PII_PATTERNS:
-                record.msg = __import__('re').sub(pattern, replacement, record.msg, flags=__import__('re').IGNORECASE)
+            record.msg = self._redact(record.msg)
         if hasattr(record, 'args') and record.args:
             sanitized = []
             for arg in record.args:
                 if isinstance(arg, str):
-                    for pattern, replacement in _PII_PATTERNS:
-                        arg = __import__('re').sub(pattern, replacement, arg, flags=__import__('re').IGNORECASE)
+                    arg = self._redact(arg)
                 sanitized.append(arg)
             record.args = tuple(sanitized)
         return True
@@ -230,6 +235,7 @@ from persistence.database import _engine as db_engine
 from persistence.multi_db import multi_db as openalgo_multi_db
 from api.utils.health_monitor import start_health_monitoring
 from api.services.broker_keepalive_service import start_broker_keepalive, stop_broker_keepalive
+from .state import app_state
 
 logger = logging.getLogger(__name__)
 
@@ -336,9 +342,26 @@ def get_enabled_background_tasks() -> list[str]:
     return [name.strip() for name in raw.split(",") if name.strip() in _BACKGROUND_TASK_REGISTRY]
 
 
+async def _run_with_restart(task_name: str, task_func: callable, retry_delay: int = 60):
+    """Run a background task with automatic restart on failure and exponential backoff."""
+    max_delay = 300
+    delay = retry_delay
+    while True:
+        try:
+            await task_func()
+        except asyncio.CancelledError:
+            logger.info("Background task '%s' cancelled, stopping permanently", task_name)
+            break
+        except Exception as e:
+            logger.error("Background task '%s' failed with %s: %s — restarting in %ds",
+                         task_name, type(e).__name__, e, delay)
+        await asyncio.sleep(delay)
+        delay = min(delay * 2, max_delay)
+
+
 def _log_task_failure(task: asyncio.Task):
     exc = task.exception()
-    if exc:
+    if exc and not isinstance(exc, asyncio.CancelledError):
         logger.error("Background task '%s' failed: %s", task.get_name(), exc)
 
 
@@ -363,11 +386,12 @@ def start_background_tasks():
                 register_job(_scheduler, name, fn, interval)
         _scheduler.start()
     else:
-        # Legacy mode — asyncio background tasks
+        # Legacy mode — asyncio background tasks with auto-restart
         for name in get_enabled_background_tasks():
             task_func = _BACKGROUND_TASK_REGISTRY[name]
-            logger.info("Starting background task: %s", name)
-            t = asyncio.create_task(task_func(), name=f"trading-engine:{name}")
+            logger.info("Starting background task with auto-restart: %s", name)
+            wrapped = lambda n=name, f=task_func: _run_with_restart(n, f)
+            t = asyncio.create_task(wrapped(), name=f"trading-engine:{name}")
             t.add_done_callback(_log_task_failure)
             _background_tasks.append(t)
 
@@ -449,6 +473,13 @@ async def _startup():
         logger.warning("Failed to start health monitoring: %s", e)
 
     try:
+        await app_state.restore()
+        t = asyncio.create_task(app_state.persist_loop(), name="trading-engine:state-persist")
+        _background_tasks.append(t)
+    except Exception as e:
+        logger.warning("Failed to start state persist: %s", e)
+
+    try:
         await start_broker_keepalive(_app_instance)
     except Exception as e:
         logger.warning("Failed to start broker keepalive: %s", e)
@@ -514,6 +545,27 @@ def _check_disk():
         return {"status": "error", "detail": str(e)[:100]}
 
 
+def _check_llm_connectivity() -> dict:
+    results = {}
+    providers = [
+        ("OPENAI_API_KEY", "OpenAI"),
+        ("ANTHROPIC_API_KEY", "Anthropic"),
+        ("GROQ_API_KEY", "Groq"),
+        ("DEEPSEEK_API_KEY", "DeepSeek"),
+        ("GOOGLE_API_KEY", "Google"),
+        ("XAI_API_KEY", "xAI"),
+    ]
+    for env_key, name in providers:
+        value = os.getenv(env_key)
+        if value:
+            results[name.lower()] = {"status": "configured"}
+        else:
+            results[name.lower()] = {"status": "not_configured"}
+    lm_studio_url = os.getenv("LMSTUDIO_BASE_URL", "http://localhost:1234/v1")
+    results["lm_studio"] = {"status": "configured" if os.getenv("LMSTUDIO_BASE_URL") else "not_configured", "url": lm_studio_url}
+    return results
+
+
 async def _handle_shutdown(sig: signal.Signals):
     global _shutting_down
     _shutting_down = True
@@ -525,8 +577,13 @@ async def _shutdown():
     _shutting_down = True
     logger.warning("Shutdown phase 1/3: stop accepting new requests")
     await asyncio.sleep(0.5)
-    logger.warning("Shutdown phase 2/3: drain in-flight (%ds window)", 30)
-    await asyncio.sleep(30)
+    logger.warning("Shutdown phase 2/3: drain in-flight requests")
+    drain_deadline = time.time() + 30
+    while time.time() < drain_deadline:
+        active = [t for t in _background_tasks if not t.done()]
+        if not active:
+            break
+        await asyncio.sleep(1)
     global _scheduler
     if _scheduler:
         _scheduler.shutdown(wait=False)
@@ -892,6 +949,7 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
         dep_ccxt = _check_ccxt()
         dep_yfinance = _check_yfinance()
         dep_disk = _check_disk()
+        dep_llm = _check_llm_connectivity()
         n_tasks = sum(1 for t in _background_tasks if not t.done())
         return {
             "status": "ok" if dep_db.get("status") == "ok" else "degraded",
@@ -903,6 +961,7 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
                 "ccxt": dep_ccxt,
                 "yfinance": dep_yfinance,
                 "disk": dep_disk,
+                "llm": dep_llm,
             },
         }
 
@@ -912,6 +971,7 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
         dep_ccxt = _check_ccxt()
         dep_yfinance = _check_yfinance()
         dep_disk = _check_disk()
+        dep_llm = _check_llm_connectivity()
         all_ok = all(d.get("status") == "ok" for d in (dep_db, dep_ccxt, dep_yfinance, dep_disk))
         status_code = 200 if all_ok else 503
         from fastapi.responses import JSONResponse
@@ -925,6 +985,7 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
                     "ccxt": dep_ccxt,
                     "yfinance": dep_yfinance,
                     "disk": dep_disk,
+                    "llm": dep_llm,
                 },
             },
             status_code=status_code,

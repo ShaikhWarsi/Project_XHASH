@@ -265,7 +265,7 @@ async def debug_info():
                     lm_studio_up = True
                     lm_model = models["data"][0].get("id", "unknown")
     except Exception:
-        pass
+        logger.debug("LM Studio check failed, continuing")
 
     try:
         last_runs = await list_runs(limit=5)

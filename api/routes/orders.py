@@ -55,6 +55,7 @@ def _load_symbol_allowlist():
         from .market_data_constants import POPULAR_SYMBOLS as _ps
         _SYMBOL_ALLOWLIST = {s["symbol"] for s in _ps}
     except Exception:
+        logger.debug("Failed to load popular symbols, using hardcoded fallback")
         _SYMBOL_ALLOWLIST = {"AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "SPY", "QQQ", "BTC-USD", "ETH-USD"}
 
 _load_symbol_allowlist()
@@ -351,7 +352,7 @@ def _write_order_audit(session_id: str, order: OrderRequest, status: str, source
         if len(_audit_logs) > 5000:
             _audit_logs[:len(_audit_logs) - 5000] = []
     except Exception:
-        pass
+        logger.debug("Failed to write order audit log")
 
 
 @router.get("/orders/{order_id}")

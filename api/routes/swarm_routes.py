@@ -73,7 +73,7 @@ async def _execute_task(run_id: str, task_id: str, agent_id: str, prompt_templat
                             lambda: {s: yf.Ticker(s).info for s in symbols}
                         ) if len(symbols) <= 5 else {}
                     except Exception:
-                        pass
+                        logger.debug("Failed to fetch info batch for symbol")
 
             for symbol in symbols:
                 try:

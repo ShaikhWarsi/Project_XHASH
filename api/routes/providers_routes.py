@@ -287,6 +287,7 @@ async def test_provider(body: dict):
             "key": key_response
         }
     except Exception:
+        logger.warning("Failed to test provider %s, saving credentials only", provider)
         return {
             "status": "ok",
             "message": f"Credentials saved for {provider}",

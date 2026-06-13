@@ -19,7 +19,7 @@ async def panic_button(request: Request):
         from api.state import app_state
         api_state = app_state
     except Exception:
-        pass
+        logger.debug("app_state import skipped (expected in some contexts)")
 
     result: dict[str, Any] = {
         "status": "PANIC_EXECUTED",
@@ -71,14 +71,14 @@ async def panic_button(request: Request):
             result["actions"].append({"action": "disable_paper_trading", "status": "stopped"})
             logger.warning("PANIC: Paper trading disabled")
     except Exception:
-        pass
+        logger.debug("Failed to disable paper trading during panic")
 
     try:
         import os
         os.environ["TRADING_ENGINE_MARKET_INTEL_ENABLED"] = "false"
         result["actions"].append({"action": "disable_market_intel", "status": "stopped"})
     except Exception:
-        pass
+        logger.debug("Failed to disable market intel during panic")
 
     # 4. Write audit log
     try:
@@ -96,7 +96,7 @@ async def panic_button(request: Request):
             "timestamp": datetime.now(timezone.utc).isoformat(),
         })
     except Exception:
-        pass
+        logger.debug("Failed to write audit log during panic")
 
     return result
 

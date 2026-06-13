@@ -89,6 +89,7 @@ async def api_execute_workflow(workflow_id: str, request: Request):
     try:
         body = await request.json() if request.headers.get("content-type") == "application/json" else {}
     except Exception:
+        logger.debug("Failed to parse JSON body for flow execute, using empty")
         body = {}
     result = await execute_workflow(wf, webhook_data=body)
     return result
@@ -107,6 +108,7 @@ async def api_webhook(token: str, request: Request):
     try:
         payload = await request.json() if request.headers.get("content-type") == "application/json" else {}
     except Exception:
+        logger.debug("Failed to parse webhook payload JSON, using empty")
         payload = {}
     result = await execute_workflow(wf, webhook_data=payload)
     return result

@@ -59,7 +59,7 @@ async def _refresh_price_cache(symbols: list[str] | None = None):
                         continue
                     prices[sym] = price
                 except Exception:
-                    pass
+                    logger.debug("Failed to extract price for symbol in chunk")
     except Exception as e:
         logger.warning("Batch price refresh failed: %s", e)
     finally:

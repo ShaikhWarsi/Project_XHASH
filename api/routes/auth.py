@@ -58,4 +58,5 @@ async def get_current_user(token: str = ""):
         agent = agent_required(token)
         return {"username": agent.get("username", "admin"), "scopes": agent.get("scopes", ["read"])}
     except Exception:
+        logger.warning("Auth token validation failed", exc_info=True)
         raise HTTPException(status_code=401, detail="Invalid or expired token")

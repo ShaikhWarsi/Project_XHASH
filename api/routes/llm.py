@@ -75,6 +75,7 @@ def _count_tokens(text: str, model: str = "gpt-4o") -> int:
         enc = tiktoken.encoding_for_model(model)
         return len(enc.encode(text))
     except Exception:
+        logger.debug("tiktoken not available, using fallback token count")
         return len(text) // 4 + 1
 
 

@@ -58,7 +58,7 @@ def _load_json(path: Path, defaults: list[dict]) -> list[dict]:
         try:
             return json.loads(path.read_text())
         except Exception:
-            pass
+            logger.debug("Failed to load JSON from %s, using defaults", path)
     return defaults
 
 

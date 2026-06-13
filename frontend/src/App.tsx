@@ -1,7 +1,6 @@
 import { lazy, Suspense, type ReactNode } from 'react'
 import StrategyPortfolio from './pages/StrategyPortfolio'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import Layout from './components/Layout'
 import ErrorBoundary from './components/ErrorBoundary'
 import ToastContainer from './components/Toast'
@@ -11,17 +10,7 @@ import { WorkspaceProvider } from './contexts/WorkspaceContext'
 import { AudioAlertProvider } from './contexts/AudioAlertContext'
 import { InterfaceModeProvider } from './contexts/InterfaceModeContext'
 import { WebSocketProvider } from './contexts/WebSocketProvider'
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 30_000,
-      gcTime: 300_000,
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-  },
-})
+import { queryClient } from './main'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const ChartPage = lazy(() => import('./pages/Chart'))
@@ -167,6 +156,7 @@ function LazyPage({ children, category = 'page' }: { children: ReactNode; catego
 
 export default function App() {
   return (
+    <ErrorBoundary componentName="Global" category="page">
     <QueryClientProvider client={queryClient}>
     <BrowserRouter>
       <InterfaceModeProvider>
@@ -304,6 +294,7 @@ export default function App() {
     </WebSocketProvider>
   </InterfaceModeProvider>
 </BrowserRouter>
-</QueryClientProvider>
+    </QueryClientProvider>
+    </ErrorBoundary>
   )
 }

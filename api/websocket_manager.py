@@ -16,6 +16,7 @@ class ManagedConnection:
         self.id = str(uuid.uuid4())[:8]
         self.created_at = time.time()
         self.last_pong = time.time()
+        self.last_ping_sent = 0.0
 
 class ConnectionManager:
     MAX_CONNECTIONS_PER_CHANNEL = 20
@@ -112,10 +113,12 @@ class ConnectionManager:
             dead: list[ManagedConnection] = []
             for mc in all_conns:
                 try:
-                    if now - mc.last_pong > self.PING_INTERVAL + self.PONG_TIMEOUT:
-                        logger.info("ws_heartbeat_timeout", extra={"conn_id": mc.id, "channel": mc.channel})
-                        dead.append(mc)
-                        continue
+                    if mc.last_ping_sent > 0 and now - mc.last_ping_sent > self.PONG_TIMEOUT:
+                        if mc.last_ping_sent > mc.last_pong:
+                            logger.info("ws_heartbeat_timeout", extra={"conn_id": mc.id, "channel": mc.channel})
+                            dead.append(mc)
+                            continue
+                    mc.last_ping_sent = now
                     await mc.ws.send_json({"type": "ping"})
                 except Exception:
                     dead.append(mc)

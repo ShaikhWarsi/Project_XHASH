@@ -94,22 +94,22 @@ async def study_visualizations(req: OptimizeRequest):
         v1 = vis_mod.plot_parallel_coordinate(optimizer.study)
         if v1: vis["parallel_coordinate"] = v1.to_plotly_json()
     except Exception:
-        pass
+        logger.debug("Failed to generate parallel coordinate visualization")
     try:
         v2 = vis_mod.plot_slice(optimizer.study)
         if v2: vis["slice"] = v2.to_plotly_json()
     except Exception:
-        pass
+        logger.debug("Failed to generate slice visualization")
     try:
         v3 = vis_mod.plot_contour(optimizer.study)
         if v3: vis["contour"] = v3.to_plotly_json()
     except Exception:
-        pass
+        logger.debug("Failed to generate contour visualization")
     try:
         v4 = vis_mod.plot_edf(optimizer.study)
         if v4: vis["edf"] = v4.to_plotly_json()
     except Exception:
-        pass
+        logger.debug("Failed to generate EDF visualization")
 
     return {
         "symbol": req.symbol,

@@ -31,14 +31,23 @@ class AsyncEventBus:
     def on(self, topic: str, callback: Callable):
         self._string_subscribers.setdefault(topic, []).append(callback)
 
+    def _log_handler_error(self, task: asyncio.Task):
+        exc = task.exception()
+        if exc and not isinstance(exc, asyncio.CancelledError):
+            logger.error("AsyncEventBus handler task failed: %s", exc, exc_info=exc)
+        self._handler_tasks.discard(task)
+
     async def emit(self, topic: str, payload: Any):
         for cb in self._string_subscribers.get(topic, []):
-            if asyncio.iscoroutinefunction(cb):
-                task = asyncio.create_task(cb(payload))
-                self._handler_tasks.add(task)
-                task.add_done_callback(self._handler_tasks.discard)
-            else:
-                cb(payload)
+            try:
+                if asyncio.iscoroutinefunction(cb):
+                    task = asyncio.create_task(cb(payload))
+                    self._handler_tasks.add(task)
+                    task.add_done_callback(self._log_handler_error)
+                else:
+                    cb(payload)
+            except Exception as e:
+                logger.error("AsyncEventBus emit handler for topic '%s' failed: %s", topic, e, exc_info=True)
 
     def publish_sync(self, event: Event):
         for cb in self._subscribers.get(event.type, []):

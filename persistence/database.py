@@ -25,6 +25,8 @@ async def _run_alembic_upgrade_async(sync_url: str):
     except Exception as e:
         logger.warning("Alembic upgrade failed: %s", e)
 
+_run_alembic_upgrade_task: asyncio.Task | None = None
+
 _engine = None
 _session_factory = None
 _init_lock = asyncio.Lock()
@@ -91,7 +93,8 @@ async def init_db(db_url: Optional[str] = None):
         await conn.run_sync(_migrate_existing_tables)
     _init_done = True
     logger.info(f"Database initialized: {url}")
-    asyncio.create_task(_run_alembic_upgrade_async(url.replace("+aiosqlite", "")))
+    global _run_alembic_upgrade_task
+    _run_alembic_upgrade_task = asyncio.create_task(_run_alembic_upgrade_async(url.replace("+aiosqlite", "")))
 
 
 async def close_db():
@@ -107,6 +110,15 @@ def get_engine():
     return _engine
 
 
+async def _wait_for_migration():
+    global _run_alembic_upgrade_task
+    if _run_alembic_upgrade_task and not _run_alembic_upgrade_task.done():
+        try:
+            await asyncio.wait_for(asyncio.shield(_run_alembic_upgrade_task), timeout=30)
+        except (asyncio.TimeoutError, asyncio.CancelledError):
+            logger.warning("Waiting for alembic migration timed out")
+
+
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     global _init_done
     if not _init_done:
@@ -114,5 +126,6 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
             if not _init_done:
                 await init_db()
                 _init_done = True
+    await _wait_for_migration()
     async with _session_factory() as session:
         yield session

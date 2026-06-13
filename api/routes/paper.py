@@ -79,13 +79,14 @@ async def _update_prices():
                     price = float(df["Close"].iloc[-1])
                     _price_cache[s] = (price, now)
             except Exception:
+                logger.debug("Failed to fetch price for %s", s)
                 continue
         for s in symbols:
             cached = _price_cache.get(s)
             if cached:
                 _paper["lastPrices"][s] = cached[0]
     except Exception:
-        pass
+        logger.warning("Failed to update paper prices", exc_info=True)
 
 
 def _recalculate():
@@ -140,7 +141,7 @@ def _write_audit_log(req: PlaceOrderRequest, request: Request):
         if len(_audit_logs) > 5000:
             _audit_logs[:len(_audit_logs) - 5000] = []
     except Exception:
-        pass
+        logger.debug("Failed to write paper audit log")
 
 
 @router.get("/paper/account")

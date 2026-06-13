@@ -1,3 +1,16 @@
+const DEFAULT_TIMEOUT = 30_000
+
+async function fetchWithTimeout(input: RequestInfo, init?: RequestInit, timeout = DEFAULT_TIMEOUT): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeout)
+  try {
+    const res = await fetch(input, { ...init, signal: controller.signal })
+    return res
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 export interface LLMModel {
   id: string
   name: string
@@ -14,13 +27,13 @@ export interface LLMCompletion {
 }
 
 export async function fetchLLMModels(): Promise<{ models: LLMModel[] }> {
-  const res = await fetch('/api/llm/models')
+  const res = await fetchWithTimeout('/api/llm/models')
   if (!res.ok) throw new Error('Failed to fetch LLM models')
   return res.json()
 }
 
 export async function llmComplete(model: string, prompt: string, options?: { temperature?: number; max_tokens?: number; reasoning?: boolean }): Promise<LLMCompletion> {
-  const res = await fetch('/api/llm/complete', {
+  const res = await fetchWithTimeout('/api/llm/complete', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ model, prompt, ...options }),
@@ -35,7 +48,7 @@ export async function llmCompleteStream(
   onToken: (token: string) => void,
   options?: { temperature?: number; max_tokens?: number }
 ): Promise<void> {
-  const res = await fetch('/api/llm/complete-stream', {
+  const res = await fetchWithTimeout('/api/llm/complete-stream', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ model, prompt, temperature: options?.temperature ?? 0.7, max_tokens: options?.max_tokens ?? 4096 }),
@@ -67,13 +80,13 @@ export async function llmCompleteStream(
 }
 
 export async function briefingGet(): Promise<{ briefing: string; generated_at: string; data_summary: any }> {
-  const res = await fetch('/api/ai/briefing')
+  const res = await fetchWithTimeout('/api/ai/briefing')
   if (!res.ok) throw new Error('Failed to fetch briefing')
   return res.json()
 }
 
 export async function coMovementGet(headline: string, tickers: string[], priceChanges: Record<string, number>): Promise<{ co_movements: any[]; source: string }> {
-  const res = await fetch('/api/ai/co-movement', {
+  const res = await fetchWithTimeout('/api/ai/co-movement', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ headline, tickers, price_changes: priceChanges }),
@@ -83,7 +96,7 @@ export async function coMovementGet(headline: string, tickers: string[], priceCh
 }
 
 export async function earningsSummaryGet(symbol: string, transcriptText: string): Promise<{ symbol: string; summary: string; generated_at: string }> {
-  const res = await fetch('/api/ai/earnings-summary', {
+  const res = await fetchWithTimeout('/api/ai/earnings-summary', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ symbol, transcript_text: transcriptText }),
@@ -93,7 +106,7 @@ export async function earningsSummaryGet(symbol: string, transcriptText: string)
 }
 
 export async function generateStrategy(description: string, symbol?: string): Promise<{ code: string; explanation: string; symbol: string; warnings: string[] }> {
-  const res = await fetch('/api/ai/generate-strategy', {
+  const res = await fetchWithTimeout('/api/ai/generate-strategy', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ description, symbol }),
@@ -103,7 +116,7 @@ export async function generateStrategy(description: string, symbol?: string): Pr
 }
 
 export async function evaluateStrategy(code: string, symbol?: string, start?: string, end?: string): Promise<{ symbol: string; signals: any[]; plots: any; trades: any[]; metrics: any }> {
-  const res = await fetch('/api/ai/evaluate-strategy', {
+  const res = await fetchWithTimeout('/api/ai/evaluate-strategy', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code, symbol: symbol || 'AAPL', start: start || '2024-01-01', end: end || '2024-12-31' }),
@@ -113,7 +126,7 @@ export async function evaluateStrategy(code: string, symbol?: string, start?: st
 }
 
 export async function generateIndicator(description: string): Promise<{ code: string; name: string; id: string; warnings: string[] }> {
-  const res = await fetch('/api/ai/generate-indicator', {
+  const res = await fetchWithTimeout('/api/ai/generate-indicator', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ description }),
@@ -123,7 +136,7 @@ export async function generateIndicator(description: string): Promise<{ code: st
 }
 
 export async function inspectPattern(symbol: string, pattern: any, priceDataSummary?: string, recentSignals?: any[]): Promise<Response> {
-  const res = await fetch('/api/ai/inspect-pattern', {
+  const res = await fetchWithTimeout('/api/ai/inspect-pattern', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ symbol, pattern, price_data_summary: priceDataSummary || '', recent_signals: recentSignals || [] }),
@@ -133,7 +146,7 @@ export async function inspectPattern(symbol: string, pattern: any, priceDataSumm
 }
 
 export async function strategyHealthCheck(strategyName: string, strategyCode: string, recentPerformance: any[], currentRegime: string): Promise<any> {
-  const res = await fetch('/api/ai/strategy-health', {
+  const res = await fetchWithTimeout('/api/ai/strategy-health', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ strategy_name: strategyName, strategy_code: strategyCode, recent_performance: recentPerformance, current_regime: currentRegime }),
   })
@@ -142,7 +155,7 @@ export async function strategyHealthCheck(strategyName: string, strategyCode: st
 }
 
 export async function autoTagTrades(trades: any[]): Promise<{ tagged_trades: any[] }> {
-  const res = await fetch('/api/ai/auto-tag-trades', {
+  const res = await fetchWithTimeout('/api/ai/auto-tag-trades', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ trades }),
   })
@@ -151,7 +164,7 @@ export async function autoTagTrades(trades: any[]): Promise<{ tagged_trades: any
 }
 
 export async function explainPnL(period: string, trades: any[], portfolioValueHistory: any[], marketRegime: string, topPerformers: string[], worstPerformers: string[]): Promise<any> {
-  const res = await fetch('/api/ai/explain-pnl', {
+  const res = await fetchWithTimeout('/api/ai/explain-pnl', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ period, trades, portfolio_value_history: portfolioValueHistory, market_regime: marketRegime, top_performers: topPerformers, worst_performers: worstPerformers }),
   })
@@ -160,13 +173,13 @@ export async function explainPnL(period: string, trades: any[], portfolioValueHi
 }
 
 export async function listPrompts(): Promise<{ prompts: any[]; total: number }> {
-  const res = await fetch('/api/ai/prompts')
+  const res = await fetchWithTimeout('/api/ai/prompts')
   if (!res.ok) throw new Error('Failed to list prompts')
   return res.json()
 }
 
 export async function createPrompt(data: any): Promise<any> {
-  const res = await fetch('/api/ai/prompts', {
+  const res = await fetchWithTimeout('/api/ai/prompts', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   })
@@ -175,7 +188,7 @@ export async function createPrompt(data: any): Promise<any> {
 }
 
 export async function updatePrompt(id: string, data: any): Promise<any> {
-  const res = await fetch(`/api/ai/prompts/${id}`, {
+  const res = await fetchWithTimeout(`/api/ai/prompts/${id}`, {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   })
@@ -184,18 +197,18 @@ export async function updatePrompt(id: string, data: any): Promise<any> {
 }
 
 export async function deletePrompt(id: string): Promise<void> {
-  const res = await fetch(`/api/ai/prompts/${id}`, { method: 'DELETE' })
+  const res = await fetchWithTimeout(`/api/ai/prompts/${id}`, { method: 'DELETE' })
   if (!res.ok) throw new Error('Failed to delete prompt')
 }
 
 export async function clonePrompt(id: string): Promise<any> {
-  const res = await fetch(`/api/ai/prompts/${id}/clone`, { method: 'POST' })
+  const res = await fetchWithTimeout(`/api/ai/prompts/${id}/clone`, { method: 'POST' })
   if (!res.ok) throw new Error('Failed to clone prompt')
   return res.json()
 }
 
 export async function compareLeaderboard(aiTrades: any[], humanTrades: any[], period: string): Promise<any> {
-  const res = await fetch('/api/ai/leaderboard/compare', {
+  const res = await fetchWithTimeout('/api/ai/leaderboard/compare', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ai_trades: aiTrades, human_trades: humanTrades, period }),
   })
@@ -204,7 +217,7 @@ export async function compareLeaderboard(aiTrades: any[], humanTrades: any[], pe
 }
 
 export async function explainStop(data: any): Promise<any> {
-  const res = await fetch('/api/ai/explain-stop', {
+  const res = await fetchWithTimeout('/api/ai/explain-stop', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   })
@@ -213,7 +226,7 @@ export async function explainStop(data: any): Promise<any> {
 }
 
 export async function tradeCoach(trade: any, recentTrades: any[]): Promise<any> {
-  const res = await fetch('/api/ai/trade-coach', {
+  const res = await fetchWithTimeout('/api/ai/trade-coach', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ trade, recent_trades: recentTrades }),
   })
@@ -222,7 +235,7 @@ export async function tradeCoach(trade: any, recentTrades: any[]): Promise<any> 
 }
 
 export async function generateRiskReport(email: string | null, period: string, portfolioData: any, trades: any[], marketRegime: string): Promise<any> {
-  const res = await fetch('/api/ai/risk-report', {
+  const res = await fetchWithTimeout('/api/ai/risk-report', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, period, portfolio_data: portfolioData, trades, market_regime: marketRegime }),
   })
@@ -231,7 +244,7 @@ export async function generateRiskReport(email: string | null, period: string, p
 }
 
 export async function llmQuery(query: string, messageHistory?: { role: string; content: string }[]): Promise<{ response: string; context_used: string[] }> {
-  const res = await fetch('/api/llm/query', {
+  const res = await fetchWithTimeout('/api/llm/query', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ query, message_history: messageHistory || [] }),
