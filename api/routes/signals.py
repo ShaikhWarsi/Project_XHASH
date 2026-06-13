@@ -87,7 +87,7 @@ async def get_signals_count():
     return {"count": total, "symbols": len(sm.signals)}
 
 
-@router.get("")
+@router.get("/")
 async def get_signals(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),

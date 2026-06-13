@@ -1,4 +1,4 @@
-export type RouteGroup = 'markets' | 'trading' | 'risk' | 'strategy' | 'ai' | 'research' | 'data' | 'settings'
+export type RouteGroup = 'markets' | 'trading' | 'risk' | 'strategy' | 'ai' | 'research' | 'data' | 'settings' | 'admin'
 export type WorkflowGroup = 'trader' | 'quant' | 'researcher' | 'admin'
 
 export interface RouteConfig {
@@ -84,6 +84,35 @@ export const ROUTES: RouteConfig[] = [
   { path: '/settings/infrastructure', label: 'Infrastructure', group: 'settings', workflow: 'admin' },
   { path: '/settings/audit-log', label: 'Audit Log', group: 'settings', workflow: 'admin' },
   { path: '/settings/bots', label: 'Bot Integrations', group: 'settings', workflow: 'admin' },
+
+  // Admin / OpenAlgo
+  { path: '/openalgo/apikey', label: 'API Keys', group: 'admin', workflow: 'admin' },
+  { path: '/openalgo/latency', label: 'Latency', group: 'admin', workflow: 'admin' },
+  { path: '/openalgo/traffic', label: 'Traffic', group: 'admin', workflow: 'admin' },
+  { path: '/openalgo/pnl', label: 'P&L Tracker', group: 'admin', workflow: 'admin' },
+  { path: '/openalgo/action-center', label: 'Action Center', group: 'admin', workflow: 'admin' },
+  { path: '/openalgo/health', label: 'Health', group: 'admin', workflow: 'admin' },
+  { path: '/openalgo/master-contract', label: 'Master Contract', group: 'admin', workflow: 'admin' },
+  { path: '/openalgo/master-contract/view', label: 'Master Contract View', group: 'admin', workflow: 'admin' },
+  { path: '/openalgo/sandbox', label: 'Sandbox', group: 'admin', workflow: 'admin' },
+  { path: '/openalgo/analyzer', label: 'Analyzer', group: 'admin', workflow: 'admin' },
+  { path: '/openalgo/security', label: 'Security', group: 'admin', workflow: 'admin' },
+  { path: '/openalgo/security-admin', label: 'Security Admin', group: 'admin', workflow: 'admin' },
+  { path: '/openalgo/gtt', label: 'GTT Orders', group: 'admin', workflow: 'admin' },
+  { path: '/openalgo/python-strategy', label: 'Python Strategy', group: 'admin', workflow: 'admin' },
+  { path: '/openalgo/flow', label: 'Flow Builder', group: 'admin', workflow: 'admin' },
+  { path: '/openalgo/ws-proxy', label: 'WebSocket Proxy', group: 'admin', workflow: 'admin' },
+  { path: '/openalgo/telegram-bot', label: 'Telegram Bot', group: 'admin', workflow: 'admin' },
+  { path: '/openalgo/mcp-oauth', label: 'MCP OAuth', group: 'admin', workflow: 'admin' },
+  { path: '/openalgo/webhook-bridges', label: 'Webhook Bridges', group: 'admin', workflow: 'admin' },
+  { path: '/openalgo/chartink', label: 'ChartInk', group: 'admin', workflow: 'admin' },
+  { path: '/openalgo/historify', label: 'Historify', group: 'admin', workflow: 'admin' },
+  { path: '/openalgo/playground', label: 'API Playground', group: 'admin', workflow: 'admin' },
+  { path: '/openalgo/multiquotes', label: 'Multi Quotes', group: 'admin', workflow: 'admin' },
+  { path: '/openalgo/market-timings', label: 'Market Timings', group: 'admin', workflow: 'admin' },
+  { path: '/openalgo/market-holidays', label: 'Market Holidays', group: 'admin', workflow: 'admin' },
+  { path: '/openalgo/whatsapp', label: 'WhatsApp Bot', group: 'admin', workflow: 'admin' },
+  { path: '/openalgo/strategy-portfolio', label: 'Strategy Portfolio', group: 'admin', workflow: 'admin' },
 ]
 
 export function getRouteLabel(path: string): string {
@@ -108,4 +137,5 @@ export const GROUP_LABELS: Record<string, string> = {
   research: 'RESEARCH',
   data: 'DATA',
   settings: 'SETTINGS',
+  admin: 'ADMIN',
 }

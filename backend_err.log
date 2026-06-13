@@ -1,2 +1,8 @@
-INFO:     Started server process [23320]
+ORDERS: Using in-memory _orders list. Set WARN_MULTI_WORKER=0 to suppress. Deploy with --workers 1 or add Redis-backed storage for multi-worker safety.
+PAPER: Using in-memory _paper dict. Set WARN_MULTI_WORKER=0 to suppress. Deploy with --workers 1 or add Redis-backed storage for multi-worker safety.
+[models_auth] WARNING: API_KEY_PEPPER not set; using auto-generated ephemeral key.
+Set API_KEY_PEPPER in your environment for persistent encryption.
+[models_auth] WARNING: FERNET_SALT not set or invalid; using legacy static salt.
+Set FERNET_SALT in your environment for secure Fernet encryption.
+INFO:     Started server process [14548]
 INFO:     Waiting for application startup.

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ExternalLink, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { useHeldTickers } from '../../hooks/useHeldTickers'
+import { api } from '../../api/client'
 
 interface NewsItem {
   ticker: string
@@ -41,15 +42,8 @@ export default function NewsPanel() {
       return
     }
     try {
-      const res = await fetch('/api/news/for-tickers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ symbols: tickers }),
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setNews(data.news ?? [])
-      }
+      const res = await api.post('/news/for-tickers', { symbols: tickers })
+      setNews(res.data.news ?? [])
     } catch (e) { console.warn('[News] fetch failed:', e) } finally {
       setLoading(false)
     }

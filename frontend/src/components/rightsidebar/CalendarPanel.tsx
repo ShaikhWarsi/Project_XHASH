@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Calendar, DollarSign, TrendingUp, ExternalLink } from 'lucide-react'
 import { useHeldTickers } from '../../hooks/useHeldTickers'
-
+import { api } from '../../api/client'
+ 
 interface MacroEvent {
   time: string
   label: string
@@ -45,15 +46,8 @@ export default function CalendarPanel() {
       return
     }
     try {
-      const res = await fetch('/api/calendar/today', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ symbols: tickers }),
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setCal(data)
-      }
+      const res = await api.post('/calendar/today', { symbols: tickers })
+      setCal(res.data)
     } catch (e) { console.warn('[Calendar] fetch failed:', e) } finally {
       setLoading(false)
     }

@@ -11,6 +11,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from api.services import telegram_bot_service
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
@@ -91,21 +93,9 @@ async def _send_slack_webhook(webhook_url: str, title: str, message: str, level:
 async def _send_telegram(bot_token: str, chat_id: str, title: str, message: str, level: str) -> dict[str, Any]:
     if not bot_token or not chat_id:
         return {"success": False, "message": "Bot token or chat_id not configured"}
-    try:
-        import aiohttp
-        emoji_map = {"info": "ℹ️", "warning": "⚠️", "critical": "🚨", "success": "✅"}
-        text = f"{emoji_map.get(level, '')} *{title}*\n\n{message}"
-        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, json={"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}, timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                if resp.status == 200:
-                    return {"success": True, "message": "Telegram alert sent"}
-                body = await resp.json()
-                return {"success": False, "message": f"Telegram error: {body.get('description', 'unknown')}"}
-    except ImportError:
-        return {"success": False, "message": "aiohttp not installed. Run: pip install aiohttp"}
-    except Exception as e:
-        return {"success": False, "message": f"Telegram error: {str(e)[:200]}"}
+    emoji_map = {"info": "ℹ️", "warning": "⚠️", "critical": "🚨", "success": "✅"}
+    text = f"{emoji_map.get(level, '')} *{title}*\n\n{message}"
+    return await api_services.telegram_bot_service.send_alert(bot_token, chat_id, text)
 
 
 async def _send_email(config: dict, title: str, message: str) -> dict[str, Any]:
@@ -233,8 +223,12 @@ async def telegram_webhook(body: dict[str, Any]):
     chat_id = message.get("chat", {}).get("id")
     logger.info("Telegram webhook received: chat=%s text='%s'", chat_id, text[:200])
     if "telegram-signals" in _bots:
+        config = _bots["telegram-signals"]["config"]
         _bots["telegram-signals"]["connected"] = True
         _bots["telegram-signals"]["last_active"] = datetime.now(timezone.utc).isoformat()
+        if text.startswith("/"):
+            token = config.get("bot_token", "")
+            await telegram_bot_service.handle_webhook(token, body)
     return {"ok": True}
 
 

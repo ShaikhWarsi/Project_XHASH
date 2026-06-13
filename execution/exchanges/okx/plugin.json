@@ -1,0 +1,12 @@
+{
+    "Plugin Name": "okx",
+    "Plugin URI": "https://xkahash.dev",
+    "Description": "OKX Integration",
+    "Version": "1.0",
+    "Author": "X_KA_HASH",
+    "supported_exchanges": ["okx"],
+    "broker_type": "crypto",
+    "leverage_config": true,
+    "ccxt": true,
+    "ws_supported": true
+}

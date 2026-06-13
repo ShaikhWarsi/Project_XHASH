@@ -99,3 +99,81 @@ async def panic_button(request: Request):
         pass
 
     return result
+
+
+@router.post("/cancel-all")
+async def cancel_all_orders(request: Request):
+    try:
+        api_key = request.headers.get("X-API-Key", "unknown")
+        from api.services.cancel_all_order_service import cancel_all_orders as _cancel_all
+        success, data, status_code = await _cancel_all(
+            cancel_fn=_cancel_live_orders,
+            sandbox_cancel_fn=_cancel_sandbox_orders,
+            is_analyze="sandbox" in str(request.url),
+        )
+        return _json_response(data, status_code)
+    except Exception as e:
+        logger.exception(f"/cancel-all failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/close-positions")
+async def close_all_positions(request: Request):
+    try:
+        from api.services.close_position_service import close_position
+        success, data, status_code = await close_position(
+            position_data={"all": True},
+            close_fn=_close_live_positions,
+            sandbox_close_fn=_close_sandbox_positions,
+            is_analyze="sandbox" in str(request.url),
+        )
+        return _json_response(data, status_code)
+    except Exception as e:
+        logger.exception(f"/close-positions failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- internal helpers ---
+
+async def _cancel_live_orders() -> tuple[list, list]:
+    canceled: list[dict] = []
+    failed: list[dict] = []
+    try:
+        from api.routes.orders import _orders, _orders_lock
+        async with _orders_lock:
+            for o in _orders:
+                if o.get("status") in ("SUBMITTED", "ACCEPTED", "PARTIAL"):
+                    o["status"] = "CANCELED"
+                    o["updatedAt"] = datetime.now(timezone.utc).isoformat()
+                    canceled.append(o)
+    except Exception as e:
+        failed.append({"error": str(e)})
+    return canceled, failed
+
+
+async def _cancel_sandbox_orders() -> dict:
+    return {"canceled_orders": [], "failed_cancellations": []}
+
+
+async def _close_live_positions(position_data: dict) -> dict:
+    try:
+        from api.state import app_state
+        portfolio = await app_state.async_get_portfolio()
+        closed = 0
+        for sym, pos in list(portfolio.positions.items()):
+            if pos.quantity != 0:
+                pos.quantity = 0
+                closed += 1
+        await app_state.async_set_portfolio(portfolio)
+        return {"status": "success", "closed_positions": closed}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+async def _close_sandbox_positions(position_data: dict) -> dict:
+    return {"status": "success", "message": "Sandbox positions closed"}
+
+
+def _json_response(data: dict, status_code: int):
+    from fastapi.responses import JSONResponse
+    return JSONResponse(content=data, status_code=status_code)

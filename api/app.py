@@ -194,8 +194,42 @@ from .routes.tradingagents_routes import router as tradingagents_router
 from .routes.alt_data_routes import router as alt_data_router
 from .routes.marketplace_routes import router as marketplace_router
 from .routes.health_routes import router as health_router
+from .routes.apikey import router as apikey_router
+from .routes.latency import router as latency_router
+from .routes.traffic import router as traffic_router
+from .routes.health_detailed import router as health_detailed_router
+from .routes.master_contract_status import router as master_contract_router
+from .routes.action_center import router as action_center_router
+from .routes.sandbox import router as sandbox_router
+from .routes.analyzer import router as analyzer_router
+from .routes.smart_order import router as smart_order_router
+from .routes.split_order import router as split_order_router
+from .routes.basket_order import router as basket_order_router
+from .routes.pnltracker import router as pnltracker_router
+from .routes.security_dashboard import router as security_dashboard_router
+from .routes.gtt import router as gtt_router
+from .routes.python_strategy import router as python_strategy_router
+from .routes.flow import router as flow_router
+from .routes.market_holidays import router as market_holidays_router
+from .routes.market_timings import router as market_timings_router
+from .routes.multiquotes import router as multiquotes_router
+from .routes.multi_option_greeks import router as multi_option_greeks_router
+from .routes.ws_proxy import router as ws_proxy_router
+from .routes.mcp_oauth import router as mcp_oauth_router, wellknown_router as mcp_wellknown_router
+from .routes.chartink import router as chartink_router
+from .routes.historify import router as historify_router
+from .routes.tv_webhook import router as tv_webhook_router
+from .routes.gc_webhook import router as gc_webhook_router
+from .routes.playground import router as playground_router
+from .routes.whatsapp import router as whatsapp_router
+from .routes.strategy_portfolio import router as strategy_portfolio_router
+from .routes.security_routes import router as security_admin_router
+from .routes.symbols import router as symbols_router
 from persistence import init_db, close_db
 from persistence.database import _engine as db_engine
+from persistence.multi_db import multi_db as openalgo_multi_db
+from api.utils.health_monitor import start_health_monitoring
+from api.services.broker_keepalive_service import start_broker_keepalive, stop_broker_keepalive
 
 logger = logging.getLogger(__name__)
 
@@ -205,6 +239,7 @@ _background_tasks: list[asyncio.Task] = []
 _scheduler = None
 _request_latencies: dict[str, list[float]] = {}
 _metrics_lock = asyncio.Lock()
+_app_instance: FastAPI | None = None
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
@@ -345,94 +380,94 @@ def start_background_tasks():
     _background_tasks.append(t2)
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
+# ── Startup / Shutdown helpers (called by _lifespan) ──
+
+async def _startup():
     global _shutting_down
     try:
-        print("LIFESPAN_DEBUG: init_db starting", flush=True)
-        await init_db()
-        print("LIFESPAN_DEBUG: init_db done", flush=True)
-        await seed_demo_data()
-        print("LIFESPAN_DEBUG: seed_demo_data done", flush=True)
+        await asyncio.wait_for(init_db(), timeout=30)
+    except asyncio.TimeoutError:
+        logger.warning("Database init timed out — continuing startup")
+    except Exception as e:
+        logger.warning("Database init failed: %s — continuing startup", e)
+    try:
+        await asyncio.wait_for(seed_demo_data(), timeout=60)
+    except asyncio.TimeoutError:
+        logger.warning("Demo data seeding timed out — continuing startup")
+    except Exception as e:
+        logger.warning("Demo data seeding failed: %s — continuing startup", e)
 
-        print("LIFESPAN_DEBUG: loading API keys from DB", flush=True)
+    try:
+        await openalgo_multi_db.init_all()
+        logger.info("OpenAlgo multi-database initialized")
+    except Exception as e:
+        logger.warning("Failed to initialize OpenAlgo multi-database: %s", e)
+
+    try:
+        import json
+        from sqlalchemy import select
+        from persistence.database import _session_factory
+        from persistence.models import ApiKey
+        from data.registry import registry
+        from data.providers import global_provider_registry
+        async with _session_factory() as session:
+            stmt = select(ApiKey).where(ApiKey.is_active == 1)
+            result = await session.execute(stmt)
+            keys = result.scalars().all()
+            for key in keys:
+                try:
+                    config = json.loads(key.key_value)
+                    if key.provider in registry._providers:
+                        registry._providers[key.provider].credentials.update(config)
+                        logger.info("Restored credentials for registry provider: %s", key.provider)
+                    p = global_provider_registry.get(key.provider)
+                    if p and hasattr(p, "credentials") and isinstance(p.credentials, dict):
+                        p.credentials.update(config)
+                        logger.info("Restored credentials for global provider: %s", key.provider)
+                except Exception as ex:
+                    logger.warning("Failed to restore credentials for %s: %s", key.provider, ex)
+    except Exception as e:
+        logger.warning("Failed to load API keys: %s", e)
+
+    try:
+        yfinance_provider = YFinanceProvider()
+        global_provider_registry.register(yfinance_provider, enabled=True)
+        logger.info("Registered YFinance provider")
+    except Exception as e:
+        logger.warning("Failed to register YFinance: %s", e)
+
+    if _env_bool("TRADING_ENGINE_MARKET_INTEL_ENABLED", True):
         try:
-            import json
-            from sqlalchemy import select
-            from persistence.database import _session_factory
-            from persistence.models import ApiKey
-            from data.registry import registry
-            from data.providers import global_provider_registry
-
-            async with _session_factory() as session:
-                stmt = select(ApiKey).where(ApiKey.is_active == 1)
-                result = await session.execute(stmt)
-                keys = result.scalars().all()
-                for key in keys:
-                    try:
-                        config = json.loads(key.key_value)
-                        if key.provider in registry._providers:
-                            registry._providers[key.provider].credentials.update(config)
-                            logger.info("Restored credentials for registry provider: %s", key.provider)
-                        p = global_provider_registry.get(key.provider)
-                        if p and hasattr(p, "credentials") and isinstance(p.credentials, dict):
-                            p.credentials.update(config)
-                            logger.info("Restored credentials for global_provider_registry provider: %s", key.provider)
-                    except Exception as ex:
-                        logger.warning("Failed to restore credentials for %s: %s", key.provider, ex)
-        except Exception as e:
-            logger.warning("Failed to load and seed API keys on startup: %s", e)
-        print("LIFESPAN_DEBUG: API keys loaded", flush=True)
-
-        print("LIFESPAN_DEBUG: registering YFinance", flush=True)
-        try:
-            yfinance_provider = YFinanceProvider()
-            global_provider_registry.register(yfinance_provider, enabled=True)
-            logger.info("Registered YFinance provider")
-        except Exception as e:
-            logger.warning("Failed to register YFinance provider: %s", e)
-        print("LIFESPAN_DEBUG: YFinance registered", flush=True)
-
-        print("LIFESPAN_DEBUG: starting background tasks", flush=True)
-        if _env_bool("TRADING_ENGINE_MARKET_INTEL_ENABLED", True):
             start_background_tasks()
-        print("LIFESPAN_DEBUG: background tasks started", flush=True)
+        except Exception as e:
+            logger.warning("start_background_tasks failed: %s", e)
 
-        print("LIFESPAN_DEBUG: registering signal handlers", flush=True)
+    try:
+        if _env_bool("HEALTH_MONITOR_ENABLED", True):
+            start_health_monitoring()
+    except Exception as e:
+        logger.warning("Failed to start health monitoring: %s", e)
+
+    try:
+        await start_broker_keepalive(_app_instance)
+    except Exception as e:
+        logger.warning("Failed to start broker keepalive: %s", e)
+
+    try:
+        from api.services.security_service import security_service
+        security_service.cleanup_expired_bans()
+    except Exception as e:
+        logger.warning("Failed to cleanup bans: %s", e)
+
+    try:
         loop = asyncio.get_event_loop()
         for sig in (signal.SIGTERM, signal.SIGINT):
             try:
                 loop.add_signal_handler(sig, lambda s=sig: asyncio.create_task(_handle_shutdown(s)))
             except NotImplementedError:
                 pass
-        print("LIFESPAN_DEBUG: signal handlers registered", flush=True)
-
-        yield
-    finally:
-        _shutting_down = True
-        logger.warning("Shutdown phase 1/3: stop accepting new requests")
-
-        await asyncio.sleep(0.5)
-
-        logger.warning("Shutdown phase 2/3: drain in-flight (%ds window)", 30)
-        await asyncio.sleep(30)
-
-        global _scheduler
-        if _scheduler:
-            _scheduler.shutdown(wait=False)
-        for task in _background_tasks:
-            task.cancel()
-        if _background_tasks:
-            await asyncio.wait(_background_tasks, timeout=10)
-        await close_db()
-        logger.warning("Shutdown phase 3/3: complete")
-
-
-async def _handle_shutdown(sig: signal.Signals):
-    global _shutting_down
-    _shutting_down = True
-    logger.warning("Received signal %s, initiating graceful shutdown", sig.name)
-
+    except Exception:
+        pass
 
 
 def _check_db():
@@ -479,23 +514,63 @@ def _check_disk():
         return {"status": "error", "detail": str(e)[:100]}
 
 
-def create_app(title: str = "Trading Engine API") -> FastAPI:
-    app = FastAPI(title=title, version="0.2.0", lifespan=lifespan)
+async def _handle_shutdown(sig: signal.Signals):
+    global _shutting_down
+    _shutting_down = True
+    logger.warning("Received signal %s, initiating graceful shutdown", sig.name)
 
-    raw_origins = os.environ.get("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000")
-    cors_origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
-    allow_all = "*" in cors_origins
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"] if allow_all else cors_origins,
-        allow_credentials=not allow_all,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-    if allow_all:
-        logger.info("CORS: allowing all origins (credentials disabled)")
+
+async def _shutdown():
+    global _shutting_down
+    _shutting_down = True
+    logger.warning("Shutdown phase 1/3: stop accepting new requests")
+    await asyncio.sleep(0.5)
+    logger.warning("Shutdown phase 2/3: drain in-flight (%ds window)", 30)
+    await asyncio.sleep(30)
+    global _scheduler
+    if _scheduler:
+        _scheduler.shutdown(wait=False)
+    for task in _background_tasks:
+        task.cancel()
+    if _background_tasks:
+        await asyncio.wait(_background_tasks, timeout=10)
+    await stop_broker_keepalive(_app_instance)
+    await close_db()
+    try:
+        await openalgo_multi_db.close_all()
+    except Exception as e:
+        logger.warning("Error closing OpenAlgo databases: %s", e)
+    logger.warning("Shutdown phase 3/3: complete")
+
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    await _startup()
+    yield
+    await _shutdown()
+
+
+def create_app(title: str = "Trading Engine API") -> FastAPI:
+    global _app_instance
+    app = FastAPI(title=title, version="0.2.0", lifespan=_lifespan)
+    _app_instance = app
+
+    from .middleware.cors import get_cors_config
+    cors_config = get_cors_config()
+    app.add_middleware(CORSMiddleware, **cors_config)
 
     app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+    from .middleware.traffic_logger import TrafficLoggerMiddleware
+    from .middleware.traffic_security import SecurityMiddleware
+    from .middleware.security_middleware import SecurityMiddleware as IpBanMiddleware
+    from .middleware.csp import CSPMiddleware
+    from .middleware.csrf import CSRFMiddleware
+    app.add_middleware(TrafficLoggerMiddleware)
+    app.add_middleware(SecurityMiddleware)
+    app.add_middleware(IpBanMiddleware)
+    app.add_middleware(CSPMiddleware)
+    app.add_middleware(CSRFMiddleware)
 
     @app.middleware("http")
     async def cache_control_middleware(request: Request, call_next):
@@ -569,22 +644,6 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
             return response
         finally:
             request_id_var.reset(token)
-
-    @app.middleware("http")
-    async def csp_middleware(request: Request, call_next):
-        response = await call_next(request)
-        response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; "
-            "style-src 'self' 'unsafe-inline' https:; "
-            "img-src 'self' data: https:; "
-            "font-src 'self' data: https:; "
-            "connect-src 'self' https: wss:; "
-            "frame-ancestors 'none';"
-        )
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        return response
 
     @app.middleware("http")
     async def audit_middleware(request: Request, call_next):
@@ -790,6 +849,38 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
     app.include_router(alt_data_router)
     app.include_router(marketplace_router)
     app.include_router(health_router)
+    app.include_router(apikey_router)
+    app.include_router(latency_router)
+    app.include_router(traffic_router)
+    app.include_router(health_detailed_router)
+    app.include_router(master_contract_router)
+    app.include_router(action_center_router)
+    app.include_router(sandbox_router)
+    app.include_router(analyzer_router)
+    app.include_router(smart_order_router)
+    app.include_router(basket_order_router)
+    app.include_router(split_order_router)
+    app.include_router(pnltracker_router)
+    app.include_router(security_dashboard_router)
+    app.include_router(gtt_router)
+    app.include_router(python_strategy_router)
+    app.include_router(flow_router)
+    app.include_router(market_holidays_router)
+    app.include_router(market_timings_router)
+    app.include_router(multiquotes_router)
+    app.include_router(multi_option_greeks_router)
+    app.include_router(ws_proxy_router)
+    app.include_router(mcp_oauth_router)
+    app.include_router(mcp_wellknown_router)
+    app.include_router(chartink_router)
+    app.include_router(tv_webhook_router)
+    app.include_router(gc_webhook_router)
+    app.include_router(historify_router)
+    app.include_router(playground_router)
+    app.include_router(whatsapp_router)
+    app.include_router(strategy_portfolio_router)
+    app.include_router(security_admin_router)
+    app.include_router(symbols_router)
 
     @app.get("/")
     async def root():

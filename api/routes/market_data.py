@@ -301,3 +301,21 @@ async def create_alert(body: AlertCreateRequest, session: AsyncSession = Depends
 async def delete_alert(alert_id: int, user_id: str = "default", session: AsyncSession = Depends(get_session)):
     success = await AlertRepository.delete_alert(session, alert_id, user_id)
     return {"success": success}
+
+
+@router.get("/regime")
+async def get_market_regime():
+    from api.state import app_state
+    try:
+        sm = await app_state.async_get_signals()
+        if sm and sm.regime:
+            regime_data = {
+                "regime": sm.regime.primary.value if hasattr(sm.regime.primary, "value") else "unknown",
+                "confidence": sm.regime.confidence,
+                "actionable": "hold",
+                "strategies": [],
+            }
+            return regime_data
+    except Exception:
+        logger.debug("Failed to fetch regime from signal engine", exc_info=True)
+    return {"regime": "unknown", "actionable": "hold", "strategies": []}

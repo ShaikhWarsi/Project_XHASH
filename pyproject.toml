@@ -26,6 +26,15 @@ dependencies = [
     "pydantic[email]>=2.0,<3.0",
     "slowapi>=0.1.9,<1.0",
     "requests>=2.31,<3.0",
+    "cachetools>=5.3,<6.0",
+    "argon2-cffi>=23.1,<24.0",
+    "cryptography>=42.0,<43.0",
+    "psutil>=5.9,<6.0",
+    "pyzmq>=26.0,<27.0",
+    "pytz>=2023.3",
+    "apscheduler>=3.10,<4.0",
+    "numpy>=1.24,<2.0",
+    "kaleido>=0.2.1,<1.0",
 ]
 
 [project.optional-dependencies]
@@ -70,6 +79,7 @@ backtest = [
 ]
 storage = [
     "arcticdb>=4.0.0",
+    "duckdb>=1.0",
 ]
 features = [
     "tsfresh>=0.20.0",

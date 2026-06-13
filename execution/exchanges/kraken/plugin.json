@@ -1,0 +1,12 @@
+{
+    "Plugin Name": "kraken",
+    "Plugin URI": "https://xkahash.dev",
+    "Description": "Kraken Integration",
+    "Version": "1.0",
+    "Author": "X_KA_HASH",
+    "supported_exchanges": ["kraken"],
+    "broker_type": "crypto",
+    "leverage_config": true,
+    "ccxt": true,
+    "ws_supported": true
+}

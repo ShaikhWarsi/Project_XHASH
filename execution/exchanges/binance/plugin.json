@@ -1,0 +1,12 @@
+{
+    "Plugin Name": "binance",
+    "Plugin URI": "https://xkahash.dev",
+    "Description": "Binance Integration",
+    "Version": "1.0",
+    "Author": "X_KA_HASH",
+    "supported_exchanges": ["binance"],
+    "broker_type": "crypto",
+    "leverage_config": true,
+    "ccxt": true,
+    "ws_supported": true
+}

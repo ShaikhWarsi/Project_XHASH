@@ -2,11 +2,15 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import time
 
+import pandas as pd
+import yfinance as yf
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from api.state import app_state
 from api.services.motd_service import get_motd
+from api.websocket_manager import manager
 
 DEV_MODE = os.getenv("DEV_MODE", "true").lower() in ("true", "1", "yes")
 

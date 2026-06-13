@@ -1,0 +1,12 @@
+{
+    "Plugin Name": "kucoin",
+    "Plugin URI": "https://xkahash.dev",
+    "Description": "KuCoin Integration",
+    "Version": "1.0",
+    "Author": "X_KA_HASH",
+    "supported_exchanges": ["kucoin"],
+    "broker_type": "crypto",
+    "leverage_config": true,
+    "ccxt": true,
+    "ws_supported": true
+}

@@ -1,0 +1,12 @@
+{
+    "Plugin Name": "deepcoin",
+    "Plugin URI": "https://xkahash.dev",
+    "Description": "Deepcoin Integration",
+    "Version": "1.0",
+    "Author": "X_KA_HASH",
+    "supported_exchanges": ["deepcoin"],
+    "broker_type": "crypto",
+    "leverage_config": true,
+    "ccxt": true,
+    "ws_supported": true
+}

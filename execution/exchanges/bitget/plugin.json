@@ -1,0 +1,12 @@
+{
+    "Plugin Name": "bitget",
+    "Plugin URI": "https://xkahash.dev",
+    "Description": "Bitget Integration",
+    "Version": "1.0",
+    "Author": "X_KA_HASH",
+    "supported_exchanges": ["bitget"],
+    "broker_type": "crypto",
+    "leverage_config": true,
+    "ccxt": true,
+    "ws_supported": true
+}

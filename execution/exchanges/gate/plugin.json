@@ -1,0 +1,12 @@
+{
+    "Plugin Name": "gate",
+    "Plugin URI": "https://xkahash.dev",
+    "Description": "Gate.io Integration",
+    "Version": "1.0",
+    "Author": "X_KA_HASH",
+    "supported_exchanges": ["gate"],
+    "broker_type": "crypto",
+    "leverage_config": true,
+    "ccxt": true,
+    "ws_supported": true
+}

@@ -15,7 +15,7 @@ export function RegimeSwitch() {
   useEffect(() => {
     let cancelled = false
     fetch('/api/market/regime')
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) return null; return r.json() })
       .then((json) => { if (!cancelled) setData(json) })
       .catch(() => { if (!cancelled) setData(null) })
       .finally(() => { if (!cancelled) setLoading(false) })

@@ -9,12 +9,12 @@ from alembic.config import Config
 from alembic.command import upgrade, stamp
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import NullPool
 
 logger = logging.getLogger(__name__)
 
 
 async def _run_alembic_upgrade_async(sync_url: str):
-    print("DB_DEBUG: alembic background task started", flush=True)
     try:
         await asyncio.wait_for(
             asyncio.to_thread(_run_alembic_upgrade, sync_url),
@@ -75,26 +75,23 @@ def _migrate_existing_tables(conn):
 
 async def init_db(db_url: Optional[str] = None):
     global _engine, _session_factory, _init_done
-    print("DB_DEBUG: init_db called", flush=True)
     url = db_url or get_db_path()
-    engine_kwargs = {"echo": False}
-    if not url.startswith("sqlite"):
+    engine_kwargs: dict = {"echo": False}
+    if url.startswith("sqlite"):
+        engine_kwargs["poolclass"] = NullPool
+    else:
         engine_kwargs["pool_size"] = 5
         engine_kwargs["max_overflow"] = 10
     _engine = create_async_engine(url, **engine_kwargs)
     _session_factory = async_sessionmaker(_engine, expire_on_commit=False)
 
-    print("DB_DEBUG: about to create_all", flush=True)
     from .models import Base
     async with _engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        # Add missing columns for existing tables (SQLite doesn't auto-alter)
         await conn.run_sync(_migrate_existing_tables)
-    print("DB_DEBUG: create_all done", flush=True)
     _init_done = True
     logger.info(f"Database initialized: {url}")
     asyncio.create_task(_run_alembic_upgrade_async(url.replace("+aiosqlite", "")))
-    print("DB_DEBUG: init_db complete", flush=True)
 
 
 async def close_db():

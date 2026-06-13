@@ -8,7 +8,7 @@ from api.services.motd_service import get_motd, update_motd
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/motd", tags=["motd"])
+router = APIRouter(prefix="/motd", tags=["motd"])
 
 
 class MotdUpdate(BaseModel):

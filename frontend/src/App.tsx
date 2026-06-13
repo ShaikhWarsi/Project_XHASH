@@ -1,4 +1,5 @@
 import { lazy, Suspense, type ReactNode } from 'react'
+import StrategyPortfolio from './pages/StrategyPortfolio'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import Layout from './components/Layout'
@@ -102,6 +103,43 @@ const Reflection = lazy(() => import('./pages/Reflection'))
 const WallClock = lazy(() => import('./pages/WallClock'))
 const DebugPage = lazy(() => import('./pages/Debug'))
 
+const ApiKeyPage = lazy(() => import('./pages/ApiKey'))
+const LatencyDashboard = lazy(() => import('./pages/LatencyDashboard'))
+const TrafficDashboard = lazy(() => import('./pages/TrafficDashboard'))
+const PnLTracker = lazy(() => import('./pages/PnLTracker'))
+const ActionCenter = lazy(() => import('./pages/ActionCenter'))
+const HealthMonitor = lazy(() => import('./pages/HealthMonitor'))
+const MasterContractStatusPage = lazy(() => import('./pages/MasterContractStatus'))
+const MasterContractViewPage = lazy(() => import('./pages/MasterContractView'))
+const SandboxPage = lazy(() => import('./pages/SandboxPage'))
+const Analyzer = lazy(() => import('./pages/Analyzer'))
+const SecurityDashboard = lazy(() => import('./pages/SecurityDashboard'))
+const SecurityAdmin = lazy(() => import('./pages/SecurityAdmin'))
+const GTTOrders = lazy(() => import('./pages/GTTOrders'))
+const PythonStrategyIndex = lazy(() => import('./pages/PythonStrategyIndex'))
+const PythonStrategyNew = lazy(() => import('./pages/PythonStrategyNew'))
+const PythonStrategyEdit = lazy(() => import('./pages/PythonStrategyEdit'))
+const PythonStrategyLogs = lazy(() => import('./pages/PythonStrategyLogs'))
+const PythonStrategySchedule = lazy(() => import('./pages/PythonStrategySchedule'))
+const FlowIndex = lazy(() => import('./pages/FlowIndex'))
+const FlowEditor = lazy(() => import('./pages/FlowEditor'))
+const WebSocketProxyDashboard = lazy(() => import('./pages/WebSocketProxyDashboard'))
+const MCPOAuthConfig = lazy(() => import('./pages/MCPOAuthConfig'))
+const TelegramBotDashboard = lazy(() => import('./pages/TelegramBotDashboard'))
+const Playground = lazy(() => import('./pages/Playground'))
+const WhatsAppBotPage = lazy(() => import('./pages/WhatsAppBotPage'))
+const Historify = lazy(() => import('./pages/Historify'))
+const HistorifyCharts = lazy(() => import('./pages/HistorifyCharts'))
+const WebhookBridges = lazy(() => import('./pages/WebhookBridges'))
+const StrategyPortfolioView = lazy(() => import('./pages/StrategyPortfolioView'))
+const MultiQuotesPage = lazy(() => import('./pages/MultiQuotesPage'))
+const MarketTimingsPage = lazy(() => import('./pages/MarketTimingsPage'))
+const MarketHolidaysPage = lazy(() => import('./pages/MarketHolidaysPage'))
+const ChartinkIndex = lazy(() => import('./pages/chartink/ChartinkIndex'))
+const NewChartinkStrategy = lazy(() => import('./pages/chartink/NewChartinkStrategy'))
+const ViewChartinkStrategy = lazy(() => import('./pages/chartink/ViewChartinkStrategy'))
+const ConfigureChartinkSymbols = lazy(() => import('./pages/chartink/ConfigureChartinkSymbols'))
+ 
 import Skeleton from './components/Skeleton'
 
 function PageFallback() {
@@ -220,6 +258,43 @@ export default function App() {
                   <Route path="/settings/reflection" element={<LazyPage><Reflection /></LazyPage>} />
                   <Route path="/settings/wall-clock" element={<LazyPage><WallClock /></LazyPage>} />
                   <Route path="/debug" element={<LazyPage><DebugPage /></LazyPage>} />
+                  <Route path="/openalgo/apikey" element={<LazyPage><ApiKeyPage /></LazyPage>} />
+                  <Route path="/openalgo/latency" element={<LazyPage><LatencyDashboard /></LazyPage>} />
+                  <Route path="/openalgo/traffic" element={<LazyPage><TrafficDashboard /></LazyPage>} />
+                  <Route path="/openalgo/pnl" element={<LazyPage><PnLTracker /></LazyPage>} />
+                  <Route path="/openalgo/action-center" element={<LazyPage><ActionCenter /></LazyPage>} />
+                  <Route path="/openalgo/health" element={<LazyPage><HealthMonitor /></LazyPage>} />
+                  <Route path="/openalgo/master-contract" element={<LazyPage><MasterContractStatusPage /></LazyPage>} />
+                  <Route path="/openalgo/master-contract/view" element={<LazyPage><MasterContractViewPage /></LazyPage>} />
+                  <Route path="/openalgo/sandbox" element={<LazyPage><SandboxPage /></LazyPage>} />
+                  <Route path="/openalgo/analyzer" element={<LazyPage><Analyzer /></LazyPage>} />
+                  <Route path="/openalgo/security" element={<LazyPage><SecurityDashboard /></LazyPage>} />
+                  <Route path="/openalgo/security-admin" element={<LazyPage><SecurityAdmin /></LazyPage>} />
+                  <Route path="/openalgo/gtt" element={<LazyPage><GTTOrders /></LazyPage>} />
+                  <Route path="/openalgo/python-strategy" element={<LazyPage><PythonStrategyIndex /></LazyPage>} />
+                  <Route path="/openalgo/python-strategy/new" element={<LazyPage><PythonStrategyNew /></LazyPage>} />
+                  <Route path="/openalgo/python-strategy/edit/:id" element={<LazyPage><PythonStrategyEdit /></LazyPage>} />
+                  <Route path="/openalgo/python-strategy/logs/:id" element={<LazyPage><PythonStrategyLogs /></LazyPage>} />
+                  <Route path="/openalgo/python-strategy/schedule/:id" element={<LazyPage><PythonStrategySchedule /></LazyPage>} />
+                  <Route path="/openalgo/flow" element={<LazyPage><FlowIndex /></LazyPage>} />
+                  <Route path="/openalgo/flow/edit/:id" element={<LazyPage><FlowEditor /></LazyPage>} />
+                  <Route path="/openalgo/ws-proxy" element={<LazyPage><WebSocketProxyDashboard /></LazyPage>} />
+                  <Route path="/openalgo/telegram-bot" element={<LazyPage><TelegramBotDashboard /></LazyPage>} />
+                  <Route path="/openalgo/mcp-oauth" element={<LazyPage><MCPOAuthConfig /></LazyPage>} />
+                  <Route path="/openalgo/webhook-bridges" element={<LazyPage><WebhookBridges /></LazyPage>} />
+                  <Route path="/openalgo/chartink" element={<LazyPage><ChartinkIndex /></LazyPage>} />
+                  <Route path="/openalgo/chartink/new" element={<LazyPage><NewChartinkStrategy /></LazyPage>} />
+                  <Route path="/openalgo/chartink/view/:id" element={<LazyPage><ViewChartinkStrategy /></LazyPage>} />
+                  <Route path="/openalgo/chartink/symbols" element={<LazyPage><ConfigureChartinkSymbols /></LazyPage>} />
+                  <Route path="/openalgo/historify" element={<LazyPage><Historify /></LazyPage>} />
+                  <Route path="/openalgo/historify/charts" element={<LazyPage><HistorifyCharts /></LazyPage>} />
+                  <Route path="/openalgo/playground" element={<LazyPage><Playground /></LazyPage>} />
+                  <Route path="/openalgo/multiquotes" element={<LazyPage><MultiQuotesPage /></LazyPage>} />
+                  <Route path="/openalgo/market-timings" element={<LazyPage><MarketTimingsPage /></LazyPage>} />
+                  <Route path="/openalgo/market-holidays" element={<LazyPage><MarketHolidaysPage /></LazyPage>} />
+                  <Route path="/openalgo/whatsapp" element={<LazyPage><WhatsAppBotPage /></LazyPage>} />
+                  <Route path="/openalgo/strategy-portfolio" element={<StrategyPortfolio />} />
+                  <Route path="/openalgo/strategy-portfolio/view/:id" element={<LazyPage><StrategyPortfolioView /></LazyPage>} />
                 </Route>
               </Routes>
             </AudioAlertProvider>

@@ -1,0 +1,12 @@
+{
+    "Plugin Name": "htx",
+    "Plugin URI": "https://xkahash.dev",
+    "Description": "HTX Integration",
+    "Version": "1.0",
+    "Author": "X_KA_HASH",
+    "supported_exchanges": ["htx"],
+    "broker_type": "crypto",
+    "leverage_config": true,
+    "ccxt": true,
+    "ws_supported": true
+}
