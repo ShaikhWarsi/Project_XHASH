@@ -355,12 +355,12 @@ export default function Agents() {
                   const maxPosition = Math.max(10, Math.floor((risk.buyingPower || 50000) * 0.1 / 100))
                   const maxQty = Math.min(10, maxPosition)
                   const side = bullishCount > bearishCount ? 'BUY' : 'SELL'
-                  const price = 0
-                  const totalValue = price * maxQty || maxQty * 100
+                  const price = existing?.marketValue && existing?.quantity ? existing.marketValue / existing.quantity : 100
+                  const totalValue = price * maxQty
                   if (risk.buyingPower && totalValue > risk.buyingPower) {
                     addToast(`Insufficient buying power: need $${totalValue.toFixed(0)}, have $${risk.buyingPower.toFixed(0)}`, 'error'); return
                   }
-                  const portfolioValue = (await fetchPositions()).reduce((s: number, p: any) => s + (p.market_value || 0), 0) + (risk.cashAvailable || 0)
+                  const portfolioValue = (await fetchPositions()).reduce((s: number, p: any) => s + (p.marketValue || 0), 0) + (risk.cashAvailable || 0)
                   if (portfolioValue > 0 && totalValue > portfolioValue * 0.01) {
                     setConfirmOrder({ side, qty: maxQty, price: price || 100 }); return
                   }
@@ -386,10 +386,10 @@ export default function Agents() {
                   const existing = positions.find((p) => p.symbol === selectedTicker)
                   const maxPosition = Math.max(10, Math.floor((risk.buyingPower || 50000) * 0.1 / 100))
                   const maxQty = Math.min(10, maxPosition)
-                  const price = 0
-                  const totalValue = price * maxQty || maxQty * 100
-                  if (risk.buyingPower && totalValue > risk.buyingPower) {
-                    addToast(`Insufficient buying power: need $${totalValue.toFixed(0)}, have $${risk.buyingPower.toFixed(0)}`, 'error'); return
+                  const price2 = existing?.marketValue && existing?.quantity ? existing.marketValue / existing.quantity : 100
+                  const totalValue2 = price2 * maxQty
+                  if (risk.buyingPower && totalValue2 > risk.buyingPower) {
+                    addToast(`Insufficient buying power: need $${totalValue2.toFixed(0)}, have $${risk.buyingPower.toFixed(0)}`, 'error'); return
                   }
                   await placeOrder({ symbol: selectedTicker, side: override as 'BUY' | 'SELL', quantity: maxQty, orderType: 'MARKET', reduceOnly: existing ? existing.side !== (override === 'BUY' ? 'LONG' : 'SHORT') : false })
                   addToast(`Override: ${override} ${maxQty} ${selectedTicker} placed`, 'success')

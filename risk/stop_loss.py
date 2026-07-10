@@ -20,17 +20,20 @@ class StopLossTracker:
         if stop is None:
             return True, ""
         if order.side in (OrderSide.BUY, OrderSide.COVER) and price <= stop:
-            return True, ""
+            return False, f"Stop loss {stop:.2f} hit for BUY {order.symbol}"
         if order.side in (OrderSide.SELL, OrderSide.SHORT) and price >= stop:
-            return True, ""
-        return False, f"Stop loss {stop:.2f} hit for {order.symbol}"
+            return False, f"Stop loss {stop:.2f} hit for SELL {order.symbol}"
+        return True, ""
 
     def compute_atr(self, df: pd.DataFrame, period: int = 14) -> float:
         if df is None or len(df) < period + 1:
             return 0.0
-        high = df["high"].values if "high" in df.columns else df["High"].values
-        low = df["low"].values if "low" in df.columns else df["Low"].values
-        close = df["close"].values if "close" in df.columns else df["Close"].values
+        try:
+            high = df["high"].values if "high" in df.columns else df["High"].values
+            low = df["low"].values if "low" in df.columns else df["Low"].values
+            close = df["close"].values if "close" in df.columns else df["Close"].values
+        except KeyError:
+            return 0.0
 
         tr = np.maximum(
             high[1:] - low[1:],
@@ -39,8 +42,13 @@ class StopLossTracker:
                 np.abs(low[1:] - close[:-1]),
             ),
         )
-        atr = np.mean(tr[-period:])
-        return float(atr)
+        if len(tr) < period:
+            return float(np.mean(tr)) if len(tr) > 0 else 0.0
+
+        atr = float(np.mean(tr[:period]))
+        for i in range(period, len(tr)):
+            atr = (atr * (period - 1) + tr[i]) / period
+        return atr
 
     def update_atr(self, symbol: str, df: pd.DataFrame):
         atr = self.compute_atr(df)

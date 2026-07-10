@@ -210,8 +210,7 @@ export default function ChartPage() {
   const chartContainerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<ChartEngine | null>(null)
   const { locked: crosshairLocked } = useChartKeyboard(chartRef as any, chartContainerRef)
-  // @ts-ignore
-  const { isFullscreen, toggle: toggleChartFullscreen } = useChartFullscreen(chartContainerRef)
+  const { isFullscreen, toggle: toggleChartFullscreen } = useChartFullscreen()
   const alertSystemRef = useRef(new ChartAlertSystem())
   const [showTimeAndSales, setShowTimeAndSales] = useState(false)
   const [showMultiTimeframe, setShowMultiTimeframe] = useState(true)
@@ -633,13 +632,13 @@ export default function ChartPage() {
           onClick: () => handleIntervalChange(i),
         })),
       },
-      { label: '', divider: true as any },
+      { label: '', divider: true } as const,
       {
         label: 'Export Chart',
         onClick: handleExportDrawings,
         shortcut: 'Ctrl+E',
       },
-      { label: '', divider: true as any },
+      { label: '', divider: true } as const,
       {
         label: 'Chart Settings',
         onClick: () => setShowChartSettings(true),
@@ -872,7 +871,12 @@ export default function ChartPage() {
         type: d.type, points: d.points, style: d.style,
       })) || [],
     }
-    addToast('Layout saved', 'info')
+    try {
+      localStorage.setItem('te_chart_layout', JSON.stringify(cfg))
+      addToast('Layout saved', 'info')
+    } catch {
+      addToast('Failed to save layout', 'error')
+    }
   }, [symbol, interval, chartStyle, indicators, addToast])
 
   const handleCrosshairLinkToggle = useCallback(() => {

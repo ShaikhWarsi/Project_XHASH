@@ -134,7 +134,7 @@ class RegimeState:
 @dataclass
 class Position:
     symbol: str
-    quantity: int
+    quantity: float
     side: OrderSide  # BUY for long, SHORT for short
     entry_price: float
     current_price: float
@@ -246,7 +246,7 @@ class Fill:
     order_id: str
     symbol: str
     side: OrderSide
-    quantity: int
+    quantity: float
     price: float
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     commission: float = 0.0
@@ -283,4 +283,4 @@ class AnalystSignal:
     signal: str  # bullish, bearish, neutral
     confidence: float
     reasoning: str
-    metadata: dict = field(default_factory=dict)
+    metadata: dict | list = field(default_factory=dict)

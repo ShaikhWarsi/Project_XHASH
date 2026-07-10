@@ -305,9 +305,11 @@ export function connectDashboardSSE(
   let connecting = false
   let currentEs: EventSource | null = null
   let recoveryGuard = false
+  let gen = 0
 
   function createConnection(): EventSource {
     const source = new EventSource('/api/stream/live')
+    const myGen = ++gen
     let hasEverConnected = false
 
     source.onmessage = (event) => {
@@ -326,6 +328,7 @@ export function connectDashboardSSE(
     }
 
     source.onopen = () => {
+      if (myGen !== gen) { source.close(); return }
       hasEverConnected = true
       retryCount = 0
       gaveUp = false
@@ -334,6 +337,7 @@ export function connectDashboardSSE(
     }
 
     source.onerror = () => {
+      if (myGen !== gen) return
       if (currentEs !== source) return
       console.debug('SSE connection lost — data may be stale')
       onStale?.(true)
@@ -348,7 +352,7 @@ export function connectDashboardSSE(
         const jitter = delay * (0.5 + Math.random() * 0.5)
         console.debug(`SSE reconnecting in ${Math.round(jitter)}ms (attempt ${retryCount}/${maxRetries})`)
         reconnectTimer = setTimeout(() => {
-          if (!disconnected) {
+          if (!disconnected && myGen === gen) {
             if (currentEs) currentEs.close()
             currentEs = createConnection()
           }
@@ -403,6 +407,7 @@ export function connectDashboardSSE(
   return {
     close() {
       disconnected = true
+      gen++ // invalidate all pending callbacks
       recoveryGuard = true
       if (reconnectTimer) clearTimeout(reconnectTimer)
       if (recoveryTimer) clearTimeout(recoveryTimer)

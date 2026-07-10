@@ -1,7 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
 import Settings from '../pages/Settings'
+
+const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
 vi.mock('../api/client', () => ({
   api: {
@@ -10,6 +13,31 @@ vi.mock('../api/client', () => ({
     defaults: { headers: { common: {} } },
   },
   setApiKey: vi.fn(),
+}))
+
+const mockWorkflowState = {
+  workflows: [],
+  runs: {},
+  loading: false,
+  error: null,
+  runningId: null,
+  pollInterval: null,
+  load: vi.fn(),
+  loadRuns: vi.fn(),
+  triggerRun: vi.fn(),
+  startPolling: vi.fn(),
+  stopPolling: vi.fn(),
+  refreshRuns: vi.fn(),
+}
+
+vi.mock('../store/workflows', () => ({
+  useWorkflowStore: vi.fn((selector?: any) => selector ? selector(mockWorkflowState) : mockWorkflowState),
+}))
+
+const mockToastState = { toasts: [], addToast: vi.fn(), removeToast: vi.fn() }
+
+vi.mock('../store/toast', () => ({
+  useToastStore: vi.fn((selector?: any) => selector ? selector(mockToastState) : mockToastState),
 }))
 
 vi.mock('../contexts/ThemeContext', () => ({
@@ -37,18 +65,22 @@ vi.mock('../contexts/WorkspaceContext', () => ({
 describe('Settings', () => {
   it('renders settings page after loading', async () => {
     render(
+      <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Settings />
-      </BrowserRouter>,
+      </BrowserRouter>
+      </QueryClientProvider>,
     )
     await waitFor(() => expect(screen.getByText('Settings')).toBeDefined())
   })
 
   it('shows theme options after loading', async () => {
     render(
+      <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Settings />
-      </BrowserRouter>,
+      </BrowserRouter>
+      </QueryClientProvider>,
     )
     await waitFor(() => {
       expect(screen.getByText('Classic Dark')).toBeDefined()
@@ -60,9 +92,11 @@ describe('Settings', () => {
 
   it('shows API configuration section after loading', async () => {
     render(
+      <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Settings />
-      </BrowserRouter>,
+      </BrowserRouter>
+      </QueryClientProvider>,
     )
     await waitFor(() => {
       expect(screen.getByText('API Configuration')).toBeDefined()

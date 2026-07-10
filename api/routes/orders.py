@@ -9,8 +9,7 @@ from datetime import datetime, timezone, timedelta
 from enum import Enum
 from pathlib import Path
 from typing import Any
-from fastapi import APIRouter, Depends, HTTPException, Header, Query, Request
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, HTTPException, Header, Query, Request
 from pydantic import BaseModel, Field
 
 from api.state import app_state
@@ -245,8 +244,8 @@ async def create_order(
         from risk.engine import RiskEngine
         from core.types import Order as CoreOrder, OrderSide as CoreOrderSide, OrderType as CoreOrderType
         from api.state import app_state
-        _side_map = {"BUY": CoreOrderSide.BUY, "SELL": CoreOrderSide.SELL, "BUY_TO_COVER": CoreOrderSide.BUY_TO_COVER, "SELL_SHORT": CoreOrderSide.SELL_SHORT}
-        _type_map = {"MARKET": CoreOrderType.MARKET, "LIMIT": CoreOrderType.LIMIT, "STOP": CoreOrderType.STOP}
+        _side_map = {"BUY": CoreOrderSide.BUY, "SELL": CoreOrderSide.SELL, "BUY_TO_COVER": CoreOrderSide.COVER, "SELL_SHORT": CoreOrderSide.SHORT}
+        _type_map = {"MARKET": CoreOrderType.MARKET, "LIMIT": CoreOrderType.LIMIT, "STOP": CoreOrderType.STOP, "STOP_LIMIT": CoreOrderType.STOP_LIMIT, "TRAILING_STOP": CoreOrderType.STOP, "OCO": CoreOrderType.MARKET}
         co = CoreOrder(
             symbol=order.symbol,
             side=_side_map.get(order.side.value, CoreOrderSide.BUY),

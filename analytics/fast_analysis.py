@@ -6,7 +6,11 @@ import time
 from typing import Any, Dict, List, Optional
 
 from analytics.geopolitical import analyze_geopolitical_risk
-from data.collector import get_market_data_collector
+
+try:
+    from data.collector import get_market_data_collector
+except ImportError:
+    get_market_data_collector = None
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +39,11 @@ def _build_trend_outlook_summary(trend_outlook: Dict[str, Any]) -> str:
 
 class FastAnalysisService:
     def __init__(self):
+        if get_market_data_collector is None:
+            raise NotImplementedError(
+                "FastAnalysisService requires data.collector module, which is not available. "
+                "Install the required dependencies or use an alternative analysis path."
+            )
         self.data_collector = get_market_data_collector()
         self._llm = None
 

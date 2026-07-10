@@ -46,7 +46,8 @@ class CCXTExecutor(ExecutionProvider):
             order_type = "market" if order.order_type == OrderType.MARKET else "limit"
 
             params = {}
-            if order.side == OrderSide.SHORT:
+            # reduceOnly is for closing trades: SELL closes a long, COVER closes a short
+            if order.side in (OrderSide.SELL, OrderSide.COVER):
                 params["reduceOnly"] = True
 
             resp = self._exchange.create_order(
@@ -65,7 +66,7 @@ class CCXTExecutor(ExecutionProvider):
                 order_id=resp.get("id", ""),
                 symbol=order.symbol,
                 side=order.side,
-                quantity=int(filled_qty),
+                quantity=filled_qty,
                 price=avg_price,
                 timestamp=datetime.now(timezone.utc),
             )

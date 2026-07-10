@@ -14,6 +14,9 @@ vi.mock('axios', () => {
         },
       },
       interceptors: {
+        request: {
+          use: vi.fn(),
+        },
         response: {
           use: vi.fn(),
         },
@@ -33,15 +36,15 @@ describe('client', () => {
     expect(api.defaults).toBeDefined()
   })
 
-  it('setApiKey stores key and sets auth header', () => {
+  it('setApiKey stores key', () => {
     setApiKey('test-key-123')
-    expect(api.defaults.headers.common['Authorization']).toBe('Bearer test-key-123')
+    expect(getApiKey()).toBe('test-key-123')
   })
 
-  it('setApiKey with empty key removes auth header', () => {
+  it('setApiKey with empty key clears stored key', () => {
     setApiKey('test-key-123')
     setApiKey('')
-    expect(api.defaults.headers.common['Authorization']).toBeUndefined()
+    expect(getApiKey()).toBeNull()
   })
 
   it('getApiKey returns current key', () => {

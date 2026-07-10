@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import logging
 import threading
 import time
@@ -13,14 +14,30 @@ from execution.interfaces import ExecutionProvider
 
 log = logging.getLogger(__name__)
 
+_SIDE_MAP = {
+    OrderSide.BUY: "BUY",
+    OrderSide.SELL: "SELL",
+    OrderSide.SHORT: "SELL",
+    OrderSide.COVER: "BUY",
+}
+_TYPE_MAP = {
+    OrderType.MARKET: "MKT",
+    OrderType.LIMIT: "LMT",
+    OrderType.STOP: "STP",
+    OrderType.STOP_LIMIT: "STP LMT",
+}
+
 
 class IBKRBroker(ExecutionProvider):
-    def __init__(self, host: str = "127.0.0.1", port: int = 7497, client_id: int = 1):
+    def __init__(self, host: str = "127.0.0.1", port: int = 7497, client_id: int = 1, sec_type: str = "STK"):
         self._host = host
         self._port = port
         self._client_id = client_id
+        self._sec_type = sec_type
         self._app = None
         self._connected = False
+        self._broker_order_id = 0
+        self._next_id = itertools.count(1)
 
     def connect(self) -> bool:
         try:
@@ -33,8 +50,10 @@ class IBKRBroker(ExecutionProvider):
             def __init__(self):
                 super().__init__()
                 self.connected = False
+                self.latest_valid_id = 0
 
             def nextValidId(self, orderId: int):
+                self.latest_valid_id = orderId
                 self.connected = True
 
         class _IBClient(EClient):
@@ -55,6 +74,12 @@ class IBKRBroker(ExecutionProvider):
             elapsed += interval
 
         self._connected = wrapper.connected
+        if self._connected:
+            self._broker_order_id = wrapper.latest_valid_id
+            self._next_id = itertools.count(self._broker_order_id + 1)
+        else:
+            self._app.disconnect()
+            self._app = None
         return self._connected
 
     @property
@@ -65,6 +90,29 @@ class IBKRBroker(ExecutionProvider):
         if self._app and self._connected:
             self._app.disconnect()
             self._connected = False
+            self._app = None
+
+    def _place_bracket(self, order: Order, contract, ib_order, order_id: int) -> Fill:
+        tp_price = order.bracket_take_profit
+        sl_price = order.bracket_stop_loss
+
+        if sl_price:
+            sl = ib_order.__class__()
+            sl.action = "SELL" if order.side in (OrderSide.BUY, OrderSide.COVER) else "BUY"
+            sl.orderType = "STP"
+            sl.auxPrice = str(sl_price)
+            sl.totalQuantity = abs(order.quantity)
+            sl.parentId = order_id
+            self._app.placeOrder(next(self._next_id), contract, sl)
+
+        if tp_price:
+            tp = ib_order.__class__()
+            tp.action = "SELL" if order.side in (OrderSide.BUY, OrderSide.COVER) else "BUY"
+            tp.orderType = "LMT"
+            tp.lmtPrice = str(tp_price)
+            tp.totalQuantity = abs(order.quantity)
+            tp.parentId = order_id
+            self._app.placeOrder(next(self._next_id), contract, tp)
 
     def submit_order(self, order: Order) -> Optional[Fill]:
         if not self._connected or self._app is None:
@@ -75,23 +123,27 @@ class IBKRBroker(ExecutionProvider):
 
             contract = Contract()
             contract.symbol = order.symbol
-            contract.secType = "STK"
+            contract.secType = self._sec_type
             contract.exchange = "SMART"
             contract.currency = "USD"
 
             ib_order = IBOrder()
-            ib_order.action = "BUY" if order.side in (OrderSide.BUY, OrderSide.COVER) else "SELL"
+            ib_order.action = _SIDE_MAP.get(order.side, "BUY")
             ib_order.totalQuantity = abs(order.quantity)
-            ib_order.orderType = {OrderType.MARKET: "MKT", OrderType.LIMIT: "LMT", OrderType.STOP: "STP"}.get(order.order_type, "MKT")
+            ib_order.orderType = _TYPE_MAP.get(order.order_type, "MKT")
 
             if order.price:
                 ib_order.lmtPrice = str(order.price)
             if order.stop_price:
                 ib_order.auxPrice = str(order.stop_price)
 
-            order_id = int(time.time() * 1000) % 1000000
+            order_id = next(self._next_id)
             self._app.placeOrder(order_id, contract, ib_order)
-            return Fill(order_id=str(order_id), symbol=order.symbol, quantity=abs(order.quantity), price=order.price or 0.0, timestamp=datetime.now(timezone.utc))
+
+            if order.bracket_take_profit or order.bracket_stop_loss:
+                self._place_bracket(order, contract, ib_order, order_id)
+
+            return Fill(order_id=str(order_id), symbol=order.symbol, side=order.side, quantity=abs(order.quantity), price=order.price or 0.0, timestamp=datetime.now(timezone.utc))
         except Exception as e:
             log.error("IBKR submit_order failed: %s", e)
             return None
@@ -109,6 +161,13 @@ class IBKRBroker(ExecutionProvider):
         return []
 
     def get_portfolio(self) -> PortfolioState:
+        if not self._connected or self._app is None:
+            return PortfolioState(cash=0.0, positions={}, total_value=0.0)
+        try:
+            self._app.reqAccountSummary(9001, "All", "$Ledger:ALL")
+            self._app.reqPositions()
+        except Exception as e:
+            log.warning("IBKR reqAccountSummary/reqPositions failed: %s", e)
         return PortfolioState(
             cash=0.0,
             positions={},

@@ -87,9 +87,9 @@ class BacktestExecutor(ExecutionProvider):
         order.order_id = order_id
         self._open_orders[order_id] = order
 
-        if order.price is None or order.price <= 0:
-            raise ValueError(f"Cannot submit order for {order.symbol} without a valid price")
-        price = order.price
+        if order.order_type in (OrderType.LIMIT, OrderType.STOP_LIMIT) and (order.price is None or order.price <= 0):
+            raise ValueError(f"Cannot submit limit order for {order.symbol} without a valid price")
+        price = order.price or 0.0
         if self._slippage > 0:
             if order.side in (OrderSide.BUY, OrderSide.COVER):
                 price = price * (1 + self._slippage)
@@ -128,6 +128,7 @@ class BacktestExecutor(ExecutionProvider):
             self._create_bracket_orders(order, order_id)
         if order.oco_price or order.oco_stop_price:
             self._create_oco_orders(order, order_id)
+        self._cancel_sibling_orders(order_id)
 
         return fill
 
@@ -158,6 +159,33 @@ class BacktestExecutor(ExecutionProvider):
             )
             children.append(sl)
         self._bracket_children[parent_id] = children
+        for child in children:
+            self._order_counter += 1
+            child_id = f"BT-{self._order_counter:06d}"
+            child.order_id = child_id
+            self._open_orders[child_id] = child
+
+    def _fill_child(self, child: Order):
+        price = child.price or child.stop_price or 0.0
+        if self._slippage > 0:
+            if child.side in (OrderSide.BUY, OrderSide.COVER):
+                price *= 1 + self._slippage
+            else:
+                price *= 1 - self._slippage
+        comm = price * child.quantity * self._commission
+        fill = Fill(
+            order_id=child.order_id or "",
+            symbol=child.symbol,
+            side=child.side,
+            quantity=int(child.quantity),
+            price=price,
+            commission=comm,
+            timestamp=datetime.now(timezone.utc),
+        )
+        self._fills.append(fill)
+        apply_fill_to_portfolio(fill, self._portfolio)
+        if child.order_id:
+            self._open_orders.pop(child.order_id, None)
 
     def _create_oco_orders(self, primary: Order, primary_id: str):
         oco_symbol = primary.oco_symbol or primary.symbol
@@ -248,11 +276,8 @@ class BacktestExecutor(ExecutionProvider):
                         break
 
             if triggered_child:
-                try:
-                    self.submit_order(triggered_child)
-                    filled_parent_ids.append(parent_id)
-                except Exception:
-                    pass
+                self._fill_child(triggered_child)
+                filled_parent_ids.append(parent_id)
 
         for parent_id in filled_parent_ids:
             if parent_id in self._bracket_children:

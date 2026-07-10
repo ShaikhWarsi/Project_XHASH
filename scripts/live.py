@@ -123,12 +123,21 @@ def main():
     )
     data_source = YFinanceDataSource()
 
+    last_reset_date = datetime.now(timezone.utc).date()
+
     logger.info("Starting %s trading for %s with strategy '%s'", args.mode, tickers, args.strategy)
     logger.info("Initial capital: $%.2f", args.capital)
 
     try:
         _live_max = 1000000
         for _ in range(_live_max):
+            today = datetime.now(timezone.utc).date()
+            if today != last_reset_date:
+                portfolio = executor.get_portfolio()
+                risk_engine.circuit_breaker.reset_daily(portfolio)
+                last_reset_date = today
+                logger.info("Daily circuit breaker reset at %s", today)
+
             portfolio = executor.get_portfolio()
             prices: dict[str, float] = {}
             bars: dict[str, pd.DataFrame] = {}
@@ -175,7 +184,7 @@ def main():
 
                 fill = executor.submit_order(order)
                 if fill:
-                    logger.info("Filled: %s %s x%d @ %.2f", fill.symbol, fill.side, fill.quantity, fill.price)
+                    logger.info("Filled: %s %s x%s @ %.2f", fill.symbol, fill.side, fill.quantity, fill.price)
 
             risk_engine.update(portfolio)
 

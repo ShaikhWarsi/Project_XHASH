@@ -16,7 +16,7 @@ import ActivityFeed from '../components/ActivityFeed'
 import SectorAllocationChart from '../components/SectorAllocationChart'
 import StarButton from '../components/StarButton'
 import DraggableGrid from '../components/DraggableGrid'
-// import MarketTickerBarEnhanced from '../components/widgets/MarketTickerBarEnhanced'
+import MarketTickerBarEnhanced from '../components/widgets/MarketTickerBarEnhanced'
 import AddWidgetModal from '../components/widgets/AddWidgetModal'
 import { DASHBOARD_TEMPLATES, applyTemplate, loadLayout, saveLayout } from '../components/widgets/DashboardTemplate'
 import HeatMapWidget from '../components/widgets/HeatMapWidget'
@@ -257,9 +257,10 @@ export default function Dashboard() {
     setActiveWidgets(applyTemplate(templateId))
   }, [])
 
-  if (loading) return <DashboardSkeleton />
-
+  const [newsFeed, setNewsFeed] = useState<{ t: string; h: string; s: string; src: string }[]>([])
   const { getPrice } = useLivePrices()
+
+  if (loading) return <DashboardSkeleton />
 
   const watchlist = ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'GOOGL', 'META', 'SPY', 'QQQ', 'IWM']
   const heatStripData = watchlist.map((s) => {
@@ -271,15 +272,7 @@ export default function Dashboard() {
     }
   })
 
-  const newsForPositions = [
-    { t: '09:32', h: 'AAPL: Apple Intelligence rollout expands to EU', s: 'AAPL', src: 'Bloomberg' },
-    { t: '09:15', h: 'MSFT: Azure cloud growth accelerates in Q3', s: 'MSFT', src: 'Reuters' },
-    { t: '08:58', h: 'NVDA: Blackwell GPU demand exceeds supply through 2026', s: 'NVDA', src: 'CNBC' },
-    { t: '08:42', h: 'TSLA: European registrations drop 18% in May', s: 'TSLA', src: 'WSJ' },
-    { t: '08:25', h: 'AMZN: AWS announces new AI chip Trainium 3', s: 'AMZN', src: 'Reuters' },
-  ]
-
-  const morningPnL = portfolio?.cash ? (portfolio.total_value - 100000) * 0.02 : 0
+  const morningPnL = portfolio?.cash ? (portfolio.total_value - (portfolio?.cash || 0)) * 0.02 : 0
   const biggestMover = Object.keys(posMap).length > 0
     ? Object.entries(posMap).sort((a, b) => Math.abs(b[1].unrealized_pnl || 0) - Math.abs(a[1].unrealized_pnl || 0))[0]
     : null
@@ -289,12 +282,12 @@ export default function Dashboard() {
       {/* HEAT STRIP */}
       <div className="flex bg-card border border-default overflow-hidden h-[22px]">
         {heatStripData.map((h) => (
-          <div key={h.symbol} className="flex-1 flex items-center justify-center font-mono-data text-[9px] border-r border-default"
+          <div key={h.symbol} className="flex-1 flex items-center justify-center font-mono-data text-[9px] border-r border-default truncate px-1"
             style={{
               background: h.change >= 2 ? 'rgba(34,197,94,0.15)' : h.change <= -2 ? 'rgba(239,68,68,0.15)' : 'none',
               color: h.change > 0 ? 'var(--accent-green)' : h.change < 0 ? 'var(--accent-red)' : 'var(--text-muted)',
             }}>
-            {h.symbol} {h.change >= 0 ? '+' : ''}{h.change.toFixed(1)}%
+            <span className="truncate">{h.symbol} {h.change >= 0 ? '+' : ''}{h.change.toFixed(1)}%</span>
           </div>
         ))}
       </div>
@@ -304,11 +297,11 @@ export default function Dashboard() {
       {/* DAILY BRIEFING */}
       <Card title="DAILY BRIEFING">
         <div className="grid grid-cols-5 gap-2 font-mono-data text-[10px]">
-          <div><span className="text-muted">Day P&L</span><div className={`font-bold ${morningPnL >= 0 ? 'text-accent-green' : 'text-accent-red'}`}>{morningPnL >= 0 ? '+' : ''}${morningPnL.toFixed(0)}</div></div>
-          <div><span className="text-muted">Biggest Mover</span><div className="font-bold text-primary">{biggestMover ? `${biggestMover[0]} ${(biggestMover[1].unrealized_pnl ?? 0) >= 0 ? '+' : ''}$${(biggestMover[1].unrealized_pnl ?? 0).toFixed(0)}` : '—'}</div></div>
-          <div><span className="text-muted">Top Signal</span><div className="font-bold text-accent-cyan">{signals?.signals && Object.values(signals.signals).flat().length > 0 ? Object.values(signals.signals).flat()[0]?.type || '—' : '—'}</div></div>
-          <div><span className="text-muted">Regime</span><div className="font-bold text-accent-yellow">{signals?.regime?.primary ?? '—'}</div></div>
-          <div><span className="text-muted">Margin</span><div className="font-bold text-primary">{totalValue > 0 ? `${((totalValue - cash) / totalValue * 100).toFixed(0)}%` : '—'}</div></div>
+          <div className="truncate"><span className="text-muted">Day P&L</span><div className={`font-bold truncate ${morningPnL >= 0 ? 'text-accent-green' : 'text-accent-red'}`}>{morningPnL >= 0 ? '+' : ''}${morningPnL.toFixed(0)}</div></div>
+          <div className="truncate"><span className="text-muted">Biggest Mover</span><div className="font-bold text-primary truncate">{biggestMover ? `${biggestMover[0]} ${(biggestMover[1].unrealized_pnl ?? 0) >= 0 ? '+' : ''}$${(biggestMover[1].unrealized_pnl ?? 0).toFixed(0)}` : '—'}</div></div>
+          <div className="truncate"><span className="text-muted">Top Signal</span><div className="font-bold text-accent-cyan truncate">{signals?.signals && Object.values(signals.signals).flat().length > 0 ? Object.values(signals.signals).flat()[0]?.type || '—' : '—'}</div></div>
+          <div className="truncate"><span className="text-muted">Regime</span><div className="font-bold text-accent-yellow truncate">{signals?.regime?.primary ?? '—'}</div></div>
+          <div className="truncate"><span className="text-muted">Margin</span><div className="font-bold text-primary truncate">{totalValue > 0 ? `${((totalValue - cash) / totalValue * 100).toFixed(0)}%` : '—'}</div></div>
         </div>
       </Card>
 
@@ -319,11 +312,11 @@ export default function Dashboard() {
           <div className="flex items-center justify-between bg-card border border-default px-2 py-1 shadow-widget">
             <div className="flex items-center gap-4">
               <DataRow label="NAV" value={fmtCurrency(totalValue)} />
-              <span className="text-border">|</span>
+              <span className="border-default opacity-50">|</span>
               <DataRow label="CASH" value={fmtCurrency(cash)} />
-              <span className="text-border">|</span>
+              <span className="border-default opacity-50">|</span>
               <DataRow label="P&L" value={`${unrealizedPnl >= 0 ? '+' : ''}$${unrealizedPnl.toFixed(0)}`} up={unrealizedPnl > 0} down={unrealizedPnl < 0} />
-              <span className="text-border">|</span>
+              <span className="border-default opacity-50">|</span>
               <DataRow label="POS" value={String(posCount)} />
             </div>
             <div className="flex items-center gap-2">
@@ -356,14 +349,13 @@ export default function Dashboard() {
         </div>
         <Card title="NEWS FOR POSITIONS">
           <div className="font-mono-data text-[9px]">
-            {newsForPositions.filter((n) => Object.keys(posMap).includes(n.s) || Object.keys(posMap).length === 0).map((n, i) => (
+            {newsFeed.length > 0 ? newsFeed.filter((n) => Object.keys(posMap).includes(n.s) || Object.keys(posMap).length === 0).map((n, i) => (
               <div key={i} className="flex items-start gap-1 py-0.5 border-b border-default last:border-b-0">
                 <span className="text-muted shrink-0 w-8">{n.t}</span>
-                <span className="text-primary flex-1 truncate">{n.h}</span>
-                <span className="text-accent-cyan shrink-0">{n.s}</span>
+                <span className="text-primary flex-1 truncate min-w-0">{n.h}</span>
+                <span className="text-accent-cyan shrink-0 truncate max-w-[60px]">{n.s}</span>
               </div>
-            ))}
-            {Object.keys(posMap).length === 0 && <span className="text-muted">No positions to filter news for</span>}
+            )) : <span className="text-muted">No news available</span>}
           </div>
         </Card>
       </div>
@@ -414,20 +406,20 @@ export default function Dashboard() {
                 <Card title={`Positions (${posCount})`}>
                   {posCount > 0 ? (
                     <div>
-                      <div className="grid grid-cols-[2fr_1fr_1.5fr_1.5fr] py-1 border-b border-default text-[9px] font-mono-data tracking-wider text-muted">
-                        <span>Symbol</span>
-                        <span className="text-right">Qty</span>
-                        <span className="text-right">Price</span>
-                        <span className="text-right">P&L</span>
+                <div className="grid grid-cols-[2fr_1fr_1.5fr_1.5fr] py-1 border-b border-default text-[9px] font-mono-data tracking-wider text-muted">
+                  <span className="truncate">Symbol</span>
+                  <span className="text-right truncate">Qty</span>
+                  <span className="text-right truncate">Price</span>
+                  <span className="text-right truncate">P&L</span>
                       </div>
                       {Object.entries(posMap).slice(0, 12).map(([symbol, pos]) => {
                         const pnl = pos.unrealized_pnl ?? 0
                         return (
                           <div key={symbol} className="grid grid-cols-[2fr_1fr_1.5fr_1.5fr] py-[3px] border-b border-default font-mono-data text-[11px] text-primary">
-                            <span className="text-accent-cyan font-semibold">{symbol}</span>
-                            <span className="text-right">{pos.quantity}</span>
-                            <span className="text-right">${(pos.market_value / pos.quantity).toFixed(2)}</span>
-                            <span className={`text-right ${pnl >= 0 ? 'text-up' : 'text-down'}`}>
+                            <span className="text-accent-cyan font-semibold truncate">{symbol}</span>
+                            <span className="text-right truncate">{pos.quantity}</span>
+                            <span className="text-right truncate">${(pos.market_value / pos.quantity).toFixed(2)}</span>
+                            <span className={`text-right truncate ${pnl >= 0 ? 'text-up' : 'text-down'}`}>
                               {pnl >= 0 ? '+' : ''}${pnl.toFixed(0)}
                             </span>
                           </div>
@@ -443,16 +435,16 @@ export default function Dashboard() {
                   {signals?.signals && Object.values(signals.signals).some((s) => s.length > 0) ? (
                     <div>
                       <div className="grid grid-cols-[1.5fr_2fr_0.8fr_1fr] py-1 border-b border-default text-[9px] font-mono-data tracking-wider text-muted">
-                        <span>Symbol</span>
-                        <span>Type</span>
-                        <span className="text-center">Dir</span>
-                        <span className="text-right">Conf</span>
+                        <span className="truncate">Symbol</span>
+                        <span className="truncate">Type</span>
+                        <span className="text-center truncate">Dir</span>
+                        <span className="text-right truncate">Conf</span>
                       </div>
                       {Object.entries(signals.signals).slice(0, 12).map(([symbol, sigs]) =>
                         sigs.slice(0, 2).map((sig, i) => (
                           <div key={`${symbol}-${i}`} className="grid grid-cols-[1.5fr_2fr_0.8fr_1fr] py-[3px] border-b border-default font-mono-data text-[11px] text-primary">
-                            <span className="text-accent-cyan font-semibold">{symbol}</span>
-                            <span className="text-secondary">{sig.type}</span>
+                            <span className="text-accent-cyan font-semibold truncate">{symbol}</span>
+                            <span className="text-secondary truncate">{sig.type}</span>
                             <span className={`text-center ${sig.direction > 0 ? 'text-up' : sig.direction < 0 ? 'text-down' : 'text-muted'}`}>
                               {sig.direction > 0 ? '\u2191' : sig.direction < 0 ? '\u2193' : '—'}
                             </span>
@@ -540,9 +532,9 @@ export default function Dashboard() {
                         <Badge label={`${snapshot.open_orders.length} OPEN ORDERS`} variant="warning" size="sm" />
                       </div>
                       {snapshot.open_orders.slice(0, 4).map((o: any, i: number) => (
-                        <div key={i} className="flex items-center justify-between font-mono-data text-[11px] text-primary py-px">
-                          <span className="text-accent-cyan font-semibold">{o.symbol}</span>
-                          <span className={o.side === 'buy' ? 'text-up' : 'text-down'}>
+                        <div key={i} className="flex items-center justify-between font-mono-data text-[11px] text-primary py-px gap-2">
+                          <span className="text-accent-cyan font-semibold truncate min-w-0">{o.symbol}</span>
+                          <span className={`shrink-0 truncate ${o.side === 'buy' ? 'text-up' : 'text-down'}`}>
                             {o.side?.toUpperCase()} {o.quantity} @ ${o.price?.toFixed(2)}
                           </span>
                         </div>
@@ -576,10 +568,10 @@ export default function Dashboard() {
                   {Object.entries(snapshot.attribution).map(([k, v]) => {
                     const isNum = typeof v === 'number'
                     return (
-                      <div key={k} className={`font-mono-data text-[11px] ${isNum && (v as number) > 0 ? 'text-up' : isNum && (v as number) < 0 ? 'text-down' : 'text-primary'}`}>
-                        <div className="text-[9px] font-mono-data tracking-wider text-muted">{k.replace(/_/g, ' ')}</div>
-                        <div>{isNum ? ((v as number) * 100).toFixed(2) + '%' : String(v).slice(0, 25)}</div>
-                      </div>
+                  <div key={k} className={`font-mono-data text-[11px] truncate ${isNum && (v as number) > 0 ? 'text-up' : isNum && (v as number) < 0 ? 'text-down' : 'text-primary'}`}>
+                    <div className="text-[9px] font-mono-data tracking-wider text-muted truncate">{k.replace(/_/g, ' ')}</div>
+                    <div className="truncate">{isNum ? ((v as number) * 100).toFixed(2) + '%' : String(v).slice(0, 25)}</div>
+                  </div>
                     )
                   })}
                 </div>
@@ -623,9 +615,9 @@ export default function Dashboard() {
                         <span className="text-accent-yellow">{'\u25CF'}</span> Open Orders
                       </div>
                       {snapshot.open_orders.slice(0, 5).map((o: any, i: number) => (
-                        <div key={i} className="flex items-center justify-between font-mono-data text-[10px] text-primary py-px">
-                          <span className="text-accent-cyan font-semibold">{o.symbol}</span>
-                          <span className={o.side === 'buy' ? 'text-up' : 'text-down'}>
+                        <div key={i} className="flex items-center justify-between font-mono-data text-[10px] text-primary py-px gap-2">
+                          <span className="text-accent-cyan font-semibold truncate min-w-0">{o.symbol}</span>
+                          <span className={`shrink-0 truncate ${o.side === 'buy' ? 'text-up' : 'text-down'}`}>
                             {o.side?.toUpperCase()} {o.quantity} @ ${o.price?.toFixed(2)}
                           </span>
                         </div>
@@ -638,9 +630,9 @@ export default function Dashboard() {
                         <span className="text-up">{'\u25CF'}</span> Recent Fills
                       </div>
                       {recentTrades.slice(0, 5).map((t, i) => (
-                        <div key={i} className="flex items-center justify-between font-mono-data text-[10px] text-primary py-px">
-                          <span className="text-accent-cyan font-semibold">{t.symbol}</span>
-                          <span className={t.side === 'buy' ? 'text-up' : 'text-down'}>
+                        <div key={i} className="flex items-center justify-between font-mono-data text-[10px] text-primary py-px gap-2">
+                          <span className="text-accent-cyan font-semibold truncate min-w-0">{t.symbol}</span>
+                          <span className={`shrink-0 truncate ${t.side === 'buy' ? 'text-up' : 'text-down'}`}>
                             {t.side?.toUpperCase()} {t.quantity} @ ${t.price?.toFixed(2)}
                           </span>
                         </div>

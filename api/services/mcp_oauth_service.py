@@ -6,7 +6,7 @@ import os
 import secrets
 import time
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ def register_client(client_name: str, redirect_uris: list[str] | None = None) ->
         "redirect_uris": redirect_uris or [],
         "grant_types": ["authorization_code", "refresh_token"],
         "token_endpoint_auth_method": "client_secret_basic",
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
     }
     return {
         "client_id": client_id,

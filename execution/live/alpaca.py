@@ -47,7 +47,12 @@ class AlpacaExecutor(ExecutionProvider):
         try:
             from alpaca.trading.enums import OrderSide as AlpacaSide
             from alpaca.trading.enums import TimeInForce
-            from alpaca.trading.requests import LimitOrderRequest, MarketOrderRequest
+            from alpaca.trading.requests import (
+                LimitOrderRequest,
+                MarketOrderRequest,
+                StopOrderRequest,
+                StopLimitOrderRequest,
+            )
 
             side = AlpacaSide.BUY if order.side in (OrderSide.BUY, OrderSide.COVER) else AlpacaSide.SELL
 
@@ -66,16 +71,34 @@ class AlpacaExecutor(ExecutionProvider):
                     limit_price=order.price,
                     time_in_force=TimeInForce.DAY,
                 )
+            elif order.order_type == OrderType.STOP:
+                req = StopOrderRequest(
+                    symbol=order.symbol,
+                    qty=order.quantity,
+                    side=side,
+                    stop_price=order.stop_price or order.price,
+                    time_in_force=TimeInForce.DAY,
+                )
+            elif order.order_type == OrderType.STOP_LIMIT:
+                req = StopLimitOrderRequest(
+                    symbol=order.symbol,
+                    qty=order.quantity,
+                    side=side,
+                    limit_price=order.price,
+                    stop_price=order.stop_price,
+                    time_in_force=TimeInForce.DAY,
+                )
             else:
                 return None
 
             resp = self._client.submit_order(req)
+            fill_price = float(resp.filled_avg_price) if resp.filled_avg_price else (float(resp.limit_price) if resp.limit_price else 0.0)
             return Fill(
                 order_id=resp.id,
                 symbol=resp.symbol,
                 side=order.side,
-                quantity=int(resp.qty),
-                price=float(resp.filled_avg_price or resp.limit_price or 0.0),
+                quantity=float(resp.qty),
+                price=fill_price,
                 timestamp=datetime.now(timezone.utc),
             )
         except Exception as e:
@@ -111,13 +134,12 @@ class AlpacaExecutor(ExecutionProvider):
 
     def get_portfolio(self) -> PortfolioState:
         if not self._connected or self._client is None:
-            from core.types import PortfolioState
             return PortfolioState(cash=0.0, positions={}, total_value=0.0)
         account = self._client.get_account()
         positions = self._client.get_all_positions()
         pos_dict: dict[str, Position] = {}
         for p in positions:
-            qty = int(float(p.qty))
+            qty = float(p.qty)
             if qty == 0:
                 continue
             side = OrderSide.BUY if qty > 0 else OrderSide.SHORT

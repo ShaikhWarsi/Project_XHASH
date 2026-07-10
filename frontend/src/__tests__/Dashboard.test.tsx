@@ -3,6 +3,8 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import { EventBusProvider } from '../contexts/EventBusContext'
 import { AudioAlertProvider } from '../contexts/AudioAlertContext'
+import { LivePricesProvider } from '../contexts/LivePricesContext'
+import { WebSocketProvider } from '../contexts/WebSocketProvider'
 import Dashboard from '../pages/Dashboard'
 
 vi.mock('../store/portfolio', () => ({
@@ -32,11 +34,15 @@ describe('Dashboard', () => {
   it('renders NAV and cash metrics after loading', async () => {
     render(
       <BrowserRouter>
+        <WebSocketProvider>
+        <LivePricesProvider>
         <EventBusProvider>
           <AudioAlertProvider>
             <Dashboard />
           </AudioAlertProvider>
         </EventBusProvider>
+        </LivePricesProvider>
+        </WebSocketProvider>
       </BrowserRouter>,
     )
     await waitFor(() => {
@@ -49,11 +55,15 @@ describe('Dashboard', () => {
   it('renders data rows for all status labels', async () => {
     render(
       <BrowserRouter>
+        <WebSocketProvider>
+        <LivePricesProvider>
         <EventBusProvider>
           <AudioAlertProvider>
             <Dashboard />
           </AudioAlertProvider>
         </EventBusProvider>
+        </LivePricesProvider>
+        </WebSocketProvider>
       </BrowserRouter>,
     )
     await waitFor(() => {

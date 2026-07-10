@@ -53,7 +53,7 @@ class RiskEngine:
         prices_df: Optional[dict[str, pd.DataFrame]] = None,
     ):
         """Update risk state with new portfolio snapshot."""
-        self.stop_loss.update(portfolio)
+        self.stop_loss.update(portfolio, price_data=prices_df)
         self.circuit_breaker.update(portfolio)
         if prices_df:
             self.position_limits.update_volatility(prices_df)

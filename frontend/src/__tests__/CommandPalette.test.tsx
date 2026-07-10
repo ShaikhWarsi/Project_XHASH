@@ -15,27 +15,27 @@ const renderPalette = () =>
 describe('CommandPalette', () => {
   it('renders nothing when closed', () => {
     renderPalette()
-    expect(screen.queryByPlaceholderText('type command...')).toBeNull()
+    expect(screen.queryByPlaceholderText('type command or page name...')).toBeNull()
   })
 
   it('opens with Ctrl+K', () => {
     renderPalette()
     fireEvent.keyDown(window, { key: 'k', metaKey: true })
-    expect(screen.getByPlaceholderText('type command...')).toBeDefined()
+    expect(screen.getByPlaceholderText('type command or page name...')).toBeDefined()
   })
 
   it('opens with Cmd+K', () => {
     renderPalette()
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
-    expect(screen.getByPlaceholderText('type command...')).toBeDefined()
+    expect(screen.getByPlaceholderText('type command or page name...')).toBeDefined()
   })
 
   it('closes with Escape', () => {
     renderPalette()
     fireEvent.keyDown(window, { key: 'k', metaKey: true })
-    expect(screen.getByPlaceholderText('type command...')).toBeDefined()
+    expect(screen.getByPlaceholderText('type command or page name...')).toBeDefined()
     fireEvent.keyDown(window, { key: 'Escape' })
-    expect(screen.queryByPlaceholderText('type command...')).toBeNull()
+    expect(screen.queryByPlaceholderText('type command or page name...')).toBeNull()
   })
 
   it('renders nav categories when open', () => {
@@ -48,7 +48,7 @@ describe('CommandPalette', () => {
   it('shows no results when query matches nothing', () => {
     renderPalette()
     fireEvent.keyDown(window, { key: 'k', metaKey: true })
-    const input = screen.getByPlaceholderText('type command...')
+    const input = screen.getByPlaceholderText('type command or page name...')
     fireEvent.change(input, { target: { value: 'zzzznonexistent' } })
     expect(screen.getByText('No results')).toBeDefined()
   })
@@ -56,15 +56,16 @@ describe('CommandPalette', () => {
   it('filters commands when typing', () => {
     renderPalette()
     fireEvent.keyDown(window, { key: 'k', metaKey: true })
-    const input = screen.getByPlaceholderText('type command...')
+    const input = screen.getByPlaceholderText('type command or page name...')
     fireEvent.change(input, { target: { value: 'Dashboard' } })
-    expect(screen.getByText('Dashboard')).toBeDefined()
+    const matches = screen.getAllByText('Dashboard')
+    expect(matches.length).toBeGreaterThan(0)
   })
 
   it('navigates on enter with selected item', () => {
     renderPalette()
     fireEvent.keyDown(window, { key: 'k', metaKey: true })
-    const input = screen.getByPlaceholderText('type command...')
+    const input = screen.getByPlaceholderText('type command or page name...')
     fireEvent.change(input, { target: { value: 'Dashboard' } })
     fireEvent.keyDown(input, { key: 'Enter' })
   })
@@ -72,17 +73,17 @@ describe('CommandPalette', () => {
   it('closes when clicking overlay', () => {
     renderPalette()
     fireEvent.keyDown(window, { key: 'k', metaKey: true })
-    expect(screen.getByPlaceholderText('type command...')).toBeDefined()
+    expect(screen.getByPlaceholderText('type command or page name...')).toBeDefined()
     const overlay = document.querySelector('.fixed.inset-0')
     if (overlay) fireEvent.click(overlay)
-    expect(screen.queryByPlaceholderText('type command...')).toBeNull()
+    expect(screen.queryByPlaceholderText('type command or page name...')).toBeNull()
   })
 
   it('renders footer hints', () => {
     renderPalette()
     fireEvent.keyDown(window, { key: 'k', metaKey: true })
-    expect(screen.getByText('↑↓ navigate')).toBeDefined()
-    expect(screen.getByText('↵ select')).toBeDefined()
+    expect(screen.getByText((content) => content.includes('navigate'))).toBeDefined()
+    expect(screen.getByText((content) => content.includes('select'))).toBeDefined()
     expect(screen.getByText('esc close')).toBeDefined()
   })
 })

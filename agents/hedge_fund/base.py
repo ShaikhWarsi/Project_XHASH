@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from abc import abstractmethod
 from typing import Optional
 
@@ -8,6 +9,8 @@ import pandas as pd
 from agents.base import TradingAgent
 from core.enums import AgentRole
 from core.types import AnalystSignal, PortfolioState, RiskLimits, SignalMatrix
+
+logger = logging.getLogger(__name__)
 
 
 class PersonaAgent(TradingAgent):

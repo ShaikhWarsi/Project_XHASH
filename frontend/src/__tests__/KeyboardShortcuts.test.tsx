@@ -1,13 +1,16 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
+import { InterfaceModeProvider } from '../contexts/InterfaceModeContext'
 import KeyboardShortcutListener from '../components/KeyboardShortcuts'
 
 describe('KeyboardShortcutListener', () => {
   const renderShortcuts = () =>
     render(
       <BrowserRouter>
-        <KeyboardShortcutListener />
+        <InterfaceModeProvider>
+          <KeyboardShortcutListener />
+        </InterfaceModeProvider>
       </BrowserRouter>,
     )
 
@@ -40,8 +43,8 @@ describe('KeyboardShortcutListener', () => {
   it('renders shortcut descriptions when open', () => {
     renderShortcuts()
     fireEvent.keyDown(window, { key: '?' })
-    expect(screen.getByText('Go to Dashboard')).toBeDefined()
-    expect(screen.getByText('Go to Orders')).toBeDefined()
+    expect(screen.getAllByText('Dashboard').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Orders').length).toBeGreaterThan(0)
     expect(screen.getByText('Command palette')).toBeDefined()
   })
 
