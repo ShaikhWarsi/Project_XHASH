@@ -35,6 +35,7 @@ class IBKRBroker(ExecutionProvider):
         self._client_id = client_id
         self._sec_type = sec_type
         self._app = None
+        self._wrapper = None
         self._connected = False
         self._broker_order_id = 0
         self._next_id = itertools.count(1)
@@ -51,16 +52,43 @@ class IBKRBroker(ExecutionProvider):
                 super().__init__()
                 self.connected = False
                 self.latest_valid_id = 0
+                self.positions: dict[str, Position] = {}
+                self.cash = 0.0
+                self.total_value = 0.0
+                self.positions_received = threading.Event()
+                self.account_summary_received = threading.Event()
 
             def nextValidId(self, orderId: int):
                 self.latest_valid_id = orderId
                 self.connected = True
+
+            def position(self, account, contract, position, avgCost):
+                symbol = contract.symbol
+                self.positions[symbol] = Position(
+                    symbol=symbol,
+                    quantity=float(position),
+                    avg_price=float(avgCost),
+                    current_price=float(avgCost),
+                )
+
+            def positionEnd(self):
+                self.positions_received.set()
+
+            def accountSummary(self, reqId, account, tag, value, currency):
+                if tag == "TotalCashValue":
+                    self.cash = float(value)
+                elif tag == "NetLiquidation":
+                    self.total_value = float(value)
+
+            def accountSummaryEnd(self, reqId):
+                self.account_summary_received.set()
 
         class _IBClient(EClient):
             def __init__(self, wrapper):
                 super().__init__(wrapper)
 
         wrapper = _IBWrapper()
+        self._wrapper = wrapper
         self._app = _IBClient(wrapper)
         self._app.connect(self._host, self._port, self._client_id)
 
@@ -164,12 +192,24 @@ class IBKRBroker(ExecutionProvider):
         if not self._connected or self._app is None:
             return PortfolioState(cash=0.0, positions={}, total_value=0.0)
         try:
+            wrapper = self._wrapper
+            wrapper.positions.clear()
+            wrapper.cash = 0.0
+            wrapper.total_value = 0.0
+            wrapper.positions_received.clear()
+            wrapper.account_summary_received.clear()
+
             self._app.reqAccountSummary(9001, "All", "$Ledger:ALL")
             self._app.reqPositions()
+
+            wrapper.account_summary_received.wait(timeout=5.0)
+            wrapper.positions_received.wait(timeout=5.0)
+
+            return PortfolioState(
+                cash=wrapper.cash,
+                positions=wrapper.positions,
+                total_value=wrapper.total_value,
+            )
         except Exception as e:
-            log.warning("IBKR reqAccountSummary/reqPositions failed: %s", e)
-        return PortfolioState(
-            cash=0.0,
-            positions={},
-            total_value=0.0,
-        )
+            log.warning("IBKR get_portfolio failed: %s", e)
+            return PortfolioState(cash=0.0, positions={}, total_value=0.0)
