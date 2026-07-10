@@ -71,7 +71,13 @@ class TestBlackLittermanOptimizer:
             np.random.uniform(0.01, 0.05, (4, 4)),
             index=assets, columns=assets,
         )
-        cov.values[[0, 1, 2, 3], [0, 1, 2, 3]] = [0.04, 0.035, 0.045, 0.05]
+        vals = np.array([
+            [0.04, np.nan, np.nan, np.nan],
+            [np.nan, 0.035, np.nan, np.nan],
+            [np.nan, np.nan, 0.045, np.nan],
+            [np.nan, np.nan, np.nan, 0.05],
+        ])
+        cov = pd.DataFrame(np.where(np.isnan(vals), cov.values, vals), index=assets, columns=assets)
         cov = (cov + cov.T) / 2
         return assets, market_cap, cov
 

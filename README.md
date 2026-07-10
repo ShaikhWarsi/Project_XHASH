@@ -187,4 +187,4 @@ cd frontend && npm run test
 
 ## License
 
-Proprietary — all rights reserved.
+MIT — see [LICENSE](LICENSE) for details.

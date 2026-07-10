@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import asyncio
+
+import pytest
+
 from core.async_events import AsyncEventBus
 from core.events import Event, EventType
 
 
-def test_event_bus_subscribe_and_publish():
+@pytest.mark.asyncio
+async def test_event_bus_subscribe_and_publish():
     bus = AsyncEventBus()
     received = []
 
@@ -12,9 +17,10 @@ def test_event_bus_subscribe_and_publish():
         received.append(event)
 
     bus.subscribe(EventType.SIGNAL, callback)
-
-    event = Event(type=EventType.SIGNAL, payload={"test": True})
-    bus._queue.put_nowait(event)
+    await bus.start()
+    await bus.publish(Event(type=EventType.SIGNAL, payload={"test": True}))
+    await asyncio.sleep(0.05)
+    await bus.stop()
 
     assert len(received) == 1
     assert received[0].payload["test"] is True

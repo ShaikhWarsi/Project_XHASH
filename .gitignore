@@ -10,6 +10,7 @@ venv/
 # Environment
 .env
 .env.local
+persistence/_auto_secrets.txt
 
 # IDE
 .idea/

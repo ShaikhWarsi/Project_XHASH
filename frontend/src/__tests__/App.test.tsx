@@ -1,10 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 
 vi.mock('react', async (importOriginal) => {
-  const actual = await importOriginal()
+  const mod = await importOriginal()
   const LazyShell: React.FC = () => <div data-testid="lazy-page" />
-  return { ...actual, lazy: () => LazyShell }
+  return Object.assign({}, mod, { lazy: () => LazyShell })
 })
 
 import App from '../App'

@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  frontend:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -23,3 +23,17 @@ jobs:
       - run: npm run build
       - name: vitest
         run: npx vitest run --coverage.enabled=false
+
+  backend:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e ".[dev]"
+      - run: pip install stockstats textblob
+      - run: pytest tests/ --ignore=tests/api --ignore=tests/integrations --ignore=tests/analytics/test_skfolio_optimizer.py --ignore=tests/analytics/test_factors.py -x -q

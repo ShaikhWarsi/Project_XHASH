@@ -53,13 +53,14 @@ class TelegramNotifier:
         return resp.json()
 
     def notify_trade(self, symbol: str, side: str, quantity: float, price: float) -> dict:
+        import datetime
         text = (
             f"*Trade Executed*\\n"
             f"Symbol: `{symbol}`\\n"
             f"Side: {side}\\n"
             f"Qty: {quantity:.4f}\\n"
             f"Price: ${price:.2f}\\n"
-            f"Time: {__import__('datetime').datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC"
+            f"Time: {datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC"
         )
         return self.send_message(text)
 
