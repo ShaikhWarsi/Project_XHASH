@@ -156,6 +156,15 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           )
         })}
       </div>
+      {workflowFilter && (
+        <div className="text-[8px] px-3 py-1 text-muted font-mono border-b border-default" style={{ background: 'var(--bg-hover)' }}>
+          Showing {NAV_GROUPS.reduce((sum, g) => sum + g.items.filter((item) => {
+            const route = ROUTES.find((r) => r.path === item.to)
+            return route?.workflow === workflowFilter
+          }).length, 0)}/{NAV_GROUPS.reduce((sum, g) => sum + g.items.length, 0)} routes
+          — <button onClick={() => setWorkflowFilter(null)} className="bg-transparent border-none text-accent-blue cursor-pointer text-[8px] p-0">show all</button>
+        </div>
+      )}
       <nav className="flex-1 py-2 overflow-y-auto [scrollbar-width:thin]" aria-label="Main navigation">
         {hiddenGroups['__all'] && (
           <div className="px-3 py-1">

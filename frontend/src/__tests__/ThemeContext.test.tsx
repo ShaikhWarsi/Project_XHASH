@@ -66,11 +66,11 @@ describe('ThemeContext', () => {
       </ThemeProvider>,
     )
     fireEvent.click(screen.getByTestId('cycle-theme'))
-    expect(screen.getByTestId('theme').textContent).toBe('matrix')
-    fireEvent.click(screen.getByTestId('cycle-theme'))
-    expect(screen.getByTestId('theme').textContent).toBe('amber')
-    fireEvent.click(screen.getByTestId('cycle-theme'))
     expect(screen.getByTestId('theme').textContent).toBe('cyber')
+    fireEvent.click(screen.getByTestId('cycle-theme'))
+    expect(screen.getByTestId('theme').textContent).toBe('terminal')
+    fireEvent.click(screen.getByTestId('cycle-theme'))
+    expect(screen.getByTestId('theme').textContent).toBe('light')
   })
 
   it('setDensity updates density', () => {

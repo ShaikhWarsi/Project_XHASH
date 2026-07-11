@@ -31,8 +31,7 @@ const THEME_OPTIONS = [
   { value: 'cyber', label: 'Cyber Neon', desc: 'Cyan/blue cyberpunk' },
   { value: 'terminal', label: 'Terminal', desc: 'Minimalist monochrome' },
   { value: 'light', label: 'Light', desc: 'Clean light mode' },
-  { value: 'bloomberg', label: 'Bloomberg', desc: 'Dark blue terminal' },
-  { value: 'trader', label: 'Trader', desc: 'High-contrast green-on-black' },
+
 ]
 
 const TIMEZONE_OPTIONS = [
@@ -46,8 +45,6 @@ const CURRENCY_OPTIONS = ['USD', 'EUR', 'GBP', 'JPY', 'CNY', 'SGD']
 
 const CHART_LAYOUTS = ['1x1', '2x1', '1x2', '2x2']
 const CHART_TIMEFRAMES = ['1m', '5m', '15m', '30m', '1h', '4h', '1d']
-
-const DEFAULT_INDICATORS = ['SMA_20', 'EMA_50', 'RSI_14', 'MACD', 'BB_20_2', 'VWAP']
 
 const DEFAULT_HOTKEYS: Record<string, string> = {
   'Symbol Search': 'Ctrl+K',

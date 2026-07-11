@@ -45,6 +45,7 @@ export const usePortfolioStore = create<PortfolioStore>()(
     {
       name: 'te-portfolio-storage',
       version: 1,
+      partialize: (state) => ({ portfolio: state.portfolio, metrics: state.metrics, trades: state.trades }),
       migrate: (state: unknown) => state as Partial<PortfolioStore>,
     },
   ),

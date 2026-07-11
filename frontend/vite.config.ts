@@ -9,7 +9,7 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, 'src'),
     },
-    conditions: ['module', 'browser', 'import', 'production', 'require'],
+    conditions: ['module', 'browser', 'import'],
   },
   server: {
     proxy: {

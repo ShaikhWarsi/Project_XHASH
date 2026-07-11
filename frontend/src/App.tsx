@@ -1,5 +1,5 @@
 import { lazy, Suspense, type ReactNode } from 'react'
-import StrategyPortfolio from './pages/StrategyPortfolio'
+const StrategyPortfolio = lazy(() => import('./pages/StrategyPortfolio'))
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -102,6 +102,7 @@ const SandboxPage = lazy(() => import('./pages/SandboxPage'))
 const Analyzer = lazy(() => import('./pages/Analyzer'))
 const SecurityDashboard = lazy(() => import('./pages/SecurityDashboard'))
 const SecurityAdmin = lazy(() => import('./pages/SecurityAdmin'))
+const LiveTradingWizard = lazy(() => import('./pages/LiveTradingWizard'))
 const GTTOrders = lazy(() => import('./pages/GTTOrders'))
 const PythonStrategyIndex = lazy(() => import('./pages/PythonStrategyIndex'))
 const PythonStrategyNew = lazy(() => import('./pages/PythonStrategyNew'))
@@ -119,6 +120,7 @@ const Historify = lazy(() => import('./pages/Historify'))
 const HistorifyCharts = lazy(() => import('./pages/HistorifyCharts'))
 const WebhookBridges = lazy(() => import('./pages/WebhookBridges'))
 const StrategyPortfolioView = lazy(() => import('./pages/StrategyPortfolioView'))
+const ResearchHub = lazy(() => import('./pages/ResearchHub'))
 const MultiQuotesPage = lazy(() => import('./pages/MultiQuotesPage'))
 const MarketTimingsPage = lazy(() => import('./pages/MarketTimingsPage'))
 const MarketHolidaysPage = lazy(() => import('./pages/MarketHolidaysPage'))
@@ -178,6 +180,7 @@ export default function App() {
                   <Route path="/trading/orders" element={<LazyPage><Orders /></LazyPage>} />
                   <Route path="/trading/trades" element={<LazyPage><Trades /></LazyPage>} />
                   <Route path="/trading/portfolio" element={<LazyPage><Portfolio /></LazyPage>} />
+                  <Route path="/trading/live" element={<LazyPage><LiveTradingWizard /></LazyPage>} />
                   <Route path="/trading/paper-trading" element={<LazyPage><PaperTrading /></LazyPage>} />
                   <Route path="/trading/portfolio-optimization" element={<LazyPage><PortfolioOptimization /></LazyPage>} />
                   <Route path="/trading/what-if" element={<LazyPage><PortfolioWhatIf /></LazyPage>} />
@@ -194,6 +197,7 @@ export default function App() {
                   <Route path="/ai/rl-training" element={<LazyPage><RLTrainer /></LazyPage>} />
                   <Route path="/ai/llm" element={<LazyPage><LLMPage /></LazyPage>} />
                   <Route path="/ai/persona-council" element={<LazyPage><PersonaCouncil /></LazyPage>} />
+                  <Route path="/research/hub" element={<LazyPage><ResearchHub /></LazyPage>} />
                   <Route path="/research/cfa" element={<LazyPage><CfaAnalytics /></LazyPage>} />
                   <Route path="/research/factor-analysis" element={<LazyPage><FactorAnalysisPage /></LazyPage>} />
                   <Route path="/research/factor-zoo" element={<LazyPage><FactorZoo /></LazyPage>} />
@@ -278,7 +282,7 @@ export default function App() {
                   <Route path="/openalgo/market-timings" element={<LazyPage><MarketTimingsPage /></LazyPage>} />
                   <Route path="/openalgo/market-holidays" element={<LazyPage><MarketHolidaysPage /></LazyPage>} />
                   <Route path="/openalgo/whatsapp" element={<LazyPage><WhatsAppBotPage /></LazyPage>} />
-                  <Route path="/openalgo/strategy-portfolio" element={<StrategyPortfolio />} />
+                  <Route path="/openalgo/strategy-portfolio" element={<LazyPage><StrategyPortfolio /></LazyPage>} />
                   <Route path="/openalgo/strategy-portfolio/view/:id" element={<LazyPage><StrategyPortfolioView /></LazyPage>} />
                 </Route>
               </Routes>

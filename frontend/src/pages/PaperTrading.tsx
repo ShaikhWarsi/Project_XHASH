@@ -134,7 +134,7 @@ export default function PaperTrading() {
         <Card title="CONTROLS">
           <div className="flex gap-1">
             <button onClick={handleStart} disabled={running}
-              className="flex-1 border-none font-mono-data text-[11px] font-semibold py-1" style={{ background: running ? 'var(--border-color)' : 'var(--accent-green)', color: running ? 'var(--text-muted)' : '#000', cursor: running ? 'default' : 'pointer' }}>
+              className="flex-1 border-none font-mono-data text-[11px] font-semibold py-1" style={{ background: running ? 'var(--border-color)' : 'var(--accent-green)', color: running ? 'var(--text-muted)' : 'var(--bg-primary)', cursor: running ? 'default' : 'pointer' }}>
               START
             </button>
             <button onClick={handleStop} disabled={!running}

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useMemo } from 'react'
-import Card from './ui/Card'
 import type { BacktestResult } from '../api/types'
+import Card from './ui/Card'
 
 interface BacktestAnalysisProps {
   results: BacktestResult[]
@@ -9,14 +9,56 @@ interface BacktestAnalysisProps {
 
 const COLORS = ['#00e5ff', '#22c55e', '#ef4444', '#eab308', '#a855f7', '#f97316', '#06b6d4', '#ec4899']
 
-function generateWalkForwardData(count: number) {
+const WALK_FWD_DATA = generateWalkForwardData()
+const OPT_TRACE = generateOptTrace()
+const PARETO_DATA = generateParetoData()
+const SENSITIVITY_Z = generateSensitivityZ()
+
+function seededRandom(seed: number) {
+  let s = seed
+  return () => {
+    s = (s * 16807 + 0) % 2147483647
+    return (s - 1) / 2147483646
+  }
+}
+
+function generateWalkForwardData() {
+  const rng = seededRandom(42)
   const data: { is: number[]; oos: number[]; labels: string[] } = { is: [], oos: [], labels: [] }
-  for (let i = 0; i < count; i++) {
-    data.is.push(8 + Math.random() * 8 - i * 0.3 + Math.random() * 2)
-    data.oos.push(data.is[i] * (0.4 + Math.random() * 0.3) - Math.random() * 2)
+  for (let i = 0; i < 8; i++) {
+    data.is.push(8 + rng() * 8 - i * 0.3 + rng() * 2)
+    data.oos.push(data.is[i] * (0.4 + rng() * 0.3) - rng() * 2)
     data.labels.push(`W${i + 1}`)
   }
   return data
+}
+
+function generateOptTrace() {
+  const rng = seededRandom(99)
+  const trace: { param: number[]; score: number[] } = { param: [], score: [] }
+  for (let i = 0; i < 50; i++) { trace.param.push(rng() * 100); trace.score.push(rng() * 2 - 0.5 + Math.sin(trace.param[i] / 10) * 0.5) }
+  return trace
+}
+
+function generateParetoData() {
+  const rng = seededRandom(77)
+  const points: { return_: number[]; drawdown: number[] } = { return_: [], drawdown: [] }
+  for (let i = 0; i < 30; i++) { const r = rng() * 0.5 + 0.02; const d = rng() * 0.3 + 0.01; if (r / d > 0.5) { points.return_.push(r * 100); points.drawdown.push(d * 100) } }
+  return points
+}
+
+function generateSensitivityZ() {
+  const rng = seededRandom(123)
+  const rows = 8; const cols = 8; const z: number[][] = []
+  for (let i = 0; i < rows; i++) {
+    const row: number[] = []
+    for (let j = 0; j < cols; j++) {
+      const dist = Math.sqrt((i - (rows - 1) / 2) ** 2 + (j - (cols - 1) / 2) ** 2)
+      row.push(1.5 - dist * 0.15 + (rng() - 0.5) * 0.3)
+    }
+    z.push(row)
+  }
+  return z
 }
 
 function generateMonteCarloPaths(equityCurve: number[], nPaths = 50, nSteps = 252) {
@@ -44,7 +86,8 @@ function PlotContainer({ data, layout, config: cfg = {} }: { data: unknown; layo
   const ref = useRef<HTMLDivElement>(null)
   const plotlyRef = useRef<unknown>(null)
   useEffect(() => {
-    if (!ref.current) return
+    const el = ref.current
+    if (!el) return
     let cancelled = false
     const render = async () => {
       try {
@@ -52,7 +95,7 @@ function PlotContainer({ data, layout, config: cfg = {} }: { data: unknown; layo
         const Plotly = (mod as any).default || mod
         if (cancelled) return
         plotlyRef.current = Plotly
-        await Plotly.newPlot(ref.current, data, {
+        await Plotly.newPlot(el, data, {
           paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
           font: { color: '#9aa0a6', size: 10 },
           ...(layout as any),
@@ -60,38 +103,13 @@ function PlotContainer({ data, layout, config: cfg = {} }: { data: unknown; layo
       } catch { /* silent */ }
     }
     render()
-    return () => { cancelled = true; if (ref.current) ref.current.innerHTML = '' }
+    return () => { cancelled = true; el.innerHTML = '' }
   }, [data, layout, cfg])
   return <div ref={ref} style={{ width: '100%', height: (layout as any)?.height ?? 300 }} />
 }
 
 export default function BacktestAnalysis({ results, labels }: BacktestAnalysisProps) {
   const primaryResult = results[0]
-
-  const walkFwd = useMemo(() => generateWalkForwardData(8), [])
-  const optTrace = useMemo(() => {
-    const trace: { param: number[]; score: number[] } = { param: [], score: [] }
-    for (let i = 0; i < 50; i++) { trace.param.push(Math.random() * 100); trace.score.push(Math.random() * 2 - 0.5 + Math.sin(trace.param[i] / 10) * 0.5) }
-    return trace
-  }, [])
-  const paretoData = useMemo(() => {
-    const points: { return_: number[]; drawdown: number[] } = { return_: [], drawdown: [] }
-    for (let i = 0; i < 30; i++) { const r = Math.random() * 0.5 + 0.02; const d = Math.random() * 0.3 + 0.01; if (r / d > 0.5) { points.return_.push(r * 100); points.drawdown.push(d * 100) } }
-    return points
-  }, [])
-
-  const sensitivityZ = useMemo(() => {
-    const rows = 8; const cols = 8; const z: number[][] = []
-    for (let i = 0; i < rows; i++) {
-      const row: number[] = []
-      for (let j = 0; j < cols; j++) {
-        const dist = Math.sqrt((i - (rows - 1) / 2) ** 2 + (j - (cols - 1) / 2) ** 2)
-        row.push(1.5 - dist * 0.15 + (Math.random() - 0.5) * 0.3)
-      }
-      z.push(row)
-    }
-    return z
-  }, [])
 
   const mcData = useMemo(() => {
     if (!primaryResult?.equity_curve) return { paths: [], finalValues: [] }
@@ -129,10 +147,10 @@ export default function BacktestAnalysis({ results, labels }: BacktestAnalysisPr
       <Card title="WALK-FORWARD ANALYSIS">
         <PlotContainer
           data={[
-            { x: walkFwd.labels, y: walkFwd.is, type: 'bar', name: 'In-Sample', marker: { color: '#00e5ff', opacity: 0.8 } },
-            { x: walkFwd.labels, y: walkFwd.oos, type: 'bar', name: 'Out-of-Sample', marker: { color: '#ef4444', opacity: 0.8 } },
+            { x: WALK_FWD_DATA.labels, y: WALK_FWD_DATA.is, type: 'bar', name: 'In-Sample', marker: { color: '#00e5ff', opacity: 0.8 } },
+            { x: WALK_FWD_DATA.labels, y: WALK_FWD_DATA.oos, type: 'bar', name: 'Out-of-Sample', marker: { color: '#ef4444', opacity: 0.8 } },
             {
-              x: walkFwd.labels, y: walkFwd.is.map((v, i) => v - walkFwd.oos[i]),
+              x: WALK_FWD_DATA.labels, y: WALK_FWD_DATA.is.map((v, i) => v - WALK_FWD_DATA.oos[i]),
               type: 'scatter', mode: 'lines+markers', name: 'Degradation',
               line: { color: '#eab308', width: 1, dash: 'dot' }, yaxis: 'y2',
             },
@@ -156,7 +174,7 @@ export default function BacktestAnalysis({ results, labels }: BacktestAnalysisPr
               ...mcData.paths.slice(0, 30).map((path, i) => ({
                 y: path, type: 'scatter', mode: 'lines',
                 name: `Path ${i + 1}`,
-                line: { color: `rgba(0, 229, 255, ${0.1 + Math.random() * 0.15})`, width: 0.5 },
+                line: { color: `rgba(0, 229, 255, ${0.1 + (i % 10) * 0.015})`, width: 0.5 },
                 showlegend: false, hoverinfo: 'skip',
               })),
               {
@@ -187,7 +205,7 @@ export default function BacktestAnalysis({ results, labels }: BacktestAnalysisPr
           data={[{
             x: Array.from({ length: 8 }, (_, i) => `P${i + 1}`),
             y: Array.from({ length: 8 }, (_, i) => `P${i + 1}`),
-            z: sensitivityZ, type: 'heatmap',
+            z: SENSITIVITY_Z, type: 'heatmap',
             colorscale: [[0, '#ef4444'], [0.25, '#eab308'], [0.5, '#22c55e'], [0.75, '#00e5ff'], [1, '#a855f7']],
             showscale: true,
             hovertemplate: 'Param A: %{y}<br>Param B: %{x}<br>Sharpe: %{z:.2f}<extra></extra>',
@@ -202,9 +220,9 @@ export default function BacktestAnalysis({ results, labels }: BacktestAnalysisPr
       <Card title="OPTIMIZATION TRACE">
         <PlotContainer
           data={[{
-            x: optTrace.param, y: optTrace.score,
+            x: OPT_TRACE.param, y: OPT_TRACE.score,
             type: 'scatter', mode: 'markers',
-            marker: { color: optTrace.score.map((s) => s > 0 ? '#22c55e' : '#ef4444'), size: 6, opacity: 0.7 },
+            marker: { color: OPT_TRACE.score.map((s) => s > 0 ? '#22c55e' : '#ef4444'), size: 6, opacity: 0.7 },
             hovertemplate: 'Param: %{x:.1f}<br>Score: %{y:.3f}<extra></extra>',
           }]}
           layout={{
@@ -218,7 +236,7 @@ export default function BacktestAnalysis({ results, labels }: BacktestAnalysisPr
       <Card title="PARETO FRONTIER">
         <PlotContainer
           data={[{
-            x: paretoData.drawdown, y: paretoData.return_,
+            x: PARETO_DATA.drawdown, y: PARETO_DATA.return_,
             type: 'scatter', mode: 'markers',
             marker: { color: '#00e5ff', size: 8, opacity: 0.7, line: { color: '#00e5ff', width: 1 } },
             hovertemplate: 'Max DD: %{x:.1f}%<br>Return: %{y:.1f}%<extra></extra>',

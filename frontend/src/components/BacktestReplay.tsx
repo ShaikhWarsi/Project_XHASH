@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 
 export interface ReplayBar {
   time: number
@@ -24,18 +24,32 @@ interface Props {
   onPause?: () => void
 }
 
+function Stat({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <div style={{ color: 'var(--text-muted)', fontSize: 8 }}>{label}</div>
+      <div style={{ color, fontSize: 10, fontWeight: 600 }}>{value}</div>
+    </div>
+  )
+}
+
 export default function BacktestReplay({ config, onBar, onComplete, onPause }: Props) {
   const { bars, speed = 200, initialCapital = 10000 } = config
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
-  const [progress, setProgress] = useState(0)
   const intervalRef = useRef<number | null>(null)
-  const [pnl, setPnl] = useState(0)
-  const [volume, setVolume] = useState(0)
 
   const currentBar = bars[currentIndex]
   const totalBars = bars.length
   const pctComplete = ((currentIndex + 1) / totalBars) * 100
+
+  const pnl = useMemo(() => {
+    return bars.slice(0, currentIndex + 1).reduce((sum, b) => sum + (b.close - b.open), 0)
+  }, [bars, currentIndex])
+
+  const volume = useMemo(() => {
+    return bars.slice(0, currentIndex + 1).reduce((sum, b) => sum + (b.volume ?? 0), 0)
+  }, [bars, currentIndex])
 
   const play = useCallback(() => {
     if (intervalRef.current) return
@@ -50,7 +64,6 @@ export default function BacktestReplay({ config, onBar, onComplete, onPause }: P
           onComplete?.()
           return prev
         }
-        setProgress((next / totalBars) * 100)
         return next
       })
     }, speed)
@@ -68,34 +81,21 @@ export default function BacktestReplay({ config, onBar, onComplete, onPause }: P
   const stop = useCallback(() => {
     pause()
     setCurrentIndex(0)
-    setProgress(0)
-    setPnl(0)
-    setVolume(0)
   }, [pause])
 
   const stepForward = useCallback(() => {
     setCurrentIndex(prev => Math.min(prev + 1, totalBars - 1))
-    setProgress(((currentIndex + 2) / totalBars) * 100)
-  }, [totalBars, currentIndex])
+  }, [totalBars])
 
   const stepBackward = useCallback(() => {
     setCurrentIndex(prev => Math.max(prev - 1, 0))
-    setProgress((currentIndex / totalBars) * 100)
-  }, [currentIndex, totalBars])
-
-  const jumpTo = useCallback((index: number) => {
-    const clamped = Math.max(0, Math.min(index, totalBars - 1))
-    setCurrentIndex(clamped)
-    setProgress((clamped / totalBars) * 100)
-  }, [totalBars])
+  }, [])
 
   useEffect(() => {
     if (currentBar) {
-      setPnl(prev => prev + (currentBar.close - currentBar.open))
-      setVolume(prev => prev + (currentBar.volume ?? 0))
       onBar?.(currentBar, currentIndex, totalBars)
     }
-  }, [currentIndex])
+  }, [currentBar, currentIndex, onBar, totalBars])
 
   useEffect(() => {
     return () => {
@@ -183,8 +183,7 @@ export default function BacktestReplay({ config, onBar, onComplete, onPause }: P
           max={1000}
           step={50}
           value={1100 - speed}
-          onChange={e => {
-            const newSpeed = 1100 - Number(e.target.value)
+          onChange={() => {
             if (intervalRef.current) {
               pause()
             }
@@ -202,13 +201,4 @@ const btnStyle: React.CSSProperties = {
   background: 'transparent', border: '1px solid var(--border-color, #1a2332)',
   borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center',
   fontFamily: 'JetBrains Mono, monospace',
-}
-
-function Stat({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <div style={{ textAlign: 'center' }}>
-      <div style={{ color: 'var(--text-muted)', fontSize: 8 }}>{label}</div>
-      <div style={{ color, fontSize: 10, fontWeight: 600 }}>{value}</div>
-    </div>
-  )
 }

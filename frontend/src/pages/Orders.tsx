@@ -90,7 +90,13 @@ export default function Orders() {
   }
 
   const handleClosePosition = async (symbol: string) => {
-    addToast(`Closing position for ${symbol}`, 'info')
+    try {
+      await cancelOrder(symbol)
+      addToast(`Close order submitted for ${symbol}`, 'success')
+      loadData()
+    } catch (e: any) {
+      addToast(`Failed to close ${symbol}: ${e.message}`, 'error')
+    }
   }
 
   const openOrders = orders.filter((o) => ['NEW', 'PARTIALLY_FILLED', 'ACCEPTED'].includes(o.status))

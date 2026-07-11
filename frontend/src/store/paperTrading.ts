@@ -76,6 +76,7 @@ export const usePaperTradingStore = create<PaperTradingStore>()(
     {
       name: 'te-paper-trading',
       version: 1,
+      partialize: (state) => ({ account: state.account, trades: state.trades }),
       migrate: (state: unknown) => state as Partial<PaperTradingStore>,
     }
   )

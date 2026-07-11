@@ -28,13 +28,7 @@ export function LivePricesProvider({ children }: { children: ReactNode }) {
     }
   }, [lastData])
 
-  useEffect(() => {
-    const handleVisibility = () => {
-      if (document.hidden) return
-    }
-    document.addEventListener('visibilitychange', handleVisibility)
-    return () => document.removeEventListener('visibilitychange', handleVisibility)
-  }, [])
+
 
   const getPrice = (symbol: string): PriceData | null => {
     const p = prices[symbol]

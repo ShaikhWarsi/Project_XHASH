@@ -9,7 +9,6 @@
   .bg-sidebar { background: var(--bg-sidebar); }
   .bg-card { background: var(--bg-card); }
   .bg-hover { background: var(--bg-hover); }
-  .text-secondary { color: var(--text-secondary); }
   .bg-input { background: var(--input-bg); }
   .border-default { border-color: var(--border-color); }
   .border-input { border-color: var(--input-border); }
@@ -440,7 +439,20 @@ body {
 
 #root {
   min-height: 100vh;
+  min-width: 0;
 }
+
+/* Prevent CSS Grid blowout - force grid children to stay within their column */
+.grid > *, .grid > div { min-width: 0; }
+
+/* Prevent flex blowout */
+.flex-1, .flex-auto { min-width: 0; }
+
+/* Ensure text truncation works in grid/flex contexts */
+.truncate { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Main content area horizontal overflow protection */
+main { overflow-x: hidden; }
 
 button:not(:disabled), label, select, input[type="checkbox"], input[type="radio"], summary, [role="button"], [role="tab"], [role="menuitem"], [role="option"] {
   cursor: pointer;

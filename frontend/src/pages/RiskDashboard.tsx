@@ -19,9 +19,10 @@ function HeatmapCell({ sector, exposure, return: ret, maxExposure }: { sector: s
   const intensity = maxExposure > 0 ? exposure / maxExposure : 0
   const retVal = ret ?? 0
   const base = retVal >= 0 ? HEATMAP_GREEN_RGB : HEATMAP_RED_RGB
-  const r = Math.round(base.r * intensity)
-  const g = Math.round(base.g * intensity)
-  const b = Math.round(base.b * intensity)
+  const floor = 40
+  const r = Math.round(floor + (base.r - floor) * intensity)
+  const g = Math.round(floor + (base.g - floor) * intensity)
+  const b = Math.round(floor + (base.b - floor) * intensity)
   const bg = `rgba(${r}, ${g}, ${b}, ${HEATMAP_OPACITY_BASE + intensity * HEATMAP_OPACITY_VARY})`
   return (
     <div style={{ background: bg }} className="border border-default px-2 py-1">

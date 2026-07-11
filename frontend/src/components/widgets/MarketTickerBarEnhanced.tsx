@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { useToastStore } from '../../store/toast'
 
 interface TickerItem {
   symbol: string
@@ -72,8 +73,9 @@ export default function MarketTickerBarEnhanced() {
         }
         if (anySuccess) setTickers(updated)
         setError(!anySuccess)
-      } catch {
+      } catch (e) {
         setError(true)
+        useToastStore.getState().addToast('Market ticker: failed to fetch quotes', 'error', 8000, undefined, 'Check network or /api/market/quotes endpoint')
       }
     }
     load()

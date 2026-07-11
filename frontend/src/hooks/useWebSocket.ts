@@ -62,7 +62,7 @@ export function useWebSocket<T = unknown>(url: string, options: UseWebSocketOpti
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.host
-    const fullUrl = currentUrl.startsWith('ws') ? currentUrl : `${protocol}//${host}${currentUrl}`
+    const fullUrl = currentUrl.startsWith('ws') ? currentUrl : `${protocol}//${host}${currentUrl.startsWith('/api') ? '' : '/api'}${currentUrl}`
 
     const ws = new WebSocket(fullUrl)
     wsRef.current = ws

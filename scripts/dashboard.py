@@ -25,6 +25,8 @@ def main():
     app = create_app()
     endpoints = [
         ("GET", "/health", "Health check"),
+        ("GET", "/config", "App configuration"),
+        ("GET", "/watchlist", "Watchlist items"),
         ("GET", "/signals/", "Full signal matrix"),
         ("GET", "/signals/latest", "Latest signals with composite scores"),
         ("GET", "/portfolio/", "Portfolio state + positions"),
@@ -32,13 +34,20 @@ def main():
         ("GET", "/metrics/", "Performance metrics"),
         ("GET", "/metrics/attribution", "Trade attribution"),
         ("GET", "/trades/", "Trade history"),
+        ("GET", "/orders/", "Open orders"),
+        ("POST", "/orders/", "Place new order"),
+        ("GET", "/alerts/", "Active alerts"),
         ("GET", "/backtest/list", "List past backtests"),
         ("POST", "/backtest/run", "Run new backtest"),
         ("GET", "/backtest/{id}", "Backtest detail"),
         ("GET", "/stream/live", "SSE live stream"),
+        ("GET", "/api/ai/briefing", "AI-powered market briefing"),
+        ("GET", "/api/screener/", "Stock screener results"),
+        ("GET", "/api/market/quotes", "Real-time market quotes"),
+        ("GET", "/api/regime", "Market regime detection"),
     ]
     print(f"\n{'='*60}")
-    print("  Trading Engine Dashboard API v0.2.0")
+    print("  Trading Engine Dashboard API v0.4.0")
     print(f"  http://{args.host}:{args.port}")
     print(f"{'='*60}")
     print("\nEndpoints:")

@@ -21,14 +21,31 @@ logger = logging.getLogger(__name__)
 
 ph = PasswordHasher()
 
-_pepper_value = os.getenv("API_KEY_PEPPER", "")
-if not _pepper_value:
-    import sys as _sys
-    _sys.stderr.write(
-        "[models_auth] WARNING: API_KEY_PEPPER not set; using auto-generated ephemeral key.\n"
-        "Set API_KEY_PEPPER in your environment for persistent encryption.\n"
-    )
-    _pepper_value = secrets.token_hex(32)
+_AUTO_SECRETS_FILE = os.path.join(os.path.dirname(__file__), "_auto_secrets.txt")
+
+
+def _load_or_generate_secret(env_var: str, key_name: str, length: int = 32) -> str:
+    env_val = os.getenv(env_var, "").strip()
+    if env_val:
+        return env_val
+    try:
+        if os.path.isfile(_AUTO_SECRETS_FILE):
+            with open(_AUTO_SECRETS_FILE, "r") as f:
+                for line in f:
+                    if line.startswith(f"{key_name}="):
+                        return line.strip().split("=", 1)[1]
+    except OSError:
+        pass
+    generated = secrets.token_hex(length)
+    try:
+        with open(_AUTO_SECRETS_FILE, "a") as f:
+            f.write(f"{key_name}={generated}\n")
+    except OSError:
+        pass
+    return generated
+
+
+_pepper_value = _load_or_generate_secret("API_KEY_PEPPER", "API_KEY_PEPPER")
 PEPPER = _pepper_value
 
 
@@ -39,13 +56,12 @@ def _resolve_fernet_salt() -> bytes:
             return bytes.fromhex(raw)
         except ValueError:
             pass
-    if not getattr(_resolve_fernet_salt, "_warned", False):
-        import sys as _sys
-        _sys.stderr.write(
-            "[models_auth] WARNING: FERNET_SALT not set or invalid; using legacy static salt.\n"
-            "Set FERNET_SALT in your environment for secure Fernet encryption.\n"
-        )
-        _resolve_fernet_salt._warned = True
+    raw_file = _load_or_generate_secret("FERNET_SALT", "FERNET_SALT")
+    if len(raw_file) >= 32:
+        try:
+            return bytes.fromhex(raw_file)
+        except ValueError:
+            pass
     return b"openalgo_static_salt"
 
 

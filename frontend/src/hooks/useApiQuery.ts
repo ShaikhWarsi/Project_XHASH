@@ -43,9 +43,9 @@ export function useApiQuery<T>(
 
   useEffect(() => {
     return () => {
-      queryClient.cancelQueries({ queryKey })
+      queryClient.cancelQueries({ queryKey: url ? [url] : [] })
     }
-  }, [queryKey[0], queryClient])
+  }, [url, queryClient])
 
   return {
     data: data as T | undefined,

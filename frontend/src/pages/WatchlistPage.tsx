@@ -49,7 +49,7 @@ export default function WatchlistPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-white flex items-center gap-2">
+        <h1 className="text-xl font-bold text-primary flex items-center gap-2">
           <Star className="w-5 h-5 text-yellow-500" />
           Watchlist
         </h1>
@@ -66,12 +66,12 @@ export default function WatchlistPage() {
         <div className="lg:col-span-2">
           <Card>
             {loading ? (
-              <div className="text-center py-8 text-[#5f6368]">
-                <div className="animate-spin w-6 h-6 border-2 border-[#5f6368] border-t-transparent rounded-full mx-auto mb-2" />
+              <div className="text-center py-8 text-muted">
+                <div className="animate-spin w-6 h-6 border-2 border-muted border-t-transparent rounded-full mx-auto mb-2" />
                 <p className="text-sm">Loading watchlist...</p>
               </div>
             ) : items.length === 0 ? (
-              <div className="text-center py-8 text-[#5f6368]">
+              <div className="text-center py-8 text-muted">
                 <Star className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">Your watchlist is empty</p>
                 <p className="text-xs mt-1">Search for stocks above to add them</p>
@@ -86,16 +86,16 @@ export default function WatchlistPage() {
                       e.dataTransfer.setData('text/plain', item.symbol)
                       e.dataTransfer.effectAllowed = 'copy'
                     }}
-                    className="flex items-center justify-between p-3 rounded-lg hover:bg-[#2a2d3e]/50 transition-colors cursor-pointer group"
+                    className="flex items-center justify-between p-3 rounded-lg hover:bg-[var(--bg-hover)] transition-colors cursor-pointer group"
                     onClick={() => navigate(`/markets/chart?symbol=${item.symbol}`)}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-[#2a2d3e] flex items-center justify-center text-xs font-bold text-[#9aa0a6]">
+                      <div className="w-8 h-8 rounded-lg bg-[var(--bg-hover)] flex items-center justify-center text-xs font-bold text-muted">
                         {item.symbol[0]}
                       </div>
                       <div>
-                        <div className="text-sm font-medium text-white">{item.symbol}</div>
-                        <div className="text-xs text-[#9aa0a6]">{item.company || item.symbol}</div>
+                        <div className="text-sm font-medium text-primary">{item.symbol}</div>
+                        <div className="text-xs text-muted">{item.company || item.symbol}</div>
                         {item.profile && (
                           <div className="flex items-center gap-2 mt-1" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
                             {(item.profile.sector as string | undefined) && <span>{item.profile.sector as string}</span>}
@@ -112,9 +112,9 @@ export default function WatchlistPage() {
                     <div className="flex items-center gap-4">
                       {item.price && (
                         <div className="text-right">
-                          <div className="text-sm font-medium text-white">${item.price.toFixed(2)}</div>
+                          <div className="text-sm font-medium text-primary">${item.price.toFixed(2)}</div>
                           {item.changePercent !== undefined && (
-                            <div className={`text-xs ${(item.changePercent || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            <div className={`text-xs ${(item.changePercent || 0) >= 0 ? 'text-up' : 'text-down'}`}>
                               {(item.changePercent || 0) >= 0 ? '+' : ''}{item.changePercent?.toFixed(2)}%
                             </div>
                           )}
@@ -122,7 +122,7 @@ export default function WatchlistPage() {
                       )}
                       <button
                         onClick={e => { e.stopPropagation(); handleRemove(item.symbol) }}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-red-500/20 text-[#9aa0a6] hover:text-red-400 transition-all"
+                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-red-500/20 text-muted hover:text-accent-red transition-all"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>

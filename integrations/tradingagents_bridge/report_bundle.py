@@ -1,7 +1,7 @@
 """Data classes for pipeline output consumed by the API and frontend."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, List, Optional
 
 
@@ -13,7 +13,7 @@ class ScrapeSource:
     def __init__(self, source: str, items: list[dict], fetched_at: str | None = None):
         self.source = source
         self.items = items
-        self.fetched_at = fetched_at or datetime.utcnow().isoformat()
+        self.fetched_at = fetched_at or datetime.now(timezone.utc).isoformat()
 
     def to_dict(self) -> dict:
         return {"source": self.source, "items": self.items, "fetched_at": self.fetched_at}
@@ -39,7 +39,7 @@ class AnalystReport:
     def __init__(self, name: str, content: str, at: str | None = None):
         self.name = name
         self.content = content
-        self.at = at or datetime.utcnow().isoformat()
+        self.at = at or datetime.now(timezone.utc).isoformat()
 
     def to_dict(self) -> dict:
         return {"name": self.name, "content": self.content, "at": self.at}
@@ -55,7 +55,7 @@ class DebateRound:
         self.speaker = speaker
         self.round = round
         self.content = content
-        self.at = at or datetime.utcnow().isoformat()
+        self.at = at or datetime.now(timezone.utc).isoformat()
 
     def to_dict(self) -> dict:
         return {"speaker": self.speaker, "round": self.round, "content": self.content, "at": self.at}

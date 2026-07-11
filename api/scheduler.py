@@ -113,5 +113,6 @@ def register_job(scheduler, job_name: str, fn: Callable, interval_seconds: int, 
         await run_with_retry(job_name, fn, max_retries=int(os.environ.get(f"{job_name.upper()}_RETRIES", "2")))
 
     trigger = IntervalTrigger(seconds=interval_seconds, jitter=30)
-    scheduler.add_job(_wrapped, trigger=trigger, id=job_name, replace_existing=True, name=job_name)
+    scheduler.add_job(_wrapped, trigger=trigger, id=job_name, replace_existing=True, name=job_name,
+                      max_instances=3, coalesce=True, misfire_grace_time=300)
     logger.info("Registered scheduler job: %s (interval=%ds, retries=%s)", job_name, interval_seconds, os.environ.get(f"{job_name.upper()}_RETRIES", "2"))

@@ -28,7 +28,7 @@ export default function MarketIntel() {
             padding: '4px 12px', borderRadius: 3, fontSize: 9, cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace',
             background: tab === t.key ? 'var(--accent-blue)' : 'transparent',
             border: `1px solid ${tab === t.key ? 'var(--accent-blue)' : 'var(--border-color, #1a2332)'}`,
-            color: tab === t.key ? '#fff' : 'var(--text-secondary)',
+            color: tab === t.key ? '#000' : 'var(--text-secondary)',
           }}>{t.label}</button>
         ))}
       </div>
@@ -77,7 +77,7 @@ function EquitiesTab() {
         </button>
       </div>
 
-      {error && <div style={{ color: '#ef4444', fontSize: 9, padding: '4px 0', fontFamily: "'JetBrains Mono', monospace" }}>{error}</div>}
+      {error && <div style={{ color: 'var(--accent-red)', fontSize: 9, padding: '4px 0', fontFamily: "'JetBrains Mono', monospace" }}>{error}</div>}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         <Card title={`DARK POOL — ${symbol}`}>

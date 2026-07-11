@@ -95,8 +95,8 @@ export function subscribeToSSE(onEvent: (data: unknown) => void): () => void {
     : '/api/openalgo/python-strategy/events'
   const es = new EventSource(url)
   es.onmessage = (e) => {
-    try { onEvent(JSON.parse(e.data)) } catch {}
+    try { onEvent(JSON.parse(e.data)) } catch { /* parse error */ }
   }
-  es.onerror = () => {/* SSE error */}
+  es.onerror = () => { /* SSE connection error - will auto-reconnect */ }
   return () => es.close()
 }

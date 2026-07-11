@@ -97,7 +97,29 @@ def _gather_top_movers() -> list[dict[str, Any]]:
 
 
 def _gather_risk_metrics() -> dict[str, Any]:
-    return {"var_95": "—", "max_drawdown": "—", "concentration": "—"}
+    try:
+        from api.state import _demo_portfolio
+        if _demo_portfolio:
+            positions = _demo_portfolio.get("positions", {})
+            total_value = _demo_portfolio.get("total_value", 0) or 1
+            if positions:
+                weights = [abs(pos.get("value", 0)) / total_value for pos in positions.values()]
+                hhi = sum(w * w for w in weights)
+                max_dd = max((pos.get("cost_basis", 0) - pos.get("value", 0)) / (pos.get("cost_basis", 1) or 1) for pos in positions.values()) if positions else 0
+                daily_returns = [pos.get("change_pct", 0) for pos in positions.values() if pos.get("change_pct") is not None]
+                if len(daily_returns) > 2:
+                    daily_returns.sort()
+                    var_95 = daily_returns[int(len(daily_returns) * 0.05)]
+                else:
+                    var_95 = 0
+                return {
+                    "var_95": f"{var_95:.1f}%",
+                    "max_drawdown": f"{max(max_dd, 0):.1f}%",
+                    "concentration": f"{hhi:.3f}",
+                }
+    except Exception:
+        logger.debug("Failed to gather risk metrics")
+    return {"var_95": "\u2014", "max_drawdown": "\u2014", "concentration": "\u2014"}
 
 
 @router.get("/briefing")

@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import { useTheme } from '../contexts/ThemeContext'
-import { useInterfaceMode } from '../contexts/InterfaceModeContext'
+
 import { useTerminalShortcuts } from '../hooks/useTerminalShortcuts'
 import StatusLine from './StatusLine'
 import GoCommandBar from './GoCommandBar'

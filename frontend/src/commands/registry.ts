@@ -36,7 +36,7 @@ export function getSuggestions(input: string): string[] {
   }
   const partial = trimmed.substring(1)
   const results: string[] = []
-  for (const [prefix, cmd] of commands) {
+  for (const [prefix] of commands) {
     if (prefix.substring(1).startsWith(partial)) {
       results.push(`${prefix} `)
     }

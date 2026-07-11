@@ -41,6 +41,7 @@ export const useSignalStore = create<SignalStore>()(
     {
       name: 'te-signals-storage',
       version: 1,
+      partialize: (state) => ({ signals: state.signals }),
       migrate: (state: unknown) => state as Partial<SignalStore>,
     },
   ),

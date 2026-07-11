@@ -95,14 +95,17 @@ export default function PersonaCouncil() {
               const o = event.data
               if (o?.agent) {
                 setStreamProgress((prev) => Math.min(prev + Math.floor(80 / personas.length), 90))
-                const opinion: Opinion = {
-                  agent: o.agent_name || o.agent || 'Unknown',
-                  signal: o.direction === 1 ? 'bullish' : o.direction === -1 ? 'bearish' : 'neutral',
-                  confidence: Math.abs(o.score || o.confidence || 0.5),
-                  reasoning: o.reasoning || o.reason || '',
+                const agentName = o.agent_name || o.agent || 'Unknown'
+                if (!pending.some((p) => p.agent === agentName)) {
+                  const opinion: Opinion = {
+                    agent: agentName,
+                    signal: o.direction === 1 ? 'bullish' : o.direction === -1 ? 'bearish' : 'neutral',
+                    confidence: Math.abs(o.score || o.confidence || 0.5),
+                    reasoning: o.reasoning || o.reason || '',
+                  }
+                  pending.push(opinion)
+                  setOpinions([...pending])
                 }
-                pending.push(opinion)
-                setOpinions([...pending])
               }
               setStreamProgress(95)
             } else if (event.type === 'complete') {

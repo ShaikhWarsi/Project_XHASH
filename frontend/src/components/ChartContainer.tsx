@@ -3,11 +3,12 @@ import { createChart, CandlestickSeries, LineSeries, AreaSeries, type IChartApi,
 import { Maximize2, Minimize2, MessageSquare } from 'lucide-react'
 import ChartAnnotations, { type ChartAnnotation } from './ChartAnnotations'
 
-let _cachedChartStyles: Record<string, string> | null = null
+let _cachedChartStyles: { vars: Record<string, string>; ts: number } | null = null
 function getChartCSSVars(): Record<string, string> {
-  if (_cachedChartStyles) return _cachedChartStyles
+  const now = Date.now()
+  if (_cachedChartStyles && now - _cachedChartStyles.ts < 100) return _cachedChartStyles.vars
   const styles = getComputedStyle(document.documentElement)
-  _cachedChartStyles = {
+  const vars = {
     bgColor: styles.getPropertyValue('--chart-bg').trim() || '#0a0e14',
     textColor: styles.getPropertyValue('--chart-text').trim() || '#d1d4dc',
     gridColor: styles.getPropertyValue('--chart-grid').trim() || '#2a2d3e',
@@ -16,7 +17,8 @@ function getChartCSSVars(): Record<string, string> {
     candleDown: styles.getPropertyValue('--chart-candle-down').trim() || '#ef4444',
     lineColor: styles.getPropertyValue('--chart-line').trim() || '#3b82f6',
   }
-  return _cachedChartStyles
+  _cachedChartStyles = { vars, ts: now }
+  return vars
 }
 
 interface ChartContainerProps {

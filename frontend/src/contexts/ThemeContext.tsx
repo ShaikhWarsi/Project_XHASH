@@ -4,8 +4,6 @@ export type ThemeName = 'classic' | 'matrix' | 'amber' | 'cyber' | 'terminal' | 
 
 const THEME_CYCLE: ThemeName[] = ['classic', 'cyber', 'terminal', 'light', 'highcontrast', 'sunlight', 'auto']
 
-const DARK_THEMES: ThemeName[] = ['classic', 'cyber', 'terminal']
-
 function prefersDark(): boolean {
   if (typeof window === 'undefined') return true
   return window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -53,11 +51,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setThemeState(t)
     localStorage.setItem(STORAGE_THEME, t)
     setResolvedTheme(resolveTheme(t))
-    fetch('/api/user/profile', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ theme: t }),
-    }).catch((err) => console.warn('[ThemeContext] failed:', err))
+    try {
+      fetch('/api/user/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ theme: t }),
+      }).catch(() => {})
+    } catch {}
     try {
       const channel = new BroadcastChannel('te-sync')
       channel.postMessage({ type: 'THEME_CHANGED', payload: { theme: t }, tabId: 'theme', timestamp: Date.now() })

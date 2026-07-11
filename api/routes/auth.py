@@ -51,6 +51,17 @@ async def login(req: LoginRequest, session: AsyncSession = Depends(get_session))
     return TokenResponse(access_token=token)
 
 
+@router.post("/rotate-key")
+async def rotate_api_key(token: str = ""):
+    from api.auth.agent_auth import agent_required, generate_token
+    try:
+        agent = agent_required(token)
+        new_token = generate_token()
+        return TokenResponse(access_token=new_token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+
 @router.get("/me")
 async def get_current_user(token: str = ""):
     from api.auth.agent_auth import agent_required

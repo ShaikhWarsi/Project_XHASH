@@ -28,12 +28,11 @@ dependencies = [
     "requests>=2.31,<3.0",
     "cachetools>=5.3,<6.0",
     "argon2-cffi>=23.1,<24.0",
-    "cryptography>=42.0,<43.0",
+    "cryptography>=44.0,<45.0",
     "psutil>=5.9,<6.0",
     "pyzmq>=26.0,<27.0",
     "pytz>=2023.3",
     "apscheduler>=3.10,<4.0",
-    "numpy>=1.24,<2.0",
     "kaleido>=0.2.1,<1.0",
 ]
 
@@ -60,9 +59,8 @@ tradingagents = [
     "langchain-openai>=0.2",
     "langgraph>=0.2",
     "langgraph-checkpoint-sqlite>=2.0",
-    "yfinance>=0.2,<1.0",
     "stockstats>=0.6.2",
-    "pandas-ta>=0.3.14b",
+    "pandas-ta>=0.3.14",
     "textblob>=0.18",
     "rich>=13.0",
 ]
@@ -100,7 +98,7 @@ execution = [
     "nautilus_trader>=1.200.0",
 ]
 gpu = [
-    "spectre>=0.3.0",
+    "spectre>=0.0.1",
 ]
 rl = [
     "stable-baselines3>=2.0,<3.0",

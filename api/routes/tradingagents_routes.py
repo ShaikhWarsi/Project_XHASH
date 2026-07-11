@@ -186,7 +186,7 @@ async def stream_run(run_id: str):
                         break
                 except asyncio.TimeoutError:
                     # Keep-alive ping
-                    yield f"event: ping\ndata: {{\"ts\": \"{__import__('datetime').datetime.utcnow().isoformat()}\"}}\n\n"
+                    yield f"event: ping\ndata: {{\"ts\": \"{__import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat()}\"}}\n\n"
                     # Check status
                     s = await get_run_status(run_id)
                     if s in ("done", "failed"):

@@ -292,6 +292,8 @@ export default function DraggableGrid({ items, onReorder, storageKey = STORAGE_K
                 transition: isResizing ? 'none' : 'border-color 0.15s, opacity 0.15s',
                 minHeight: minH,
                 gridColumn: cols === 1 ? '1' : 'auto',
+                minWidth: 0,
+                overflow: 'hidden',
               }}
             >
               <div
@@ -306,12 +308,12 @@ export default function DraggableGrid({ items, onReorder, storageKey = STORAGE_K
               >
                 <span style={{ marginRight: 4, opacity: 0.5 }}>≡</span>
                 {item.label && (
-                  <span className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                  <span className="text-[9px] uppercase tracking-wider truncate" style={{ color: 'var(--text-muted)' }}>
                     {item.label}
                   </span>
                 )}
               </div>
-              <div style={{ padding: '8px 10px' }}>
+              <div style={{ padding: '8px 10px', minWidth: 0, overflow: 'hidden' }}>
                 {item.content}
               </div>
               <div

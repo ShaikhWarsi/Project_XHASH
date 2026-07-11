@@ -45,6 +45,9 @@ export default function KpiCard({ label, value, change, icon, subtitle, trend }:
             letterSpacing: '0.05em',
             color: 'var(--text-muted)',
             textTransform: 'uppercase',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
           }}
         >
           {label}
@@ -58,11 +61,14 @@ export default function KpiCard({ label, value, change, icon, subtitle, trend }:
           fontFamily: "'JetBrains Mono', monospace",
           color: trend === 'up' ? 'var(--accent-green)' : trend === 'down' ? 'var(--accent-red)' : 'var(--text-primary)',
           lineHeight: 1.2,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
         }}
       >
         {value}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
         {change && (
           <span
             style={{
@@ -70,13 +76,16 @@ export default function KpiCard({ label, value, change, icon, subtitle, trend }:
               fontFamily: "'JetBrains Mono', monospace",
               fontWeight: 600,
               color: change.up ? 'var(--accent-green)' : 'var(--accent-red)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
             }}
           >
             {change.up ? '+' : ''}{change.value}
           </span>
         )}
         {subtitle && (
-          <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: "'JetBrains Mono', monospace" }}>
+          <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: "'JetBrains Mono', monospace", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {subtitle}
           </span>
         )}

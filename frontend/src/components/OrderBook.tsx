@@ -35,13 +35,15 @@ export default function OrderBook({ symbol = '', levels = 12 }: OrderBookProps) 
   const [wsAsks, setWsAsks] = useState<OrderBookLevel[] | null>(null)
   const [wsSymbol, setWsSymbol] = useState('')
   const [flashKey, setFlashKey] = useState(0)
+  const [dataSource, setDataSource] = useState<'live' | 'simulated'>('live')
 
   const wsUrl = symbol ? `/ws/orderbook/${symbol.toUpperCase()}` : ''
-  const { connected: wsConnected, lastData } = useWebSocket<{ type: string; data: OrderBookData }>(wsUrl, { maxRetries: 3, retryDelay: 5000 })
+  const { connected: wsConnected, lastData } = useWebSocket<{ type: string; data: OrderBookData & { _source?: string } }>(wsUrl, { maxRetries: 3, retryDelay: 5000 })
 
   useEffect(() => {
     if (lastData?.type === 'orderbook' && lastData?.data && lastData.data.symbol === symbol.toUpperCase()) {
-      const { bids, asks } = lastData.data
+      const { bids, asks, _source } = lastData.data
+      setDataSource(_source === 'simulated' ? 'simulated' : 'live')
       let bidTotal = 0; let askTotal = 0
       setWsBids(bids.map(([p, s]) => { bidTotal += s; return { price: p, size: s, total: bidTotal } }))
       setWsAsks(asks.map(([p, s]) => { askTotal += s; return { price: p, size: s, total: askTotal } }))
@@ -91,8 +93,8 @@ export default function OrderBook({ symbol = '', levels = 12 }: OrderBookProps) 
     </div>
   )}, [maxTotal])
 
-  const statusColor = wsConnected ? 'var(--accent-green)' : lpConnected ? 'var(--accent-yellow)' : 'var(--accent-red)'
-  const statusLabel = wsConnected ? 'LIVE' : lpConnected ? 'SIM' : 'OFF'
+  const statusColor = wsConnected ? (dataSource === 'simulated' ? 'var(--accent-yellow)' : 'var(--accent-green)') : lpConnected ? 'var(--accent-yellow)' : 'var(--accent-red)'
+  const statusLabel = wsConnected ? (dataSource === 'simulated' ? 'SIM' : 'LIVE') : lpConnected ? 'SIM' : 'OFF'
 
   return (
     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
@@ -106,9 +108,9 @@ export default function OrderBook({ symbol = '', levels = 12 }: OrderBookProps) 
           ORDER BOOK {symbol && `— ${symbol}`}
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 4, ...FONT_SM }}>
-          {!wsConnected && (
+          {(dataSource === 'simulated' || !wsConnected) && (
             <span style={{ background: 'rgba(234,179,8,0.15)', color: 'var(--accent-yellow)', padding: '0 4px', borderRadius: 2, fontSize: 8, fontWeight: 700, letterSpacing: '0.5px' }}>
-              DEMO
+              {wsConnected ? 'SIMULATED' : 'DEMO'}
             </span>
           )}
           <span style={{ width: 6, height: 6, background: statusColor }} />

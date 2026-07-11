@@ -17,7 +17,7 @@ class SSEEvent:
     def __init__(self, event: str, data: dict):
         self.event = event
         self.data = data
-        self.timestamp = datetime.utcnow().isoformat()
+        self.timestamp = datetime.now(timezone.utc).isoformat()
 
     def serialize(self) -> str:
         payload = {**self.data, "ts": self.timestamp}

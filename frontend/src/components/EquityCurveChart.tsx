@@ -188,7 +188,8 @@ const EquityCurveChart = memo(function EquityCurveChart({ equity, trades, benchm
 
     const tradeSize = 6
     for (const trade of trades) {
-      const tIdx = times.indexOf(trade.time)
+      const tradeTime = trade.time.slice(0, 10)
+      const tIdx = times.indexOf(tradeTime)
       if (tIdx === -1) continue
       const x = toX(tIdx)
       const y = toY(trade.price)
@@ -210,14 +211,12 @@ const EquityCurveChart = memo(function EquityCurveChart({ equity, trades, benchm
     }
   }, [equity, trades, benchmark, resolvedTheme])
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const rect = canvas.getBoundingClientRect()
-    if (equity.length === 0) { setTooltip(null); return }
+  const sortedEquity = useMemo(() => [...equity].sort((a, b) => a.time.localeCompare(b.time)), [equity])
+  const sortedTimes = useMemo(() => sortedEquity.map((e) => e.time), [sortedEquity])
+  const eqValues = useMemo(() => sortedEquity.map((e) => e.value), [sortedEquity])
 
-    const sorted = [...equity].sort((a, b) => a.time.localeCompare(b.time))
-    const eqValues = sorted.map((e) => e.value)
+  const chartStats = useMemo(() => {
+    if (equity.length === 0) return { globalMin: 0, globalMax: 1, times: [] as string[], tMax: 0 }
     let globalMin = Math.min(...eqValues)
     let globalMax = Math.max(...eqValues)
     if (benchmark && benchmark.length > 0) {
@@ -225,8 +224,15 @@ const EquityCurveChart = memo(function EquityCurveChart({ equity, trades, benchm
       globalMin = Math.min(globalMin, ...bmValues)
       globalMax = Math.max(globalMax, ...bmValues)
     }
-    const times = sorted.map((e) => e.time)
-    const tMax = times.length - 1
+    return { globalMin, globalMax, times: sortedTimes, tMax: sortedTimes.length - 1 }
+  }, [equity, benchmark, eqValues, sortedTimes])
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const rect = canvas.getBoundingClientRect()
+    if (equity.length === 0) { setTooltip(null); return }
+    const { times, tMax } = chartStats
     const xPad = 50
     const chartW = rect.width - xPad * 2
 
@@ -235,10 +241,10 @@ const EquityCurveChart = memo(function EquityCurveChart({ equity, trades, benchm
     if (relX < 0 || relX > chartW) { setTooltip(null); return }
 
     const tIdx = Math.round((relX / chartW) * tMax)
-    if (tIdx < 0 || tIdx >= sorted.length) { setTooltip(null); return }
+    if (tIdx < 0 || tIdx >= sortedEquity.length) { setTooltip(null); return }
 
-    const pt = sorted[tIdx]
-    const firstVal = sorted[0].value
+    const pt = sortedEquity[tIdx]
+    const firstVal = sortedEquity[0].value
     const pl = pt.value - firstVal
 
     setTooltip({

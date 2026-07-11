@@ -62,13 +62,13 @@ export default function Card({
           }}
         >
           <h3
-            className="text-xs font-semibold uppercase tracking-wider"
-            style={{ color: 'var(--text-secondary)', fontFamily: "'JetBrains Mono', monospace" }}
+            className="text-xs font-semibold uppercase tracking-wider truncate"
+            style={{ color: 'var(--text-secondary)', fontFamily: "'JetBrains Mono', monospace", minWidth: 0 }}
           >
             {title}
           </h3>
           {actions && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>{actions}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>{actions}</div>
           )}
         </div>
       )}
