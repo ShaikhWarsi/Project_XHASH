@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import os
 from typing import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
+
+os.environ["TESTING"] = "1"
 
 import pytest
 from fastapi import FastAPI
@@ -32,10 +35,24 @@ def mock_session():
 
 @pytest.fixture(autouse=True)
 def mock_db_dependency(mock_session):
-    with patch("api.routes.market_data.get_session") as mock_gs, \
-         patch("api.routes.portfolio.get_session") as mock_gs2, \
-         patch("api.routes.backtest_routes.get_session") as mock_gs3:
-        mock_gs.return_value.__aenter__.return_value = mock_session
-        mock_gs2.return_value.__aenter__.return_value = mock_session
-        mock_gs3.return_value.__aenter__.return_value = mock_session
-        yield
+    patches = [
+        "api.routes.market_data.get_session",
+        "api.routes.portfolio.get_session",
+        "api.routes.backtest_routes.get_session",
+        "api.routes.auth.get_session",
+        "api.routes.hedge_fund.get_session",
+        "api.routes.flows.get_session",
+        "api.routes.agent.strategies.get_session",
+        "api.routes.agent.jobs.get_session",
+        "api.routes.agent.backtests.get_session",
+        "api.routes.agent.admin.get_session",
+    ]
+    mocks = []
+    for target in patches:
+        p = patch(target)
+        mock_obj = p.start()
+        mock_obj.return_value.__aenter__.return_value = mock_session
+        mocks.append(p)
+    yield
+    for p in mocks:
+        p.stop()

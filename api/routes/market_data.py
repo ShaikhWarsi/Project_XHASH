@@ -28,6 +28,19 @@ class QuoteItem(BaseModel):
     pc: float
 
 
+class WatchlistAddRequest(BaseModel):
+    symbol: str
+    company: str | None = None
+    user_id: str = "default"
+
+
+class AlertCreateRequest(BaseModel):
+    symbol: str
+    target_price: float
+    condition: str
+    user_id: str = "default"
+
+
 router = APIRouter(prefix="/market", tags=["market-data"])
 
 _finnhub: FinnhubDataSource | None = None
@@ -217,7 +230,7 @@ async def add_to_watchlist(body: WatchlistAddRequest, session: AsyncSession = De
     symbol = body.symbol.upper()
     company = body.company or symbol
     item = await WatchlistRepository.add_item(session, body.user_id, symbol, company)
-    items = await WatchlistRepository.list_items(session, user_id)
+    items = await WatchlistRepository.list_items(session, body.user_id)
     return {
         "watchlist": [
             {"symbol": i.symbol, "company": i.company, "addedAt": i.added_at.isoformat() if hasattr(i.added_at, "isoformat") else str(i.added_at)}

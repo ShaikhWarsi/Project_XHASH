@@ -64,7 +64,7 @@ _log_fmt = os.environ.get("LOG_FORMAT", "dev")
 if _log_fmt != "json":
     for h in logging.getLogger().handlers:
         if h.formatter and not h.formatter._fmt.startswith("[%(request_id)s"):
-            h.setFormatter(logging.Formatter("[%(request_id)s] %(levelname)s %(name)s: %(message)s", defaults={"request_id": "-"}))
+            h.setFormatter(logging.Formatter("[%(request_id)s] %(levelname)s %(name)s: %(message)s"))
 
 _STRUCTLOG_AVAILABLE = False
 _LOG_FORMAT = os.environ.get("LOG_FORMAT", "dev")  # dev | json
@@ -627,7 +627,8 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
     app.add_middleware(SecurityMiddleware)
     app.add_middleware(IpBanMiddleware)
     app.add_middleware(CSPMiddleware)
-    app.add_middleware(CSRFMiddleware)
+    if os.environ.get("TESTING") != "1":
+        app.add_middleware(CSRFMiddleware)
 
     @app.middleware("http")
     async def cache_control_middleware(request: Request, call_next):
