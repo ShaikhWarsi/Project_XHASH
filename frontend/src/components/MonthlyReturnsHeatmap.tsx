@@ -1,5 +1,4 @@
 import { useRef, useEffect } from 'react'
-import Plotly from 'plotly.js-dist-min'
 
 interface Props {
   monthlyReturns: { year: number; month: number; return: number }[]
@@ -21,7 +20,10 @@ export default function MonthlyReturnsHeatmap({ monthlyReturns }: Props) {
       })
     )
 
-    Plotly.newPlot(ref.current, [{
+    import('plotly.js-dist-min').then((mod) => {
+      const Plotly = (mod as any).default || mod
+      if (!ref.current) return
+      Plotly.newPlot(ref.current, [{
       z,
       x: MONTHS,
       y: years.map(String),
@@ -43,6 +45,7 @@ export default function MonthlyReturnsHeatmap({ monthlyReturns }: Props) {
       margin: { l: 40, r: 60, t: 10, b: 40 },
       xaxis: { gridcolor: 'rgba(255,255,255,0.04)' },
       yaxis: { gridcolor: 'rgba(255,255,255,0.04)', autorange: 'reversed' },
+    })
     })
   }, [monthlyReturns])
 

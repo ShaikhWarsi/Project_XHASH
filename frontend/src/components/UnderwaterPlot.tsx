@@ -1,5 +1,4 @@
 import { useRef, useEffect } from 'react'
-import Plotly from 'plotly.js-dist-min'
 
 interface Props {
   equityCurve: { date: string; value: number }[]
@@ -20,7 +19,10 @@ export default function UnderwaterPlot({ equityCurve }: Props) {
     const dates = equityCurve.map((p) => p.date)
     const colors = drawdowns.map((dd) => dd < 0 ? 'rgba(239,83,80,0.6)' : 'rgba(38,166,154,0.1)')
 
-    Plotly.newPlot(ref.current, [{
+    import('plotly.js-dist-min').then((mod) => {
+      const Plotly = (mod as any).default || mod
+      if (!ref.current) return
+      Plotly.newPlot(ref.current, [{
       x: dates, y: drawdowns.map((dd) => dd * 100),
       type: 'scatter', mode: 'lines',
       fill: 'tozeroy',
@@ -40,6 +42,7 @@ export default function UnderwaterPlot({ equityCurve }: Props) {
       },
       xaxis: { gridcolor: 'rgba(255,255,255,0.04)', zeroline: false },
       showlegend: false,
+    })
     })
   }, [equityCurve])
 

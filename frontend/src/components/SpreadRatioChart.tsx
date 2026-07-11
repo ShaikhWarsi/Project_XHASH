@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react'
-import * as Plotly from 'plotly.js-dist-min'
 import { fetchOHLCV } from '../api/client'
 import type { BarData } from '../api/types'
 
@@ -29,6 +28,8 @@ export default function SpreadRatioChart() {
       const ratio = pricesA.map((pa, i) => pa / pricesB[i]) as number[]
       const spread = pricesA.map((pa, i) => pa - pricesB[i]) as number[]
 
+      import('plotly.js-dist-min').then((mod) => {
+      const Plotly = (mod as any).default || mod
       ;(Plotly as any).newPlot(chartRef.current, [
         {
           x: dates, y: ratio, type: 'scatter', mode: 'lines',
@@ -57,6 +58,7 @@ export default function SpreadRatioChart() {
           gridcolor: 'rgba(255,255,255,0.04)', zeroline: false,
         },
         xaxis: { gridcolor: 'rgba(255,255,255,0.04)', zeroline: false },
+      })
       })
     })()
 

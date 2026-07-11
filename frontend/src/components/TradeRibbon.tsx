@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react'
-import * as Plotly from 'plotly.js-dist-min'
 
 interface Trade {
   entryTime: number

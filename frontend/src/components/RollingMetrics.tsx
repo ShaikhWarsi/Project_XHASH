@@ -1,5 +1,4 @@
 import { useRef, useEffect } from 'react'
-import Plotly from 'plotly.js-dist-min'
 
 interface Props {
   prices: { date: string; close: number }[]
@@ -78,7 +77,10 @@ export default function RollingMetrics({ prices }: Props) {
       yaxis: 'y3' as const,
     }
 
-    Plotly.newPlot(ref.current, [sharpeTrace, betaTrace, volTrace], {
+    import('plotly.js-dist-min').then((mod) => {
+      const Plotly = (mod as any).default || mod
+      if (!ref.current) return
+      Plotly.newPlot(ref.current, [sharpeTrace, betaTrace, volTrace], {
       paper_bgcolor: '#0d1117',
       plot_bgcolor: '#0d1117',
       font: { color: '#5d6b7e', family: "'JetBrains Mono', monospace", size: 9 },
@@ -89,6 +91,7 @@ export default function RollingMetrics({ prices }: Props) {
       yaxis2: { domain: [0.34, 0.64], title: 'Beta', color: '#3b82f6', gridcolor: 'rgba(255,255,255,0.04)', zeroline: true, zerolinecolor: 'rgba(255,255,255,0.1)' },
       yaxis3: { domain: [0, 0.3], title: 'Vol (ann)', color: '#a855f7', gridcolor: 'rgba(255,255,255,0.04)', zeroline: true, zerolinecolor: 'rgba(255,255,255,0.1)' },
       xaxis: { gridcolor: 'rgba(255,255,255,0.04)', zeroline: false },
+      })
     })
   }, [prices])
 

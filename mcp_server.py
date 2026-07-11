@@ -92,19 +92,6 @@ if mcp is not None:
             return json.dumps({"error": str(e)})
 
     @mcp.tool()
-    def get_historical_data(symbol: str, days: int = 30) -> str:
-        """Get historical OHLCV data for a symbol."""
-        provider = _get_data_provider()
-        end = datetime.now()
-        start = end - timedelta(days=days)
-        from core.enums import Timeframe
-        try:
-            df = provider.fetch_bars(symbol, Timeframe.D1, start, end)
-            return df.tail(100).to_json(orient="records", date_format="iso")
-        except Exception as e:
-            return json.dumps({"error": str(e)})
-
-    @mcp.tool()
     def get_technical_indicators(symbol: str) -> str:
         """Compute key technical indicators for a symbol."""
         from core.enums import Timeframe
@@ -368,7 +355,11 @@ def main():
     if FastMCP is None:
         print("Error: fastmcp not installed. Run: pip install fastmcp")
         sys.exit(1)
-    transport = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] == "--transport" else "stdio"
+    transport = "stdio"
+    if "--transport" in sys.argv:
+        idx = sys.argv.index("--transport")
+        if idx + 1 < len(sys.argv):
+            transport = sys.argv[idx + 1]
     if transport == "sse":
         mcp.run(transport="sse")
     else:
