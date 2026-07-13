@@ -29,6 +29,8 @@ _MODEL_TIERS = {
     "cheap": {"max_tokens": 1024, "models": ["gpt-4o-mini"]},
     "standard": {"max_tokens": 4096, "models": ["gpt-4o", "claude-sonnet-4"]},
     "reasoning": {"max_tokens": 8192, "models": ["gpt-4.1", "claude-opus-4"]},
+    "local": {"max_tokens": 4096, "models": ["lmstudio"]},
+    "openrouter": {"max_tokens": 8192, "models": ["openrouter"]},
 }
 
 
@@ -139,6 +141,8 @@ DEFAULT_MODELS = [
     {"id": "gpt-4.1", "name": "GPT-4.1", "provider": "openai", "capabilities": ["chat", "reasoning"], "enabled": bool(os.environ.get("OPENAI_API_KEY"))},
     {"id": "claude-sonnet-4", "name": "Claude Sonnet 4", "provider": "anthropic", "capabilities": ["chat", "reasoning"], "enabled": bool(os.environ.get("ANTHROPIC_API_KEY"))},
     {"id": "claude-opus-4", "name": "Claude Opus 4", "provider": "anthropic", "capabilities": ["chat", "reasoning"], "enabled": bool(os.environ.get("ANTHROPIC_API_KEY"))},
+    {"id": "openrouter", "name": "OpenRouter (Any Model)", "provider": "openrouter", "capabilities": ["chat", "reasoning"], "enabled": bool(os.environ.get("OPENROUTER_API_KEY"))},
+    {"id": "lmstudio", "name": "LM Studio (Local)", "provider": "lmstudio", "capabilities": ["chat"], "enabled": bool(os.environ.get("LMSTUDIO_BASE_URL"))},
 ]
 
 
@@ -201,6 +205,49 @@ async def _call_anthropic(model: str, prompt: str, temperature: float, max_token
     return content, usage
 
 
+async def _call_openrouter(model: str, prompt: str, temperature: float, max_tokens: int) -> tuple[str, dict]:
+    import openai as oa
+    base_url = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+    api_key = os.environ.get("OPENROUTER_API_KEY", "")
+    if not api_key:
+        raise HTTPException(status_code=503, detail="OPENROUTER_API_KEY not set")
+    client = oa.OpenAI(api_key=api_key, base_url=base_url)
+    async with _LLM_GLOBAL_SEM:
+        resp = await asyncio.wait_for(
+            asyncio.to_thread(
+                client.chat.completions.create,
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=temperature,
+                max_tokens=max_tokens,
+            ),
+            timeout=_LLM_TIMEOUT,
+        )
+    content = resp.choices[0].message.content or ""
+    usage = {"prompt_tokens": resp.usage.prompt_tokens, "completion_tokens": resp.usage.completion_tokens} if resp.usage else {"prompt_tokens": 0, "completion_tokens": 0}
+    return content, usage
+
+
+async def _call_lmstudio(model: str, prompt: str, temperature: float, max_tokens: int) -> tuple[str, dict]:
+    import openai as oa
+    base_url = os.environ.get("LMSTUDIO_BASE_URL", "http://localhost:1234/v1")
+    client = oa.OpenAI(api_key="lm-studio", base_url=base_url)
+    async with _LLM_GLOBAL_SEM:
+        resp = await asyncio.wait_for(
+            asyncio.to_thread(
+                client.chat.completions.create,
+                model="default",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=temperature,
+                max_tokens=max_tokens,
+            ),
+            timeout=_LLM_TIMEOUT,
+        )
+    content = resp.choices[0].message.content or ""
+    usage = {"prompt_tokens": resp.usage.prompt_tokens, "completion_tokens": resp.usage.completion_tokens} if resp.usage else {"prompt_tokens": 0, "completion_tokens": 0}
+    return content, usage
+
+
 async def _stream_openai(model: str, prompt: str, temperature: float, max_tokens: int) -> AsyncGenerator[str, None]:
     import openai as oa
     client = oa.OpenAI(api_key=os.environ["OPENAI_API_KEY"])
@@ -244,6 +291,56 @@ async def _stream_anthropic(model: str, prompt: str, temperature: float, max_tok
     yield f"data: {json.dumps({'done': True})}\n\n"
 
 
+async def _stream_openrouter(model: str, prompt: str, temperature: float, max_tokens: int) -> AsyncGenerator[str, None]:
+    import openai as oa
+    base_url = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+    api_key = os.environ.get("OPENROUTER_API_KEY", "")
+    if not api_key:
+        yield f"data: {json.dumps({'error': 'OPENROUTER_API_KEY not set'})}\n\n"
+        return
+    client = oa.OpenAI(api_key=api_key, base_url=base_url)
+    async with _LLM_GLOBAL_SEM:
+        stream = await asyncio.wait_for(
+            asyncio.to_thread(
+                client.chat.completions.create,
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=temperature,
+                max_tokens=max_tokens,
+                stream=True,
+            ),
+            timeout=_LLM_TIMEOUT,
+        )
+        for chunk in stream:
+            delta = chunk.choices[0].delta if chunk.choices else None
+            if delta and delta.content:
+                yield f"data: {json.dumps({'token': delta.content})}\n\n"
+    yield f"data: {json.dumps({'done': True})}\n\n"
+
+
+async def _stream_lmstudio(model: str, prompt: str, temperature: float, max_tokens: int) -> AsyncGenerator[str, None]:
+    import openai as oa
+    base_url = os.environ.get("LMSTUDIO_BASE_URL", "http://localhost:1234/v1")
+    client = oa.OpenAI(api_key="lm-studio", base_url=base_url)
+    async with _LLM_GLOBAL_SEM:
+        stream = await asyncio.wait_for(
+            asyncio.to_thread(
+                client.chat.completions.create,
+                model="default",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=temperature,
+                max_tokens=max_tokens,
+                stream=True,
+            ),
+            timeout=_LLM_TIMEOUT,
+        )
+        for chunk in stream:
+            delta = chunk.choices[0].delta if chunk.choices else None
+            if delta and delta.content:
+                yield f"data: {json.dumps({'token': delta.content})}\n\n"
+    yield f"data: {json.dumps({'done': True})}\n\n"
+
+
 async def _call_llm(provider: str, model: str, prompt: str, temperature: float, max_tokens: int, user_id: str = "", seed: Optional[int] = None) -> tuple[str, dict]:
     prompt = _truncate_prompt(prompt, 8000, model)
 
@@ -262,6 +359,10 @@ async def _call_llm(provider: str, model: str, prompt: str, temperature: float, 
                 content, usage = await _call_openai(model, prompt, temperature, max_tokens, seed=seed)
             elif provider == "anthropic":
                 content, usage = await _call_anthropic(model, prompt, temperature, max_tokens)
+            elif provider == "openrouter":
+                content, usage = await _call_openrouter(model, prompt, temperature, max_tokens)
+            elif provider == "lmstudio":
+                content, usage = await _call_lmstudio(model, prompt, temperature, max_tokens)
             else:
                 raise HTTPException(status_code=400, detail=f"Unknown provider '{provider}'")
 
@@ -347,6 +448,12 @@ async def _stream_wrapper(provider: str, model: str, prompt: str, temperature: f
                 yield event
         elif provider == "anthropic":
             async for event in _stream_anthropic(model, prompt, temperature, max_tokens):
+                yield event
+        elif provider == "openrouter":
+            async for event in _stream_openrouter(model, prompt, temperature, max_tokens):
+                yield event
+        elif provider == "lmstudio":
+            async for event in _stream_lmstudio(model, prompt, temperature, max_tokens):
                 yield event
         else:
             yield f"data: {json.dumps({'error': 'Unknown provider'})}\n\n"
