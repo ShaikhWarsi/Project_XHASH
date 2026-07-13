@@ -13,7 +13,7 @@ from persistence.multi_db import get_auth_db
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/master-contract", tags=["master_contract"])
+router = APIRouter(prefix="/master-contract", tags=["master_contract"])
 
 
 class UpdateStatusRequest(BaseModel):

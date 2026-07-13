@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/ai", tags=["ai"])
+router = APIRouter(prefix="/ai", tags=["ai"])
 
 EARNINGS_SYSTEM_PROMPT = """You are an equity research analyst specializing in earnings call analysis.
 Given earnings transcript data, produce a structured summary with:

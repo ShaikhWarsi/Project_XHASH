@@ -342,7 +342,7 @@ export default function Infrastructure() {
                       <td className="py-1.5 px-1.5" style={{ color: 'var(--text-secondary)' }}>{job.interval}</td>
                       <td className="py-1.5 px-1.5">
                         <span className="text-[9px] px-1.5 py-0.5 rounded-sm" style={{
-                          background: job.status === 'Active' ? 'var(--accent-green)15' : 'var(--bg-hover)',
+                          background: job.status === 'Active' ? 'color-mix(in srgb, var(--accent-green) 8%, transparent)' : 'var(--bg-hover)',
                           color: job.status === 'Active' ? 'var(--accent-green)' : 'var(--text-muted)',
                         }}>
                           {job.status}

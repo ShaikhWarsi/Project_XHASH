@@ -10,7 +10,7 @@ from api.services.smart_order_service import calculate_delta_quantity
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/smart-order", tags=["smart_order"])
+router = APIRouter(prefix="/smart-order", tags=["smart_order"])
 
 
 class SmartOrderRequest(BaseModel):

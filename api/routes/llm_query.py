@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/llm", tags=["llm"])
+router = APIRouter(prefix="/llm", tags=["llm"])
 
 QUERY_SYSTEM_PROMPT = """You are an AI trading assistant with access to the user's portfolio and market data.
 Answer questions based ONLY on the provided data. If you don't know, say so.
@@ -117,7 +117,7 @@ Answer based ONLY on the provided data."""
 
     try:
         from .llm import _call_openai
-        content = await _call_openai("gpt-4o-mini", QUERY_SYSTEM_PROMPT + "\n\n" + prompt, 0.3, 1024)
+        content, _ = await _call_openai("gpt-4o-mini", QUERY_SYSTEM_PROMPT + "\n\n" + prompt, 0.3, 1024)
         return {
             "response": content,
             "context_used": ["portfolio", "risk", "trades"] if portfolio["total_value"] > 0 else [],

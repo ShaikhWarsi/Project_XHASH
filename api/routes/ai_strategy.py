@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/ai", tags=["ai"])
+router = APIRouter(prefix="/ai", tags=["ai"])
 
 STRATEGY_SYSTEM_PROMPT = """You generate FinScript code. FinScript is a PineScript-like DSL for backtesting trading strategies.
 

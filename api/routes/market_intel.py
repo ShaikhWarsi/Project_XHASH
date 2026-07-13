@@ -12,7 +12,7 @@ from ..market_intel import (
     get_stock_analysis_latest_payload,
 )
 
-router = APIRouter(prefix="/api/market-intel", tags=["market-intel"])
+router = APIRouter(prefix="/market-intel", tags=["market-intel"])
 
 
 @router.get("/overview")

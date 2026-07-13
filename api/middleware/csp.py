@@ -23,7 +23,7 @@ def _env_csp_directive(name: str, default_parts: list[str]) -> list[str]:
 def get_csp_config() -> dict[str, list[str]]:
     return {
         "default-src": _env_csp_directive("CSP_DEFAULT_SRC", ["'self'"]),
-        "script-src": _env_csp_directive("CSP_SCRIPT_SRC", ["'self'", "'unsafe-inline'", "'unsafe-eval'"]),
+        "script-src": _env_csp_directive("CSP_SCRIPT_SRC", ["'self'", "'unsafe-inline'"]),
         "style-src": _env_csp_directive("CSP_STYLE_SRC", ["'self'", "'unsafe-inline'"]),
         "img-src": _env_csp_directive("CSP_IMG_SRC", ["'self'", "data:", "blob:"]),
         "connect-src": _env_csp_directive("CSP_CONNECT_SRC", ["'self'", "ws:", "wss:", "https://api.telegram.org", "https://api.twitter.com"]),

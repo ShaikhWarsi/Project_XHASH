@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/ai", tags=["ai"])
+router = APIRouter(prefix="/ai", tags=["ai"])
 
 SYSTEM_PROMPT = """You are a risk analyst explaining stop loss placement. Given position data, ATR, volatility, and market regime, explain why the stop is set at a specific level. Consider: ATR-based volatility, support/resistance levels, percentage risk, market regime. Return JSON."""
 

@@ -252,7 +252,7 @@ export default function MmcAnalysis() {
       )}
 
       {error && (
-        <div style={{ background: 'var(--accent-red)10', border: '1px solid var(--accent-red)30', borderRadius: 'var(--radius-md)', padding: '12px 16px', fontSize: 'var(--text-sm)', color: 'var(--accent-red)' }}>
+        <div style={{ background: 'color-mix(in srgb, var(--accent-red) 4%, transparent)', border: '1px solid color-mix(in srgb, var(--accent-red) 18.8%, transparent)', borderRadius: 'var(--radius-md)', padding: '12px 16px', fontSize: 'var(--text-sm)', color: 'var(--accent-red)' }}>
           {error}
         </div>
       )}

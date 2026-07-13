@@ -15,7 +15,7 @@ from api.services.action_center_service import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/action-center", tags=["action_center"])
+router = APIRouter(prefix="/action-center", tags=["action_center"])
 
 
 class CreatePendingOrderRequest(BaseModel):

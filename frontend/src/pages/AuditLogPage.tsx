@@ -77,7 +77,7 @@ export default function AuditLogPage() {
             onClick={() => { setLiveTail((t) => !t); setPaused(false) }}
             className="text-[10px] font-mono px-3 py-1 rounded-sm cursor-pointer flex items-center gap-1"
             style={{
-              background: liveTail ? (paused ? 'var(--accent-yellow)20' : 'var(--accent-green)20') : 'var(--bg-secondary)',
+              background: liveTail ? (paused ? 'color-mix(in srgb, var(--accent-yellow) 12.5%, transparent)' : 'color-mix(in srgb, var(--accent-green) 12.5%, transparent)') : 'var(--bg-secondary)',
               border: '1px solid var(--border-color)',
               color: liveTail ? (paused ? 'var(--accent-yellow)' : 'var(--accent-green)') : 'var(--text-muted)',
             }}
@@ -109,7 +109,7 @@ export default function AuditLogPage() {
             <button
               onClick={stopReplay}
               className="text-[10px] font-mono px-3 py-1 rounded-sm cursor-pointer"
-              style={{ background: 'var(--accent-red)20', border: '1px solid var(--accent-red)', color: 'var(--accent-red)' }}
+              style={{ background: 'color-mix(in srgb, var(--accent-red) 12.5%, transparent)', border: '1px solid var(--accent-red)', color: 'var(--accent-red)' }}
             >
               STOP
             </button>
@@ -171,8 +171,8 @@ export default function AuditLogPage() {
                   </span>
                   <span className="text-[10px] font-mono shrink-0 px-1.5 py-0 rounded-sm" style={{
                     background: log.level === 'ERROR' || log.level === 'CRITICAL'
-                      ? 'var(--accent-red)20' : log.level === 'WARN'
-                        ? 'var(--accent-yellow)20' : 'var(--accent-blue)15',
+                      ? 'color-mix(in srgb, var(--accent-red) 12.5%, transparent)' : log.level === 'WARN'
+                        ? 'color-mix(in srgb, var(--accent-yellow) 12.5%, transparent)' : 'color-mix(in srgb, var(--accent-blue) 8%, transparent)',
                     color: log.level === 'ERROR' || log.level === 'CRITICAL'
                       ? 'var(--accent-red)' : log.level === 'WARN'
                         ? 'var(--accent-yellow)' : 'var(--accent-blue)',
@@ -197,11 +197,11 @@ export default function AuditLogPage() {
                     className="flex gap-2 p-2 rounded-sm mt-0.5"
                     style={{ background: 'var(--bg-secondary)', border: '1px dashed var(--border-color)' }}
                   >
-                    <div className="flex-1 p-2 rounded-sm text-[9px] font-mono" style={{ background: 'var(--accent-red)10', color: 'var(--accent-red)' }}>
+                    <div className="flex-1 p-2 rounded-sm text-[9px] font-mono" style={{ background: 'color-mix(in srgb, var(--accent-red) 4%, transparent)', color: 'var(--accent-red)' }}>
                       <div className="text-[8px] font-semibold mb-1 uppercase" style={{ color: 'var(--accent-red)' }}>Before</div>
                       <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{JSON.stringify(log.before, null, 2)}</pre>
                     </div>
-                    <div className="flex-1 p-2 rounded-sm text-[9px] font-mono" style={{ background: 'var(--accent-green)10', color: 'var(--accent-green)' }}>
+                    <div className="flex-1 p-2 rounded-sm text-[9px] font-mono" style={{ background: 'color-mix(in srgb, var(--accent-green) 4%, transparent)', color: 'var(--accent-green)' }}>
                       <div className="text-[8px] font-semibold mb-1 uppercase" style={{ color: 'var(--accent-green)' }}>After</div>
                       <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{JSON.stringify(log.after, null, 2)}</pre>
                     </div>

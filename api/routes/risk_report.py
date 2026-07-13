@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/ai", tags=["ai"])
+router = APIRouter(prefix="/ai", tags=["ai"])
 
 SYSTEM_PROMPT = """You are a risk reporting analyst. Generate a comprehensive risk report in HTML format. Include sections: 1) Executive Summary 2) Portfolio Overview 3) Risk Metrics 4) Exposure Analysis 5) Performance Attribution 6) Recommendations. Also provide a plain text version. Return JSON with report_html and report_text."""
 

@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/ai", tags=["ai"])
+router = APIRouter(prefix="/ai", tags=["ai"])
 
 SYSTEM_PROMPT = """You are a trade classification analyst. Given a list of trades with market context, classify each trade into a category. Categories: trend_following, mean_reversion, breakout, scalping, momentum, reversal, news_reaction, earnings_play, hedge, rebalance, other. Also assign a short tag (1-3 words) explaining the trade reason. Return JSON array of objects with original trade fields plus: tag (string), category (string), reasoning (string), market_context (string)."""
 

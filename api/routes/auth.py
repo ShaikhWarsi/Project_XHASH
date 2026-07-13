@@ -52,8 +52,12 @@ async def login(req: LoginRequest, session: AsyncSession = Depends(get_session))
 
 
 @router.post("/rotate-key")
-async def rotate_api_key(token: str = ""):
+async def rotate_api_key(request):
     from api.auth.agent_auth import agent_required, generate_token
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else ""
+    if not token:
+        token = request.query_params.get("token", "")
     try:
         agent = agent_required(token)
         new_token = generate_token()

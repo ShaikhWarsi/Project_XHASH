@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
+import { ThemeProvider } from '../contexts/ThemeContext'
 import { EventBusProvider } from '../contexts/EventBusContext'
 import { AudioAlertProvider } from '../contexts/AudioAlertContext'
 import { LivePricesProvider } from '../contexts/LivePricesContext'
@@ -33,17 +34,19 @@ vi.mock('../api/client', () => ({
 describe('Dashboard', () => {
   it('renders NAV and cash metrics after loading', async () => {
     render(
-      <BrowserRouter>
-        <WebSocketProvider>
-        <LivePricesProvider>
-        <EventBusProvider>
-          <AudioAlertProvider>
-            <Dashboard />
-          </AudioAlertProvider>
-        </EventBusProvider>
-        </LivePricesProvider>
-        </WebSocketProvider>
-      </BrowserRouter>,
+      <ThemeProvider>
+        <BrowserRouter>
+          <WebSocketProvider>
+          <LivePricesProvider>
+          <EventBusProvider>
+            <AudioAlertProvider>
+              <Dashboard />
+            </AudioAlertProvider>
+          </EventBusProvider>
+          </LivePricesProvider>
+          </WebSocketProvider>
+        </BrowserRouter>
+      </ThemeProvider>,
     )
     await waitFor(() => {
       expect(screen.getByText('NAV')).toBeDefined()
@@ -54,17 +57,19 @@ describe('Dashboard', () => {
 
   it('renders data rows for all status labels', async () => {
     render(
-      <BrowserRouter>
-        <WebSocketProvider>
-        <LivePricesProvider>
-        <EventBusProvider>
-          <AudioAlertProvider>
-            <Dashboard />
-          </AudioAlertProvider>
-        </EventBusProvider>
-        </LivePricesProvider>
-        </WebSocketProvider>
-      </BrowserRouter>,
+      <ThemeProvider>
+        <BrowserRouter>
+          <WebSocketProvider>
+          <LivePricesProvider>
+          <EventBusProvider>
+            <AudioAlertProvider>
+              <Dashboard />
+            </AudioAlertProvider>
+          </EventBusProvider>
+          </LivePricesProvider>
+          </WebSocketProvider>
+        </BrowserRouter>
+      </ThemeProvider>,
     )
     await waitFor(() => {
       expect(screen.getByText('P&L')).toBeDefined()

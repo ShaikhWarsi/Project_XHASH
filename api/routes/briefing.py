@@ -10,7 +10,7 @@ from fastapi import APIRouter
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/ai", tags=["ai"])
+router = APIRouter(prefix="/ai", tags=["ai"])
 
 BRIEFING_SYSTEM_PROMPT = """You are a professional trading desk analyst. Write a market briefing with these sections:
 1. PORTFOLIO OVERVIEW — total value, best/worst positions, unrealized P&L

@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/ai", tags=["ai"])
+router = APIRouter(prefix="/ai", tags=["ai"])
 
 PROMPTS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "prompts.json")
 

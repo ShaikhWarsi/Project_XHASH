@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/ai", tags=["ai"])
+router = APIRouter(prefix="/ai", tags=["ai"])
 
 CO_MOVEMENT_SYSTEM_PROMPT = """You are a quantitative analyst specializing in cross-asset correlation and news-driven co-movement analysis.
 Given a news headline and a list of related tickers with their price changes, identify which tickers are most likely moving in reaction to the headline.

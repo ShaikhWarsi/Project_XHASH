@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/ai", tags=["ai"])
+router = APIRouter(prefix="/ai", tags=["ai"])
 
 SYSTEM_PROMPT = """You are a performance analyst comparing AI agent trading against human trading. Given two sets of trade data, compute comparison metrics and provide insights on who is outperforming and why. Return JSON with comparison object and insights array."""
 

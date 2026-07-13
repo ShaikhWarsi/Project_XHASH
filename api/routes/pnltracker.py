@@ -12,7 +12,7 @@ from api.services.sandbox_service import ensure_funds, get_trades
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/pnltracker", tags=["pnltracker"])
+router = APIRouter(prefix="/pnltracker", tags=["pnltracker"])
 
 
 @router.get("/data")

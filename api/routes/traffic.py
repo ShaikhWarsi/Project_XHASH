@@ -13,7 +13,7 @@ from persistence.multi_db import get_logs_db
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/traffic", tags=["traffic"])
+router = APIRouter(prefix="/traffic", tags=["traffic"])
 
 
 class BanRequest(BaseModel):

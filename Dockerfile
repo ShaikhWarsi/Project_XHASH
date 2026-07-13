@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml .
-RUN pip install --no-cache-dir -e ".[dev,llm,live,ml]"
+RUN pip install --no-cache-dir ".[dev,llm,live,ml]"
 
 FROM node:20-alpine AS frontend-build
 

@@ -14,7 +14,7 @@ from persistence.models_auth import Settings, LoginAttempt
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/openalgo/security", tags=["security_dashboard"])
+router = APIRouter(prefix="/openalgo/security", tags=["security_dashboard"])
 
 DEFAULT_SETTINGS = {
     "auto_ban_enabled": False,

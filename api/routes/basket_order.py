@@ -10,7 +10,7 @@ from api.services.basket_order_service import execute_basket_order
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/basket-order", tags=["basket_order"])
+router = APIRouter(prefix="/basket-order", tags=["basket_order"])
 
 
 class BasketLeg(BaseModel):

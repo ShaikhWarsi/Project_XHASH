@@ -184,7 +184,7 @@ export default function Settings() {
 
       {message && (
         <div className="text-sm px-4 py-2 rounded-lg" style={{
-          background: message === 'Settings saved' ? 'var(--accent-green)20' : 'var(--accent-red)20',
+          background: message === 'Settings saved' ? 'color-mix(in srgb, var(--accent-green) 12.5%, transparent)' : 'color-mix(in srgb, var(--accent-red) 12.5%, transparent)',
           color: message === 'Settings saved' ? 'var(--accent-green)' : 'var(--accent-red)',
           border: `1px solid ${message === 'Settings saved' ? 'var(--accent-green)' : 'var(--accent-red)'}40`,
         }}>
@@ -203,7 +203,7 @@ export default function Settings() {
                   onClick={() => setTheme(t.value as any)}
                   className="text-left px-3 py-2 rounded-lg text-sm transition-all text-primary"
                   style={{
-                    background: theme === t.value ? 'var(--accent-blue)20' : 'var(--bg-secondary)',
+                    background: theme === t.value ? 'color-mix(in srgb, var(--accent-blue) 12.5%, transparent)' : 'var(--bg-secondary)',
                     border: `1px solid ${theme === t.value ? 'var(--accent-blue)' : 'var(--border-color)'}`,
                   }}
                 >
@@ -414,7 +414,7 @@ export default function Settings() {
               <div className="flex items-center gap-2">
                 <span className="text-xs px-2 py-0.5 rounded" style={{
                   color: enabled ? 'var(--accent-green)' : 'var(--text-muted)',
-                  background: enabled ? 'var(--accent-green)15' : 'var(--bg-hover)',
+                  background: enabled ? 'color-mix(in srgb, var(--accent-green) 8%, transparent)' : 'var(--bg-hover)',
                 }}>
                   {enabled ? 'Connected' : 'Not Configured'}
                 </span>
@@ -555,7 +555,7 @@ export default function Settings() {
               <span className="text-xs text-primary">{action}</span>
               <div className="flex items-center gap-2">
                 {rebindingHotkey === action ? (
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded" style={{ background: 'var(--accent-yellow)20', color: 'var(--accent-yellow)' }}>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded" style={{ background: 'color-mix(in srgb, var(--accent-yellow) 12.5%, transparent)', color: 'var(--accent-yellow)' }}>
                     Press keys...
                   </span>
                 ) : (
@@ -578,7 +578,7 @@ export default function Settings() {
 
       <div className="flex items-center gap-3">
         {isDirty && (
-          <span className="text-[10px] font-mono px-2 py-1 rounded-sm" style={{ background: 'var(--accent-yellow)20', color: 'var(--accent-yellow)' }}>
+          <span className="text-[10px] font-mono px-2 py-1 rounded-sm" style={{ background: 'color-mix(in srgb, var(--accent-yellow) 12.5%, transparent)', color: 'var(--accent-yellow)' }}>
             UNSAVED CHANGES
           </span>
         )}

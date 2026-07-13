@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/ai", tags=["ai"])
+router = APIRouter(prefix="/ai", tags=["ai"])
 
 SYSTEM_PROMPT = """You are a portfolio commentary analyst. Given portfolio performance data for a period, generate a natural-language P&L explanation. Structure: 1) Overview of period performance 2) Key drivers (top winners/losers with reasoning) 3) Risk factors that materialized 4) Forward outlook. Write in clear, professional English. Return JSON."""
 

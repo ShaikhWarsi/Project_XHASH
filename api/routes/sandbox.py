@@ -14,7 +14,7 @@ from api.services.sandbox_service import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/sandbox", tags=["sandbox"])
+router = APIRouter(prefix="/sandbox", tags=["sandbox"])
 
 
 class ConfigUpdateRequest(BaseModel):

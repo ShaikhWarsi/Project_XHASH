@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/ai", tags=["ai"])
+router = APIRouter(prefix="/ai", tags=["ai"])
 
 SYSTEM_PROMPT = """You are a strategy health analyst. Given a trading strategy's code/config and recent performance data, assess its health. Look for: performance degradation, regime incompatibility, overfitting signs, parameter drift. Return JSON with health_score (0-100), drift_detected (bool), drift_details (string), recommendations (array of strings), win_rate_trend (string), sharpe_trend (string), max_dd_status (string)."""
 

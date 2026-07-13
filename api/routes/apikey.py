@@ -13,7 +13,7 @@ from api.auth.pepper_auth import generate_api_key, invalidate_user_cache
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/apikey", tags=["apikey"])
+router = APIRouter(prefix="/apikey", tags=["apikey"])
 
 
 class GenerateRequest(BaseModel):

@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/ai", tags=["ai"])
+router = APIRouter(prefix="/ai", tags=["ai"])
 
 INSPECTOR_SYSTEM_PROMPT = """You are a professional technical analyst with 20 years of experience.
 Analyze the given chart pattern and provide a 4-part analysis:

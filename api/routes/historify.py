@@ -24,7 +24,7 @@ from api.services.historify_scheduler_service import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/openalgo/historify", tags=["historify"])
+router = APIRouter(prefix="/openalgo/historify", tags=["historify"])
 
 
 class DownloadRequest(BaseModel):

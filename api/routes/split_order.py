@@ -9,7 +9,7 @@ from api.services.split_order_service import split_order
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/split-order", tags=["split_order"])
+router = APIRouter(prefix="/split-order", tags=["split_order"])
 
 
 class SplitOrderRequest(BaseModel):

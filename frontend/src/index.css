@@ -82,6 +82,12 @@
   --chart-bg: #080808;
   --chart-text: #888888;
   --chart-grid: #1a1a1a;
+  --shadow-md: 0 2px 4px rgba(0,0,0,0.3);
+  --widget-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  --widget-shadow-hover: 0 4px 12px rgba(0,0,0,0.3);
+  --glow-blue: 0 0 8px rgba(33,150,243,0.3);
+  --glow-green: 0 0 8px rgba(76,175,80,0.3);
+  --glow-red: 0 0 8px rgba(244,67,54,0.3);
   --chart-border: #1a1a1a;
   --chart-candle-up: #4caf50;
   --chart-candle-down: #f44336;

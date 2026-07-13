@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { eventBus, EVENTS } from '../utils/eventBus'
+import { api } from '../api/client'
 
 interface Alert {
   id: string

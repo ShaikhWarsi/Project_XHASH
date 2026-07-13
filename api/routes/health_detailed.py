@@ -12,7 +12,7 @@ from persistence.multi_db import get_health_db
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/health", tags=["health"])
+router = APIRouter(prefix="/health", tags=["health"])
 
 
 @router.get("/system")

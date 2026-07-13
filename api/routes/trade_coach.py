@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/ai", tags=["ai"])
+router = APIRouter(prefix="/ai", tags=["ai"])
 
 SYSTEM_PROMPT = """You are a trading coach. Given a completed trade and recent trade history, provide a post-trade review. Grade the trade (A-F), identify strengths and weaknesses, find similar historical trades, and extract lessons. Return JSON."""
 

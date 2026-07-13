@@ -75,6 +75,10 @@ class CSRFMiddleware(BaseHTTPMiddleware):
                 )
             return response
 
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            return await call_next(request)
+
         token = request.headers.get(CSRF_HEADER_NAME, "")
         if not token:
             form = await request.form()

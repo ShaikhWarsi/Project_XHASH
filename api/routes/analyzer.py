@@ -12,7 +12,7 @@ from persistence.multi_db import get_latency_db, get_logs_db
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/analyzer", tags=["analyzer"])
+router = APIRouter(prefix="/analyzer", tags=["analyzer"])
 
 
 @router.get("/logs")

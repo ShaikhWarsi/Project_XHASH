@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { eventBus, EVENTS } from '../utils/eventBus'
+import { api } from '../api/client'
 
 interface PaperTrade {
   id: string
@@ -26,9 +27,9 @@ interface PaperAccount {
 interface PaperTradingStore {
   account: PaperAccount
   trades: PaperTrade[]
-  startSimulation: () => void
-  stopSimulation: () => void
-  resetAccount: () => void
+  startSimulation: () => Promise<void>
+  stopSimulation: () => Promise<void>
+  resetAccount: () => Promise<void>
   addTrade: (trade: PaperTrade) => void
   updateAccount: (updates: Partial<PaperAccount>) => void
 }
@@ -50,16 +51,23 @@ export const usePaperTradingStore = create<PaperTradingStore>()(
       account: { ...DEFAULT_ACCOUNT },
       trades: [],
 
-      startSimulation: () =>
-        set((state) => ({ account: { ...state.account, isRunning: true } })),
+      startSimulation: async () => {
+        try { await api.post('/paper/start') } catch {}
+        set((state) => ({ account: { ...state.account, isRunning: true } }))
+      },
 
-      stopSimulation: () =>
-        set((state) => ({ account: { ...state.account, isRunning: false } })),
+      stopSimulation: async () => {
+        try { await api.post('/paper/stop') } catch {}
+        set((state) => ({ account: { ...state.account, isRunning: false } }))
+      },
 
-      resetAccount: () =>
-        set({ account: { ...DEFAULT_ACCOUNT }, trades: [] }),
+      resetAccount: async () => {
+        try { await api.post('/paper/reset') } catch {}
+        set({ account: { ...DEFAULT_ACCOUNT }, trades: [] })
+      },
 
       addTrade: (trade) => {
+        try { api.post('/paper/order', trade) } catch {}
         set((state) => ({
           trades: [trade, ...state.trades].slice(0, 200),
           account: {

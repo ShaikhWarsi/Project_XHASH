@@ -11,7 +11,7 @@ def _get_attr(pos: dict | object, name: str, default=0):
     return getattr(pos, name, default)
 
 
-@router.get("/positions")
+@router.get("")
 async def list_positions(portfolio_id: str = Query("default", description="Portfolio identifier")):
     snapshot = await app_state.async_snapshot()
     portfolio = snapshot.get("portfolio", {})
@@ -28,7 +28,7 @@ async def list_positions(portfolio_id: str = Query("default", description="Portf
         realized_pnl = _get_attr(pos, "realized_pnl", 0)
         cost_basis = entry_price * quantity
         exposure_pct = (market_value / total_value * 100) if total_value else 0
-        day_pnl = current_price - entry_price * quantity if entry_price else 0
+        day_pnl = (current_price - entry_price) * quantity if entry_price else 0
         result.append({
             "_simulated": True,
             "symbol": symbol,

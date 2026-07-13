@@ -11,7 +11,7 @@ from api.services.security_service import security_service, SECURITY_SETTINGS_DE
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/openalgo/security", tags=["security_admin"])
+router = APIRouter(prefix="/openalgo/security", tags=["security_admin"])
 
 _CACHED_SETTINGS = dict(SECURITY_SETTINGS_DEFAULTS)
 
