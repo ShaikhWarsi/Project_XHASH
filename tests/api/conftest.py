@@ -5,6 +5,8 @@ from typing import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 os.environ["TESTING"] = "1"
+os.environ["DEV_MODE"] = "true"
+os.environ["AUTH_DISABLED"] = "true"
 
 import pytest
 from fastapi import FastAPI

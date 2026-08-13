@@ -22,26 +22,26 @@ docker compose up
 ## Architecture
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                   Frontend (React + TypeScript)                    │
-│  Dashboard │ Portfolio │ Signals │ Trades │ Chart │ Backtest     │
-│  Agents │ Hedge Flow │ Strategy Lab │ AI Features │ Right Sidebar│
-└──────────────────────┬───────────────────────────────────────────┘
-                       │ REST + SSE + WebSocket
-┌──────────────────────▼───────────────────────────────────────────┐
-│              FastAPI REST API (60+ route modules)                 │
-│  Portfolio │ Signals │ Backtest │ Agents │ LLM │ FinScript       │
-│  AI: Briefing │ Co-Movement │ Earnings │ Strategy │ Indicator    │
-│  Chart Inspector │ LLM Query │ Streaming SSE                     │
-└──┬──────────┬──────────┬──────────┬─────────────────────────────┘
-   │          │          │          │
-┌──▼──┐  ┌───▼───┐  ┌──▼───┐  ┌──▼──────────┐
-│Signals│  │Agents │  │ Risk │  │ Execution   │
-│23+   │  │16 HF  │  │Engine│  │ Backtest    │
-│Engines│  │8 Quant│  │Limits│  │ Paper       │
-│Regime │  │8 LLM  │  │Stops │  │ Alpaca      │
-│ML     │  │Renaiss│  │Sizing│  │ CCXT / IBKR │
-└──────┘  └───────┘  └──────┘  └─────────────┘
++------------------------------------------------------------------+
+|                   Frontend (React + TypeScript)                    |
+|  Dashboard | Portfolio | Signals | Trades | Chart | Backtest     |
+|  Agents | Hedge Flow | Strategy Lab | AI Features | Right Sidebar|
++------------------------+-----------------------------------------+
+                         | REST + SSE + WebSocket
++------------------------v-----------------------------------------+
+|              FastAPI REST API (60+ route modules)                 |
+|  Portfolio | Signals | Backtest | Agents | LLM | FinScript       |
+|  AI: Briefing | Co-Movement | Earnings | Strategy | Indicator    |
+|  Chart Inspector | LLM Query | Streaming SSE                     |
++--+----------+----------+----------+-----------------------------+
+   |          |          |          |
++--+--+  +----+----+  +--+---+  +--+--------------+
+|Signals|  |Agents |  | Risk |  | Execution   |
+|23+   |  |16 HF  |  |Engine|  | Backtest    |
+|Engines|  |8 Quant|  |Limits|  | Paper       |
+|Regime |  |8 LLM  |  |Stops |  | Alpaca      |
+|ML     |  |Renaiss|  |Sizing|  | CCXT / IBKR |
++------+  +-------+  +------+  +-------------+
 ```
 
 ## Key Features

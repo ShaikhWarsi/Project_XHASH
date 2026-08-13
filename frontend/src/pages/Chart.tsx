@@ -387,6 +387,9 @@ export default function ChartPage() {
       onErrorUnsubRef.current = engine.drawingManager.setOnError((msg: string) => addToast(msg, 'error')) as any
       engine.openOrderEntry = (side) => { setShowOrderEntry(true); setOrderEntrySide(side) }
       chartRef.current = engine
+      if (dataRef.current && dataRef.current.length > 0) {
+        setChartData(dataRef.current)
+      }
       return
     }
     // Sub-engines (layout grids) get registered but don't replace chartRef

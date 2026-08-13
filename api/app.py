@@ -779,12 +779,18 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
             logger.info("ddtrace not installed — skipping DataDog")
 
     auth_key = os.getenv("TRADING_ENGINE_API_KEY") or os.getenv("API_KEY")
+    dev_mode = os.getenv("DEV_MODE", "").lower() in ("true", "1", "yes")
     is_prod = os.getenv("ENV", "development").lower() == "production" or _env_bool("PRODUCTION", False)
 
-    if auth_key or is_prod:
-        actual_key = auth_key or "admin-default-key"
-        if is_prod and not auth_key:
-            logger.warning("WARNING: Running in production mode without TRADING_ENGINE_API_KEY! Defaulting key to 'admin-default-key'.")
+    # Always enable auth in production; optionally disable in dev only if AUTH_DISABLED is explicitly set
+    auth_disabled_in_dev = dev_mode and os.getenv("AUTH_DISABLED", "").lower() in ("true", "1", "yes")
+
+    if auth_disabled_in_dev:
+        logger.warning("AUTH DISABLED in dev mode — all routes open (AUTH_DISABLED=true)")
+    else:
+        actual_key = auth_key or os.urandom(32).hex()
+        if not auth_key:
+            logger.warning("WARNING: TRADING_ENGINE_API_KEY not set. Generated ephemeral key for this process. Set TRADING_ENGINE_API_KEY for stable auth.")
         
         from fastapi import Request
         from fastapi.responses import JSONResponse
@@ -792,8 +798,8 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
         @app.middleware("http")
         async def api_key_auth_middleware(request: Request, call_next):
             path = request.url.path
-            # Allow Swagger docs, root redirect, and health endpoints without authentication
-            if path in ("/", "/docs", "/redoc", "/openapi.json", "/health", "/api/health") or path.startswith("/ws"):
+            # Allow only Swagger docs, root redirect, and health endpoints without authentication
+            if path in ("/", "/docs", "/redoc", "/openapi.json", "/health", "/api/health"):
                 return await call_next(request)
             
             auth_header = request.headers.get("Authorization")
@@ -811,9 +817,7 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
                 )
                 
             return await call_next(request)
-        logger.info(f"API key bearer validation enabled (required token: '{actual_key[:4]}***')")
-    else:
-        logger.info("No authentication — all routes open")
+        logger.info("API key bearer validation enabled")
 
     app.include_router(signals.router)
     app.include_router(portfolio.router)
@@ -920,6 +924,8 @@ def create_app(title: str = "Trading Engine API") -> FastAPI:
     app.include_router(split_order_router)
     app.include_router(pnltracker_router)
     app.include_router(security_dashboard_router)
+    # security_routes_router removed — its endpoints duplicate security_dashboard_router
+    # and were silently overwritten; consolidate into security_dashboard only
     app.include_router(gtt_router)
     app.include_router(python_strategy_router)
     app.include_router(flow_router)

@@ -123,9 +123,17 @@ class LLMAgent(TradingAgent):
             if self.language != "en":
                 reasoning = translate_output(reasoning, self.language)
 
+            raw_signal = str(result.get("signal", "neutral")).lower().strip()
+            signal_map = {
+                "buy": "bullish", "bull": "bullish", "bullish": "bullish", "long": "bullish",
+                "sell": "bearish", "bear": "bearish", "bearish": "bearish", "short": "bearish",
+                "hold": "neutral", "neutral": "neutral",
+            }
+            normalized_signal = signal_map.get(raw_signal, "neutral")
+
             results[ticker] = self._make_signal(
                 ticker=ticker,
-                signal=result.get("signal", "neutral"),
+                signal=normalized_signal,
                 confidence=float(result.get("confidence", 0.5)),
                 reasoning=reasoning,
                 metadata=result.get("risk_factors", []),

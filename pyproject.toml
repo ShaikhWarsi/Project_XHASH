@@ -134,6 +134,7 @@ include = [
     "analytics.cfa*", "finscript*", "finscript.export*",
     "cli*",
 ]
+py-modules = ["mcp_server"]
 
 [project.scripts]
 trading-engine-backtest = "scripts.run:main"

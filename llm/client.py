@@ -51,6 +51,16 @@ class LLMClient:
         PROVIDER_GLM, PROVIDER_MINIMAX, PROVIDER_AZURE,
     }
 
+    _instances: dict[str, "LLMClient"] = {}
+
+    def __new__(cls, provider: str = "openai", model: str = "gpt-4", api_key: Optional[str] = None, **kwargs):
+        key = f"{provider}:{model}"
+        if key not in cls._instances:
+            instance = super().__new__(cls)
+            instance._initialized = False
+            cls._instances[key] = instance
+        return cls._instances[key]
+
     def __init__(
         self,
         provider: str = "openai",
@@ -60,6 +70,9 @@ class LLMClient:
         rate_limit_per_min: int = 60,
         max_retries: int = 3,
     ):
+        if self._initialized:
+            return
+        self._initialized = True
         if provider not in self.SUPPORTED_PROVIDERS:
             raise ValueError(
                 f"Unknown provider '{provider}'. Supported: {', '.join(sorted(self.SUPPORTED_PROVIDERS))}"
@@ -150,10 +163,17 @@ class LLMClient:
             raw = raw.split("\n", 1)[-1]
             raw = raw.rsplit("```", 1)[0]
         try:
-            return json.loads(raw)
+            result = json.loads(raw)
         except json.JSONDecodeError:
             logger.warning(f"Failed to parse LLM response as JSON: {raw[:200]}")
             return {"signal": "neutral", "confidence": 0.0, "reasoning": raw[:500]}
+        if schema and isinstance(schema, dict):
+            required = schema.get("required", [])
+            for key in required:
+                if key not in result:
+                    logger.warning("LLM response missing required key: %s", key)
+                    result[key] = None
+        return result
 
     async def _generate_openai(self, prompt: str, system: str, temperature: float, max_tokens: int) -> str:
         try:
@@ -236,9 +256,12 @@ class LLMClient:
     async def _generate_azure(self, prompt: str, system: str, temperature: float, max_tokens: int) -> str:
         try:
             from openai import AsyncAzureOpenAI
-            endpoint = self.api_key or ""
+            endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT", "")
+            api_key = self.api_key or os.environ.get("AZURE_OPENAI_API_KEY", "")
+            if not endpoint or not api_key:
+                return json.dumps({"signal": "neutral", "confidence": 0.0, "reasoning": "Azure endpoint or API key not configured"})
             client = AsyncAzureOpenAI(
-                api_key=self.api_key or "",
+                api_key=api_key,
                 azure_endpoint=endpoint if endpoint.startswith("https://") else f"https://{endpoint}.openai.azure.com/",
                 api_version="2024-02-15-preview",
             )

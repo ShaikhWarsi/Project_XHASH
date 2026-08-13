@@ -1,0 +1,80 @@
+[
+  {
+    "id": "l1",
+    "name": "Pro Trader",
+    "description": "Multi-monitor layout with chart, order book, and portfolio side by side",
+    "author": "xka_team",
+    "downloads": 0,
+    "rating": 4.8,
+    "tags": [
+      "multi-monitor",
+      "pro"
+    ],
+    "installed": true
+  },
+  {
+    "id": "l2",
+    "name": "Swing Trader",
+    "description": "Daily chart focus with signal panel and watchlist",
+    "author": "xka_team",
+    "downloads": 0,
+    "rating": 4.5,
+    "tags": [
+      "swing",
+      "daily"
+    ],
+    "installed": false
+  },
+  {
+    "id": "l3",
+    "name": "Scalper",
+    "description": "Tight timeframes with Level 2 data and quick trade buttons",
+    "author": "xka_team",
+    "downloads": 0,
+    "rating": 4.7,
+    "tags": [
+      "scalping",
+      "fast"
+    ],
+    "installed": false
+  },
+  {
+    "id": "l4",
+    "name": "Portfolio Manager",
+    "description": "Portfolio-centric view with risk metrics and P&L charts",
+    "author": "xka_team",
+    "downloads": 0,
+    "rating": 4.3,
+    "tags": [
+      "portfolio",
+      "risk"
+    ],
+    "installed": false
+  },
+  {
+    "id": "l5",
+    "name": "Algo Developer",
+    "description": "Strategy editor, backtester, and optimization results side panel",
+    "author": "xka_team",
+    "downloads": 0,
+    "rating": 4.6,
+    "tags": [
+      "backtest",
+      "algo"
+    ],
+    "installed": false
+  },
+  {
+    "id": "l6",
+    "name": "Minimal",
+    "description": "Clean, distraction-free trading view with essential tools",
+    "author": "xka_team",
+    "downloads": 0,
+    "rating": 4.2,
+    "tags": [
+      "minimal",
+      "clean"
+    ],
+    "installed": false
+  }
+]

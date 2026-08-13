@@ -25,6 +25,20 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('plotly')) return 'plotly'
+          if (id.includes('monaco') || id.includes('@monaco-editor')) return 'monaco'
+          if (id.includes('@xyflow')) return 'xyflow'
+          if (id.includes('lightweight-charts')) return 'charts'
+          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/') || id.includes('node_modules/react-router-dom/')) return 'vendor'
+        },
+      },
+    },
+  },
+
   optimizeDeps: {
     exclude: ['plotly.js-dist-min'],
   },

@@ -67,7 +67,7 @@ class IBKRBroker(ExecutionProvider):
                 self.positions[symbol] = Position(
                     symbol=symbol,
                     quantity=float(position),
-                    avg_price=float(avgCost),
+                    entry_price=float(avgCost),
                     current_price=float(avgCost),
                 )
 
@@ -169,6 +169,7 @@ class IBKRBroker(ExecutionProvider):
             self._app.placeOrder(order_id, contract, ib_order)
 
             if order.bracket_take_profit or order.bracket_stop_loss:
+                ib_order.transmit = False
                 self._place_bracket(order, contract, ib_order, order_id)
 
             return Fill(order_id=str(order_id), symbol=order.symbol, side=order.side, quantity=abs(order.quantity), price=order.price or 0.0, timestamp=datetime.now(timezone.utc))

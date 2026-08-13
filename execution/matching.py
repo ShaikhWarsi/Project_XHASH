@@ -176,10 +176,10 @@ class OrderMatchingEngine:
         regime_mult = 1.0
         if "close" in self._bar_data and "open" in self._bar_data:
             bar_range = abs(self._bar_data["close"] - self._bar_data["open"]) / max(self._bar_data["open"], 0.01)
-            if bar_range > 0.02:
-                regime_mult = 1.5
-            elif bar_range > 0.04:
+            if bar_range > 0.04:
                 regime_mult = 2.0
+            elif bar_range > 0.02:
+                regime_mult = 1.5
         return impact + spread_est + (base_perc * (regime_mult - 1.0))
 
     def _slip_up(self, phigh: float, price: float, doslip: bool = True, size: int = 0) -> float | None:
@@ -188,7 +188,7 @@ class OrderMatchingEngine:
         slip = self._calc_dynamic_slippage(price, is_buy=True, size=size)
         pslip = price * (1 + slip)
         if self._slip_match and pslip > phigh:
-            return phigh if self._slip_limit else phigh
+            return None if not self._slip_limit else phigh
         return pslip
 
     def _slip_down(self, plow: float, price: float, doslip: bool = True, size: int = 0) -> float | None:
@@ -197,7 +197,7 @@ class OrderMatchingEngine:
         slip = self._calc_dynamic_slippage(price, is_buy=False, size=size)
         pslip = price * (1 - slip)
         if self._slip_match and pslip < plow:
-            return plow if self._slip_limit else plow
+            return None if not self._slip_limit else plow
         return pslip
 
     def _try_exec_market(self, order, popen, phigh, plow, pclose):
@@ -361,7 +361,11 @@ class OrderMatchingEngine:
         self.positions[order.symbol] = new_size
         if new_size:
             if abs(new_size) > abs(pos_size):
-                self.position_prices[order.symbol] = price
+                old_val = pos_price * pos_size
+                new_val = price * size
+                total_size = pos_size + size
+                if total_size != 0:
+                    self.position_prices[order.symbol] = (old_val + new_val) / total_size
             elif new_size == pos_size + size:
                 if pos_size * size > 0:
                     old_val = pos_price * pos_size

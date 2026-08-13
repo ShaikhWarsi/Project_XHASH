@@ -235,9 +235,11 @@ class Order:
         if self.isbuy:
             if price < self.created.price:
                 self.created.price = price
+                self.price = price - pamount
         else:
             if price > self.created.price:
                 self.created.price = price
+                self.price = price + pamount
 
     def __eq__(self, other):
         if isinstance(other, Order):

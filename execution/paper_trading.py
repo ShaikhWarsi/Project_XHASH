@@ -41,9 +41,15 @@ class PaperTradingExecutor(ExecutionProvider):
         if order.order_type in (OrderType.LIMIT, OrderType.STOP_LIMIT) and (order.price is None or order.price <= 0):
             raise ValueError(f"Cannot submit limit order for {order.symbol} without a valid price")
         price = order.price or 0.0
-        if order.order_type in (OrderType.MARKET, OrderType.STOP):
-            # Use slippage to simulate execution price
-            price = order.price or 100.0
+        if order.order_type == OrderType.STOP:
+            price = order.stop_price or order.price or 0.0
+        if order.order_type in (OrderType.MARKET,):
+            price = order.price or 0.0
+            if price <= 0:
+                raise ValueError(f"MARKET order for {order.symbol} requires a price (no last-trade fallback)")
+        if order.order_type in (OrderType.MARKET,):
+            price = price * (1 + self._slippage) if order.side in (OrderSide.BUY, OrderSide.COVER) else price * (1 - self._slippage)
+        elif order.order_type == OrderType.STOP:
             price = price * (1 + self._slippage) if order.side in (OrderSide.BUY, OrderSide.COVER) else price * (1 - self._slippage)
 
         # Validate buying power

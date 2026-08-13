@@ -10,6 +10,16 @@ import { AudioAlertProvider } from './contexts/AudioAlertContext'
 import { InterfaceModeProvider } from './contexts/InterfaceModeContext'
 import { WebSocketProvider } from './contexts/WebSocketProvider'
 
+function NotFound() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', fontFamily: "'JetBrains Mono', monospace" }}>
+      <h1 style={{ fontSize: 48, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>404</h1>
+      <p style={{ color: 'var(--text-muted)', marginTop: 8 }}>Page not found</p>
+      <a href="/" style={{ color: 'var(--accent-blue)', marginTop: 16 }}>Return to Dashboard</a>
+    </div>
+  )
+}
+
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const ChartPage = lazy(() => import('./pages/Chart'))
 const WatchlistPage = lazy(() => import('./pages/WatchlistPage'))
@@ -284,6 +294,7 @@ export default function App() {
                   <Route path="/openalgo/whatsapp" element={<LazyPage><WhatsAppBotPage /></LazyPage>} />
                   <Route path="/openalgo/strategy-portfolio" element={<LazyPage><StrategyPortfolio /></LazyPage>} />
                   <Route path="/openalgo/strategy-portfolio/view/:id" element={<LazyPage><StrategyPortfolioView /></LazyPage>} />
+                  <Route path="*" element={<LazyPage><NotFound /></LazyPage>} />
                 </Route>
               </Routes>
             </AudioAlertProvider>

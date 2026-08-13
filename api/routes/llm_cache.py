@@ -16,8 +16,8 @@ _MAX_CACHE_SIZE = 1000
 
 
 def _cache_key(model: str, prompt: str) -> str:
-    raw = f"{model}:{prompt}"
-    return hashlib.sha256(raw.encode()).hexdigest()
+    raw = f"{model}:{len(prompt)}:{hashlib.sha256(prompt[:200].encode()).hexdigest()[:16]}"
+    return raw
 
 
 def cache_get(model: str, prompt: str) -> Optional[str]:

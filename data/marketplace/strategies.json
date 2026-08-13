@@ -1,0 +1,168 @@
+[
+  {
+    "id": "s1",
+    "name": "Mean Reversion Pro",
+    "description": "Statistical arbitrage using z-score mean reversion with dynamic bands",
+    "author": "xka_team",
+    "type": "both",
+    "assetClasses": [
+      "stocks",
+      "etfs"
+    ],
+    "avgReturn": 18.5,
+    "sharpe": 1.8,
+    "downloads": 0,
+    "rating": 4.8,
+    "tags": [
+      "mean-reversion",
+      "statistical"
+    ],
+    "installed": false
+  },
+  {
+    "id": "s2",
+    "name": "Trend Following",
+    "description": "Multi-timeframe trend following with ADX and EMA filters",
+    "author": "xka_team",
+    "type": "long",
+    "assetClasses": [
+      "futures",
+      "crypto"
+    ],
+    "avgReturn": 24.2,
+    "sharpe": 1.5,
+    "downloads": 0,
+    "rating": 4.7,
+    "tags": [
+      "trend",
+      "adx",
+      "ema"
+    ],
+    "installed": false
+  },
+  {
+    "id": "s3",
+    "name": "Momentum Burst",
+    "description": "Captures breakout momentum with volatility-adjusted position sizing",
+    "author": "xka_team",
+    "type": "both",
+    "assetClasses": [
+      "stocks",
+      "crypto"
+    ],
+    "avgReturn": 32.1,
+    "sharpe": 1.3,
+    "downloads": 0,
+    "rating": 4.5,
+    "tags": [
+      "momentum",
+      "breakout"
+    ],
+    "installed": false
+  },
+  {
+    "id": "s4",
+    "name": "Volatility Arbitrage",
+    "description": "Trades VIX term structure and volatility premium decay",
+    "author": "xka_team",
+    "type": "short",
+    "assetClasses": [
+      "options",
+      "futures"
+    ],
+    "avgReturn": 15.8,
+    "sharpe": 2.1,
+    "downloads": 0,
+    "rating": 4.9,
+    "tags": [
+      "volatility",
+      "vix",
+      "arb"
+    ],
+    "installed": false
+  },
+  {
+    "id": "s5",
+    "name": "Grid Bot Classic",
+    "description": "Automated grid trading with dynamic range adjustment",
+    "author": "xka_team",
+    "type": "both",
+    "assetClasses": [
+      "crypto"
+    ],
+    "avgReturn": 12.5,
+    "sharpe": 0.9,
+    "downloads": 0,
+    "rating": 4.2,
+    "tags": [
+      "grid",
+      "crypto",
+      "automated"
+    ],
+    "installed": false
+  },
+  {
+    "id": "s6",
+    "name": "Pair Trading",
+    "description": "Cointegration-based pairs trading with hedge ratio optimization",
+    "author": "xka_team",
+    "type": "both",
+    "assetClasses": [
+      "stocks",
+      "etfs"
+    ],
+    "avgReturn": 21.3,
+    "sharpe": 2.3,
+    "downloads": 0,
+    "rating": 4.6,
+    "tags": [
+      "pairs",
+      "cointegration",
+      "hedge"
+    ],
+    "installed": false
+  },
+  {
+    "id": "s7",
+    "name": "Swing Momentum",
+    "description": "2-5 day swing trades using RSI divergence and volume confirmation",
+    "author": "xka_team",
+    "type": "long",
+    "assetClasses": [
+      "stocks",
+      "etfs",
+      "crypto"
+    ],
+    "avgReturn": 28.7,
+    "sharpe": 1.6,
+    "downloads": 0,
+    "rating": 4.4,
+    "tags": [
+      "swing",
+      "rsi",
+      "divergence"
+    ],
+    "installed": false
+  },
+  {
+    "id": "s8",
+    "name": "Option Wheel",
+    "description": "Cash-secured puts + covered call wheel strategy with IV targeting",
+    "author": "xka_team",
+    "type": "long",
+    "assetClasses": [
+      "options",
+      "stocks"
+    ],
+    "avgReturn": 16.4,
+    "sharpe": 1.9,
+    "downloads": 0,
+    "rating": 4.7,
+    "tags": [
+      "options",
+      "wheel",
+      "income"
+    ],
+    "installed": false
+  }
+]

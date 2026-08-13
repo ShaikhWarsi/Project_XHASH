@@ -151,13 +151,15 @@ class BacktestEngine:
         timestamps: list[datetime] = []
         current_prices: dict[str, float] = {}
 
+        sym_indices = {sym: df.index.get_indexer(all_indices, method='ffill') for sym, df in aligned.items()}
+
         for bar_idx, current_ts in enumerate(all_indices):
             for sym in symbols:
                 df = aligned.get(sym)
                 if df is not None:
-                    mask = df.index <= current_ts
-                    if mask.any():
-                        current_prices[sym] = float(df.loc[mask, "close"].iloc[-1])
+                    idx = sym_indices[sym][bar_idx]
+                    if idx >= 0:
+                        current_prices[sym] = float(df.iloc[idx]["close"])
 
             if len(current_prices) < len(symbols) or bar_idx < 20:
                 continue
@@ -345,7 +347,7 @@ class BacktestEngine:
 
             cash = self.matching_engine.cash
             pos_value = sum(
-                abs(self.matching_engine.get_position(s)) * current_prices.get(s, 0.0)
+                self.matching_engine.get_position(s) * current_prices.get(s, 0.0)
                 for s in symbols
             )
             total_value = cash + pos_value

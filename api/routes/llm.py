@@ -17,6 +17,13 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/llm", tags=["llm"])
 
+try:
+    from slowapi import Limiter
+    from slowapi.util import get_remote_address
+    _limiter = Limiter(key_func=get_remote_address)
+except ImportError:
+    _limiter = None
+
 from .llm_usage import track_usage
 from .llm_cache import cache_get, cache_set
 
@@ -250,11 +257,10 @@ async def _call_lmstudio(model: str, prompt: str, temperature: float, max_tokens
 
 async def _stream_openai(model: str, prompt: str, temperature: float, max_tokens: int) -> AsyncGenerator[str, None]:
     import openai as oa
-    client = oa.OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-    async with _LLM_GLOBAL_SEM:
+    client = oa.AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
+    try:
         stream = await asyncio.wait_for(
-            asyncio.to_thread(
-                client.chat.completions.create,
+            client.chat.completions.create(
                 model=model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=temperature,
@@ -263,31 +269,29 @@ async def _stream_openai(model: str, prompt: str, temperature: float, max_tokens
             ),
             timeout=_LLM_TIMEOUT,
         )
-        for chunk in stream:
+        async for chunk in stream:
             delta = chunk.choices[0].delta if chunk.choices else None
             if delta and delta.content:
                 yield f"data: {json.dumps({'token': delta.content})}\n\n"
+    finally:
+        await client.close()
     yield f"data: {json.dumps({'done': True})}\n\n"
 
 
 async def _stream_anthropic(model: str, prompt: str, temperature: float, max_tokens: int) -> AsyncGenerator[str, None]:
     import anthropic
-    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-    async with _LLM_GLOBAL_SEM:
-        stream = await asyncio.wait_for(
-            asyncio.to_thread(
-                lambda: client.messages.stream(
-                    model=model,
-                    messages=[{"role": "user", "content": prompt}],
-                    max_tokens=max_tokens,
-                    temperature=temperature,
-                )
-            ),
-            timeout=_LLM_TIMEOUT,
-        )
-        with stream:
-            for text in stream.text_stream:
+    client = anthropic.AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    try:
+        async with client.messages.stream(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=max_tokens,
+            temperature=temperature,
+        ) as stream:
+            async for text in stream.text_stream:
                 yield f"data: {json.dumps({'token': text})}\n\n"
+    finally:
+        await client.close()
     yield f"data: {json.dumps({'done': True})}\n\n"
 
 
@@ -414,6 +418,7 @@ async def list_models():
 
 
 @router.post("/complete")
+@_limiter.limit("30/minute") if _limiter else lambda f: f
 async def llm_complete(req: CompleteRequest, request: Request):
     user_id = request.headers.get("X-User-Id", "")
     model_config = _get_model_config(req.model)
@@ -466,6 +471,7 @@ async def _stream_wrapper(provider: str, model: str, prompt: str, temperature: f
 
 @router.post("/complete-stream")
 @router.post("/stream")
+@_limiter.limit("10/minute") if _limiter else lambda f: f
 async def llm_complete_stream(req: StreamingCompleteRequest, request: Request):
     user_id = request.headers.get("X-User-Id", "")
     model_config = _get_model_config(req.model)

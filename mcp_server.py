@@ -28,6 +28,7 @@ except ImportError:
 
 MCP_AUTH_TOKEN = os.environ.get("MCP_AUTH_TOKEN", "")
 MCP_RATE_LIMIT = int(os.environ.get("MCP_RATE_LIMIT_PER_MIN", "120"))
+MCP_JOURNAL_DIR = os.environ.get("MCP_JOURNAL_DIR", "")
 
 mcp = None
 if FastMCP is not None:
@@ -69,6 +70,7 @@ if mcp is not None:
     @mcp.tool()
     def get_stock_price(symbol: str) -> str:
         """Get current stock price and basic info for a symbol."""
+        _mcp_auth()
         _mcp_rate_limiter.check()
         provider = _get_data_provider()
         try:
@@ -80,6 +82,7 @@ if mcp is not None:
     @mcp.tool()
     def get_historical_data(symbol: str, days: int = 30) -> str:
         """Get historical OHLCV data for a symbol."""
+        _mcp_auth()
         _mcp_rate_limiter.check()
         provider = _get_data_provider()
         try:
@@ -94,6 +97,7 @@ if mcp is not None:
     @mcp.tool()
     def get_technical_indicators(symbol: str) -> str:
         """Compute key technical indicators for a symbol."""
+        _mcp_auth()
         from core.enums import Timeframe
         provider = _get_data_provider()
         end = datetime.now()
@@ -128,6 +132,7 @@ if mcp is not None:
     @mcp.tool()
     def get_fundamentals(symbol: str) -> str:
         """Get fundamental data for a symbol."""
+        _mcp_auth()
         from core.enums import Timeframe
         provider = _get_data_provider()
         try:
@@ -140,6 +145,7 @@ if mcp is not None:
     @mcp.tool()
     def get_news(symbol: str, max_articles: int = 10) -> str:
         """Get recent news for a symbol."""
+        _mcp_auth()
         try:
             import yfinance as yf
             ticker = yf.Ticker(symbol)
@@ -159,6 +165,7 @@ if mcp is not None:
     @mcp.tool()
     def get_social_sentiment(symbol: str) -> str:
         """Get StockTwits and Reddit sentiment for a symbol."""
+        _mcp_auth()
         from data.providers.stocktwits import StockTwitsDataSource
         from data.providers.reddit import RedditDataSource
         st = StockTwitsDataSource()
@@ -176,6 +183,7 @@ if mcp is not None:
     @mcp.tool()
     def get_insider_transactions(symbol: str) -> str:
         """Get recent insider transactions for a symbol."""
+        _mcp_auth()
         from data.providers.insider_transactions import InsiderTransactionsDataSource
         insider = InsiderTransactionsDataSource()
         txns = insider.fetch_transactions(symbol)
@@ -185,6 +193,7 @@ if mcp is not None:
     @mcp.tool()
     def run_backtest(strategy: str, tickers: str, start_date: str = "", end_date: str = "", initial_capital: float = 100000.0) -> str:
         """Run a backtest with a given strategy (sma_cross or momentum) on tickers (comma-separated)."""
+        _mcp_auth()
         try:
             from scripts.run import run_backtest as _run
             ticker_list = [t.strip() for t in tickers.split(",")]
@@ -232,6 +241,7 @@ if mcp is not None:
     @mcp.tool()
     def analyze_signal(symbol: str) -> str:
         """Run all signal engines on a symbol and return combined analysis."""
+        _mcp_auth()
         from core.enums import SignalType, Timeframe
         from signals.engine_registry import create_engine, list_engines
         from data.providers.yfinance import YFinanceDataSource
@@ -265,6 +275,7 @@ if mcp is not None:
     @mcp.tool()
     def get_portfolio_optimizer(returns_json: str, method: str = "mean_variance") -> str:
         """Run portfolio optimization. returns_json is a JSON string of {symbol: [returns]}."""
+        _mcp_auth()
         import numpy as np
         import pandas as pd
         try:
@@ -292,6 +303,7 @@ if mcp is not None:
     @mcp.tool()
     def get_alpha_zoo_list() -> str:
         """List all available alpha factors in the Alpha Zoo."""
+        _mcp_auth()
         from signals.alpha_zoo import Registry as AlphaRegistry
         registry = AlphaRegistry()
         alphas = registry.list()
@@ -301,6 +313,7 @@ if mcp is not None:
     @mcp.tool()
     def get_alpha_zoo_info(alpha_id: str) -> str:
         """Get info about a specific alpha factor."""
+        _mcp_auth()
         from signals.alpha_zoo import Registry as AlphaRegistry
         registry = AlphaRegistry()
         try:
@@ -312,6 +325,7 @@ if mcp is not None:
     @mcp.tool()
     def get_market_regime(symbol: str) -> str:
         """Detect current market regime for a symbol."""
+        _mcp_auth()
         from core.enums import Timeframe
         provider = _get_data_provider()
         end = datetime.now()
@@ -341,8 +355,19 @@ if mcp is not None:
     @mcp.tool()
     def analyze_trade_journal(filepath: str) -> str:
         """Analyze a broker CSV/Excel trade journal file."""
+        _mcp_auth()
+        from pathlib import Path
         from data.trade_journal import parse_journal_file, TradeJournalAnalyzer
-        df = parse_journal_file(filepath)
+        resolved = Path(filepath).resolve()
+        if MCP_JOURNAL_DIR:
+            allowed_dir = Path(MCP_JOURNAL_DIR).resolve()
+            try:
+                resolved.relative_to(allowed_dir)
+            except ValueError:
+                return json.dumps({"error": "Access denied: file is outside the allowed journal directory"})
+        elif not resolved.exists():
+            return json.dumps({"error": "File not found"})
+        df = parse_journal_file(str(resolved))
         if df is None or df.empty:
             return json.dumps({"error": "Could not parse file or empty"})
         analyzer = TradeJournalAnalyzer(df)

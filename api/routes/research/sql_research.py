@@ -14,6 +14,14 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/research", tags=["research"])
 
 _SQL_SELECT_ONLY = re.compile(r'^\s*SELECT\b', re.IGNORECASE)
+_SQL_BLOCKED_KEYWORDS = re.compile(
+    r'\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|EXEC|EXECUTE|'
+    r'UNION\s+ALL|UNION\s+SELECT|INTO\s+OUTFILE|INTO\s+DUMPFILE|'
+    r'LOAD_FILE|SLEEP\s*\(|BENCHMARK\s*\(|INFORMATION_SCHEMA|'
+    r'SQLITE_MASTER|PRAGMA|ATTACH|DETACH)\b',
+    re.IGNORECASE,
+)
+_MAX_ROWS = 1000
 
 _aggregator: Optional[SQLAggregator] = None
 _aggregator_lock = threading.Lock()
@@ -34,15 +42,20 @@ async def list_tables():
 
 
 @router.get("/query")
-async def run_query(sql: str = Query(...)):
+async def run_query(sql: str = Query(..., max_length=2000)):
     if not _SQL_SELECT_ONLY.match(sql.strip()):
         raise HTTPException(400, "Only SELECT queries are allowed on this endpoint")
+    if _SQL_BLOCKED_KEYWORDS.search(sql):
+        raise HTTPException(400, "Query contains blocked keywords")
     try:
         agg = get_aggregator()
         df = agg.query(sql)
+        if len(df) > _MAX_ROWS:
+            df = df.head(_MAX_ROWS)
         return {"columns": df.columns.tolist(), "rows": df.values.tolist(), "count": len(df)}
     except Exception as e:
-        raise HTTPException(400, str(e))
+        logger.warning("SQL query failed: %s", e)
+        raise HTTPException(400, "Query execution failed")
 
 
 @router.get("/daily-returns/{symbol}")

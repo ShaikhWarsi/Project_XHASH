@@ -1,9 +1,13 @@
+import os
 from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 config = context.config
+
+db_url = os.environ.get("TRADING_ENGINE_DB_URL") or os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///trading_engine.db")
+config.set_main_option("sqlalchemy.url", db_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

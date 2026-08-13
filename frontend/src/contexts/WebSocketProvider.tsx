@@ -31,7 +31,11 @@ const connections = new Map<string, ManagedConnection>()
 function buildUrl(endpoint: string): string {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
   const host = window.location.host
-  let url = endpoint.startsWith('ws') ? endpoint : `${protocol}//${host}/api${endpoint}`
+  let url = endpoint.startsWith('ws://') || endpoint.startsWith('wss://')
+    ? endpoint
+    : endpoint.startsWith('/ws')
+      ? `${protocol}//${host}${endpoint}`
+      : `${protocol}//${host}/api${endpoint}`
   const apiKey = getApiKey()
   if (apiKey) {
     const separator = url.includes('?') ? '&' : '?'
@@ -39,6 +43,8 @@ function buildUrl(endpoint: string): string {
   }
   return url
 }
+
+
 
 function createConnection(endpoint: string) {
   const conn = connections.get(endpoint)

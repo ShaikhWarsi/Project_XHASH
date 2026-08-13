@@ -114,15 +114,12 @@ Return a JSON with:
         if llm:
             try:
                 prompt = self._build_analysis_prompt(data, geo_risk)
+                system_msg = "You are a professional market analyst. Return valid JSON only."
                 response = llm.generate_structured(
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": "You are a professional market analyst. Return valid JSON only.",
-                        },
-                        {"role": "user", "content": prompt},
-                    ],
-                    response_model=None,
+                    prompt=prompt,
+                    system=system_msg,
+                    temperature=0.3,
+                    timeout=30.0,
                 )
                 if isinstance(response, str):
                     llm_analysis = json.loads(response)

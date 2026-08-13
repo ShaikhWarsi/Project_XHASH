@@ -16,7 +16,7 @@ class Trade(Base):
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    symbol = Column(String(20), nullable=False, index=True)
+    symbol = Column(String(40), nullable=False, index=True)
     side = Column(String(10), nullable=False)
     quantity = Column(Float, nullable=False)
     price = Column(Float, nullable=False)
@@ -35,7 +35,7 @@ class SignalRecord(Base):
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    symbol = Column(String(20), nullable=False, index=True)
+    symbol = Column(String(40), nullable=False, index=True)
     signal_type = Column(String(30), nullable=False)
     direction = Column(Integer, nullable=False)
     strength = Column(Float, default=0.0)
@@ -66,7 +66,7 @@ class AgentDecision(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     agent = Column(String(50), nullable=False, index=True)
-    ticker = Column(String(20), nullable=False)
+    ticker = Column(String(40), nullable=False)
     signal = Column(String(10), nullable=False)
     confidence = Column(Float, default=0.0)
     reasoning = Column(Text, default="")
@@ -125,7 +125,7 @@ class HedgeFundFlowRun(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     flow_id = Column(Integer, nullable=False, index=True)
-    ticker = Column(String(20), nullable=False)
+    ticker = Column(String(40), nullable=False)
     consensus = Column(String(10), nullable=False)
     confidence = Column(Float, default=0.0)
     opinions_json = Column(Text, default="[]")
@@ -142,7 +142,7 @@ class WatchlistItem(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(String(50), nullable=False, index=True)
-    symbol = Column(String(20), nullable=False)
+    symbol = Column(String(40), nullable=False)
     company = Column(String(200), default="")
     added_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
@@ -157,7 +157,7 @@ class PriceAlert(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(String(50), nullable=False, index=True)
-    symbol = Column(String(20), nullable=False)
+    symbol = Column(String(40), nullable=False)
     target_price = Column(Float, nullable=False)
     condition = Column(String(10), nullable=False)  # ABOVE or BELOW
     active = Column(Integer, default=1)
@@ -172,16 +172,18 @@ class Order(Base):
     __tablename__ = "orders"
     __table_args__ = (
         Index("ix_orders_symbol_ts", "symbol", "created_at"),
+        Index("ix_orders_status", "status"),
+        Index("ix_orders_created_at", "created_at"),
     )
 
     id = Column(String(36), primary_key=True)
-    symbol = Column(String(20), nullable=False, index=True)
-    side = Column(String(20), nullable=False)
+    symbol = Column(String(40), nullable=False, index=True)
+    side = Column(String(40), nullable=False)
     quantity = Column(Float, nullable=False)
-    order_type = Column(String(20), nullable=False)
+    order_type = Column(String(40), nullable=False)
     price = Column(Float, nullable=True)
     stop_price = Column(Float, nullable=True)
-    status = Column(String(20), default="SUBMITTED")
+    status = Column(String(40), default="SUBMITTED")
     filled_quantity = Column(Float, default=0)
     remaining_quantity = Column(Float, default=0)
     average_fill_price = Column(Float, nullable=True)
@@ -204,7 +206,7 @@ class AgentToken(Base):
     instruments = Column(String(500), nullable=False, default="*")
     paper_only = Column(Boolean, nullable=False, default=True)
     rate_limit_per_min = Column(Integer, nullable=False, default=60)
-    status = Column(String(20), nullable=False, default="active")
+    status = Column(String(40), nullable=False, default="active")
     expires_at = Column(DateTime, nullable=True)
     last_used_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
@@ -218,7 +220,7 @@ class AgentJob(Base):
     user_id = Column(Integer, nullable=False, index=True)
     agent_token_id = Column(Integer, nullable=True)
     kind = Column(String(40), nullable=False)
-    status = Column(String(20), nullable=False, default="queued")
+    status = Column(String(40), nullable=False, default="queued")
     request = Column(SA_Text, nullable=False, default="{}")
     result = Column(SA_Text, nullable=True)
     error = Column(SA_Text, nullable=True)
@@ -306,12 +308,12 @@ class StockAnalysisSnapshot(Base):
     __tablename__ = "stock_analysis_snapshots"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    symbol = Column(String(20), nullable=False)
-    market = Column(String(20), nullable=False)
+    symbol = Column(String(40), nullable=False)
+    market = Column(String(40), nullable=False)
     analysis_id = Column(String(200), nullable=False)
     current_price = Column(Float, nullable=False)
     currency = Column(String(10), default="USD")
-    signal = Column(String(20), nullable=False)
+    signal = Column(String(40), nullable=False)
     signal_score = Column(Float, nullable=False)
     trend_status = Column(String(50), nullable=False)
     support_levels_json = Column(Text, nullable=False)
@@ -328,10 +330,14 @@ class TradingAgentsRun(Base):
     """TradingAgents multi-agent analysis runs."""
 
     __tablename__ = "tradingagents_runs"
+    __table_args__ = (
+        Index("ix_tradingagents_runs_status", "status"),
+        Index("ix_tradingagents_runs_started_at", "started_at"),
+    )
 
     id = Column(String(36), primary_key=True)
-    ticker = Column(String(20), nullable=False, index=True)
-    status = Column(String(20), nullable=False, default="queued")
+    ticker = Column(String(40), nullable=False, index=True)
+    status = Column(String(40), nullable=False, default="queued")
     config_json = Column(Text, default="{}")
     started_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     finished_at = Column(DateTime, nullable=True)

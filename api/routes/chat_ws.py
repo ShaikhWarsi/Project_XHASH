@@ -79,7 +79,10 @@ async def ws_chat(websocket: WebSocket):
 
         logger.warning("ws_chat hit max iterations")
     except WebSocketDisconnect:
-        await manager.disconnect("chat", websocket)
+        await manager.disconnect_ws("chat", websocket)
     except Exception as e:
         logger.warning("ws_chat error: %s", e)
-        await manager.disconnect("chat", websocket)
+        try:
+            await manager.disconnect_ws("chat", websocket)
+        except Exception:
+            pass

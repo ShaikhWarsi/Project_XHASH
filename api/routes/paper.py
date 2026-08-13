@@ -166,21 +166,22 @@ async def stop_paper():
 @router.post("/paper/reset")
 async def reset_paper():
     global _wins, _losses
-    _wins = 0
-    _losses = 0
-    _paper.update({
-        "balance": 100000,
-        "equity": 100000,
-        "buyingPower": 200000,
-        "openPnl": 0,
-        "totalReturn": 0,
-        "totalTrades": 0,
-        "winRate": 0,
-        "isRunning": False,
-        "positions": [],
-        "trades": [],
-        "lastPrices": {},
-    })
+    async with _paper_async_lock:
+        _wins = 0
+        _losses = 0
+        _paper.update({
+            "balance": 100000,
+            "equity": 100000,
+            "buyingPower": 200000,
+            "openPnl": 0,
+            "totalReturn": 0,
+            "totalTrades": 0,
+            "winRate": 0,
+            "isRunning": False,
+            "positions": [],
+            "trades": [],
+            "lastPrices": {},
+        })
     return {"success": True}
 
 

@@ -43,6 +43,7 @@ class TradeRepository:
             func.count(Trade.id).label("total_trades"),
             func.sum(Trade.pnl).label("total_pnl"),
             func.avg(Trade.pnl).label("avg_pnl"),
+            func.sum(Trade.pnl_pct).label("total_pnl_pct"),
         )
         if since:
             stmt = stmt.where(Trade.timestamp >= since)
@@ -52,6 +53,7 @@ class TradeRepository:
             "total_trades": row.total_trades or 0,
             "total_pnl": float(row.total_pnl or 0.0),
             "avg_pnl": float(row.avg_pnl or 0.0),
+            "total_pnl_pct": float(row.total_pnl_pct or 0.0),
         }
 
 

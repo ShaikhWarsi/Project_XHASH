@@ -175,6 +175,6 @@ async def global_error_handler(request: Request, exc: Exception):
     return build_error_response(
         status_code=500,
         code="INTERNAL_ERROR",
-        message=f"{type(exc).__name__}: {exc}"[:300],
+        message="An internal server error occurred. Please try again later.",
         suggestion="Please try again. If the problem persists, restart the API server.",
     )

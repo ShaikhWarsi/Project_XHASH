@@ -35,11 +35,12 @@ class CircuitBreaker:
     def update(self, portfolio: PortfolioState):
         if portfolio.total_value > self.peak_value:
             self.peak_value = portfolio.total_value
-        if self.daily_start_value <= 0 or portfolio.total_value > self.daily_start_value:
-            self.daily_start_value = portfolio.total_value
 
     def reset_daily(self, portfolio: PortfolioState):
         self.daily_start_value = portfolio.total_value
+        if self.trading_halted and self.breach_reason.startswith("Daily loss"):
+            self.trading_halted = False
+            self.breach_reason = ""
 
     def reset(self):
         self.trading_halted = False

@@ -30,48 +30,65 @@ class TokenResponse(BaseModel):
 async def login(req: LoginRequest, session: AsyncSession = Depends(get_session)):
     admin_user = os.environ.get("AUTH_USER", "admin")
     admin_pass = os.environ.get("AUTH_PASSWORD", "")
+    auth_password_hash = os.environ.get("AUTH_PASSWORD_HASH", "")
+
+    if not admin_pass and not auth_password_hash:
+        raise HTTPException(status_code=503, detail="Authentication not configured. Set AUTH_PASSWORD or AUTH_PASSWORD_HASH environment variables.")
 
     if req.username != admin_user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    if admin_pass:
+    if auth_password_hash:
         import hashlib
-        stored_hash = os.environ.get("AUTH_PASSWORD_HASH", "")
-        if stored_hash:
-            input_hash = hashlib.sha256(req.password.encode()).hexdigest()
-            if input_hash != stored_hash:
-                raise HTTPException(status_code=401, detail="Invalid credentials")
-        elif req.password != admin_pass:
+        input_hash = hashlib.sha256(req.password.encode()).hexdigest()
+        if input_hash != auth_password_hash:
             raise HTTPException(status_code=401, detail="Invalid credentials")
+    elif req.password != admin_pass:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    from api.auth.agent_auth import agent_required, generate_token
-    token = generate_token()
+    from api.auth.agent_auth import generate_token
+    full_token, prefix, key_hash = generate_token()
     await session.commit()
 
-    return TokenResponse(access_token=token)
+    return TokenResponse(access_token=full_token)
 
 
 @router.post("/rotate-key")
 async def rotate_api_key(request):
-    from api.auth.agent_auth import agent_required, generate_token
+    from api.auth.agent_auth import generate_token
     auth_header = request.headers.get("Authorization", "")
     token = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else ""
     if not token:
         token = request.query_params.get("token", "")
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing token")
     try:
-        agent = agent_required(token)
-        new_token = generate_token()
-        return TokenResponse(access_token=new_token)
+        from api.auth.pepper_auth import verify_api_key
+        if not verify_api_key(token):
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+        full_token, prefix, key_hash = generate_token()
+        return TokenResponse(access_token=full_token)
+    except HTTPException:
+        raise
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 
 @router.get("/me")
-async def get_current_user(token: str = ""):
-    from api.auth.agent_auth import agent_required
+async def get_current_user(request):
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else ""
+    if not token:
+        token = request.query_params.get("token", "")
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing token")
     try:
-        agent = agent_required(token)
-        return {"username": agent.get("username", "admin"), "scopes": agent.get("scopes", ["read"])}
+        from api.auth.pepper_auth import verify_api_key
+        if not verify_api_key(token):
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+        return {"username": "admin", "scopes": ["read", "write"]}
+    except HTTPException:
+        raise
     except Exception:
         logger.warning("Auth token validation failed", exc_info=True)
         raise HTTPException(status_code=401, detail="Invalid or expired token")

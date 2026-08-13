@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -14,6 +14,22 @@ from api.auth.pepper_auth import generate_api_key, invalidate_user_cache
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/apikey", tags=["apikey"])
+
+
+def _extract_token(request: Request) -> str:
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        return auth_header[7:]
+    return request.query_params.get("token", "")
+
+
+async def _verify_requester(request: Request):
+    token = _extract_token(request)
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing authentication")
+    from api.auth.pepper_auth import verify_api_key
+    if not verify_api_key(token):
+        raise HTTPException(status_code=401, detail="Invalid authentication token")
 
 
 class GenerateRequest(BaseModel):
@@ -32,8 +48,10 @@ class OrderModeRequest(BaseModel):
 @router.post("/generate")
 async def generate_api_key_endpoint(
     req: GenerateRequest,
+    request: Request,
     session: AsyncSession = Depends(get_auth_db),
 ):
+    await _verify_requester(request)
     raw_key, key_hash, key_encrypted = generate_api_key(req.user_id)
 
     result = await session.execute(
@@ -65,8 +83,10 @@ async def generate_api_key_endpoint(
 @router.post("/revoke")
 async def revoke_api_key_endpoint(
     req: RevokeRequest,
+    request: Request,
     session: AsyncSession = Depends(get_auth_db),
 ):
+    await _verify_requester(request)
     result = await session.execute(
         select(ApiKeys).where(ApiKeys.user_id == req.user_id)
     )
@@ -85,8 +105,10 @@ async def revoke_api_key_endpoint(
 @router.post("/order_mode")
 async def set_order_mode_endpoint(
     req: OrderModeRequest,
+    request: Request,
     session: AsyncSession = Depends(get_auth_db),
 ):
+    await _verify_requester(request)
     if req.mode not in ("auto", "semi_auto"):
         raise HTTPException(status_code=400, detail="Mode must be 'auto' or 'semi_auto'")
 

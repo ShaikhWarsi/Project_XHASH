@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode, useRef } from 'react'
+import { createContext, useContext, useEffect, useLayoutEffect, useState, useCallback, type ReactNode, useRef } from 'react'
 
 export type ThemeName = 'classic' | 'matrix' | 'amber' | 'cyber' | 'terminal' | 'light' | 'highcontrast' | 'sunlight' | 'auto'
 
@@ -80,7 +80,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_FONTSIZE, String(s))
   }, [])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const resolved = resolveTheme(theme)
     setResolvedTheme(resolved)
     const root = rootRef.current

@@ -213,6 +213,11 @@ class Interpreter:
                 scope[stmt.var] = item
                 try:
                     for s in stmt.body:
+                        _stmt_count += 1
+                        if _stmt_count > _MAX_STMT_COUNT:
+                            raise InterpreterError(f"Execution exceeded max statement count ({_MAX_STMT_COUNT})")
+                        if time.monotonic() > _deadline:
+                            raise InterpreterError(f"Execution timed out after {_MAX_EXECUTION_SECONDS}s")
                         self._execute_stmt(s, scope)
                 except BreakException:
                     break
@@ -222,6 +227,11 @@ class Interpreter:
             while self._truthy(self._eval_expr(stmt.condition, scope)):
                 try:
                     for s in stmt.body:
+                        _stmt_count += 1
+                        if _stmt_count > _MAX_STMT_COUNT:
+                            raise InterpreterError(f"Execution exceeded max statement count ({_MAX_STMT_COUNT})")
+                        if time.monotonic() > _deadline:
+                            raise InterpreterError(f"Execution timed out after {_MAX_EXECUTION_SECONDS}s")
                         self._execute_stmt(s, scope)
                 except BreakException:
                     break

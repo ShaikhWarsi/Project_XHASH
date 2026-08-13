@@ -55,16 +55,16 @@ class TelegramNotifier:
     def notify_trade(self, symbol: str, side: str, quantity: float, price: float) -> dict:
         import datetime
         text = (
-            f"*Trade Executed*\\n"
-            f"Symbol: `{symbol}`\\n"
-            f"Side: {side}\\n"
-            f"Qty: {quantity:.4f}\\n"
-            f"Price: ${price:.2f}\\n"
+            f"*Trade Executed*\n"
+            f"Symbol: `{symbol}`\n"
+            f"Side: {side}\n"
+            f"Qty: {quantity:.4f}\n"
+            f"Price: ${price:.2f}\n"
             f"Time: {datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC"
         )
         return self.send_message(text)
 
     def notify_alert(self, title: str, message: str, level: str = "INFO") -> dict:
         emoji = {"INFO": "ℹ️", "WARN": "⚠️", "ERROR": "🚨", "CRITICAL": "🔥"}
-        text = f"{emoji.get(level, 'ℹ️')} *{title}*\\n\\n{message}"
+        text = f"{emoji.get(level, 'ℹ️')} *{title}*\n\n{message}"
         return self.send_message(text)

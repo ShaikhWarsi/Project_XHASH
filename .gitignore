@@ -23,7 +23,8 @@ persistence/_auto_secrets.txt
 *.db-journal
 *.db-wal
 *.db-shm
-data/
+db/
+brag-output/
 config/providers.toml
 
 # OS
@@ -34,7 +35,6 @@ Thumbs.db
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
-frontend/package-lock.json
 /node_modules/
 
 # Testing

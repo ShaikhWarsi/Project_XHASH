@@ -259,6 +259,16 @@ export default function AdvancedCharts() {
   }, [chartType, candleData])
 
   useEffect(() => {
+    return () => {
+      if (chartRef.current) {
+        chartRef.current.remove()
+        chartRef.current = null
+        seriesRef.current.clear()
+      }
+    }
+  }, [])
+
+  useEffect(() => {
     for (const layer of layers) {
       const series = seriesRef.current.get(layer.id)
       if (series) {

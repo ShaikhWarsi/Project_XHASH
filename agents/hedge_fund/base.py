@@ -87,7 +87,14 @@ class PersonaAgent(TradingAgent):
                 from llm.client import LLMClient
                 client = LLMClient()
                 import asyncio
-                result = asyncio.run(client.generate(prompt, temperature=0.1, max_tokens=1024))
+                try:
+                    loop = asyncio.get_running_loop()
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                        future = pool.submit(asyncio.run, client.generate(prompt, temperature=0.1, max_tokens=1024))
+                        result = future.result(timeout=30)
+                except RuntimeError:
+                    result = asyncio.run(client.generate(prompt, temperature=0.1, max_tokens=1024))
                 if result:
                     return result
             except Exception as e:

@@ -22,7 +22,8 @@ class TradingViewIntegration:
 
     def verify_signature(self, payload: bytes, signature: str) -> bool:
         if self._secret is None:
-            return True
+            logger.warning("TradingView webhook secret not configured — rejecting request")
+            return False
         expected = hmac.new(self._secret, payload, hashlib.sha256).hexdigest()
         return hmac.compare_digest(expected, signature)
 

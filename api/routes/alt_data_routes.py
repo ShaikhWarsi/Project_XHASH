@@ -12,17 +12,24 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/alt-data", tags=["alternative-data"])
 
-_cache: dict[str, dict[str, Any]] = {}
+try:
+    from cachetools import TTLCache
+    _cache: TTLCache = TTLCache(maxsize=200, ttl=300)
+except ImportError:
+    _cache: dict[str, dict[str, Any]] = {}
 _CACHE_TTL = 300
 
 
 async def _cached_fetch(key: str, fetcher, ttl: int = _CACHE_TTL) -> Any:
     now = time.time()
     cached = _cache.get(key)
-    if cached and now - cached.get("_ts", 0) < ttl:
+    if cached and isinstance(cached, dict) and now - cached.get("_ts", 0) < ttl:
         return cached.get("data")
     data = await fetcher()
-    _cache[key] = {"data": data, "_ts": now}
+    try:
+        _cache[key] = {"data": data, "_ts": now}
+    except TypeError:
+        _cache[key] = {"data": data, "_ts": now}
     return data
 
 

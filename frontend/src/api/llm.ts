@@ -1,11 +1,16 @@
+import { api } from './client'
+
+
 const DEFAULT_TIMEOUT = 30_000
 
 async function fetchWithTimeout(input: RequestInfo, init?: RequestInit, timeout = DEFAULT_TIMEOUT): Promise<Response> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeout)
   try {
-    const res = await fetch(input, { ...init, signal: controller.signal })
-    return res
+    const url = typeof input === 'string' ? input : input.url
+    const fullUrl = url.startsWith('/api/') ? url : `/api${url.startsWith('/') ? '' : '/'}${url}`
+    const res = await api.get(fullUrl, { ...init, timeout, signal: controller.signal } as any)
+    return new Response(JSON.stringify(res.data), { status: res.status, headers: { 'content-type': 'application/json' } })
   } finally {
     clearTimeout(timer)
   }

@@ -11,7 +11,7 @@ This project adheres to the [Contributor Covenant](CODE_OF_CONDUCT.md). By parti
 1. **Fork** the repository
 2. **Create a branch** (`git checkout -b feature/my-feature`)
 3. **Make changes** following the existing code style
-4. **Run tests** — `pytest` for backend, `cd frontend && npm test` for frontend
+4. **Run tests** — `pytest` for backend, `cd frontend && npx vitest run` for frontend
 5. **Run lint** — `ruff check .` for Python, `cd frontend && npm run lint` for TypeScript
 6. **Submit a pull request** against the `main` branch
 

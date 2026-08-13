@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
+from core.enums import OrderSide
 from core.types import Order, PortfolioState, RiskLimits
 
 
@@ -30,7 +31,11 @@ class PositionLimits:
         if new_exposure_pct > self.limits.max_position_size_pct:
             return False, f"Exposure {new_exposure_pct:.1%} > limit {self.limits.max_position_size_pct:.1%}"
 
-        total_exposure = portfolio.gross_exposure + order_value
+        total_exposure = portfolio.gross_exposure
+        if order.side in (OrderSide.BUY, OrderSide.SHORT):
+            total_exposure += order_value
+        elif order.side in (OrderSide.SELL, OrderSide.COVER):
+            total_exposure -= min(order_value, abs(current_pos.market_value) if current_pos else order_value)
         leverage = total_exposure / portfolio.total_value
         if leverage > self.limits.max_leverage:
             return False, f"Leverage {leverage:.2f}x > limit {self.limits.max_leverage:.2f}x"

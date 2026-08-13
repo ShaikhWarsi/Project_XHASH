@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 
 interface ModalProps {
@@ -10,11 +10,17 @@ interface ModalProps {
 }
 
 export default function Modal({ open, onClose, title, children, width = 480 }: ModalProps) {
+  const previousFocusRef = useRef<HTMLElement | null>(null)
+
   useEffect(() => {
     if (open) {
+      previousFocusRef.current = document.activeElement as HTMLElement
       const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
       window.addEventListener('keydown', handler)
-      return () => window.removeEventListener('keydown', handler)
+      return () => {
+        window.removeEventListener('keydown', handler)
+        previousFocusRef.current?.focus()
+      }
     }
   }, [open, onClose])
 
@@ -22,6 +28,9 @@ export default function Modal({ open, onClose, title, children, width = 480 }: M
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
       onClick={onClose}
       style={{
         position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',

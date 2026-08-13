@@ -52,8 +52,4 @@ Produce the structured earnings summary."""
         raise HTTPException(status_code=503, detail="LLM dependencies not available")
     except Exception as e:
         logger.warning("Earnings summary failed for %s: %s", req.symbol, e)
-        return {
-            "symbol": req.symbol,
-            "summary": f"Bull: Revenue growth, margin expansion, strong guidance.\nBear: Competitive pressure, macro headwinds, valuation.\nRisk: Execution risk on guidance.",
-            "generated_at": __import__("datetime").datetime.now().isoformat(),
-        }
+        raise HTTPException(status_code=500, detail="Earnings summary generation failed. Please try again.")

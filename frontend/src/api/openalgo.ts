@@ -129,127 +129,136 @@ export interface AnalyzerLog {
 // ── API Key Management ────────────────────────────────
 
 export async function fetchApiKeys(): Promise<ApiKey[]> {
-  const { data } = await api.get('/openalgo/apikey')
+  const { data } = await api.get('/apikey')
   return data.keys
 }
 
 export async function generateApiKey(label: string, permissions: string[]): Promise<ApiKey> {
-  const { data } = await api.post('/openalgo/apikey', { label, permissions })
+  const { data } = await api.post('/apikey', { label, permissions })
   return data
 }
 
 export async function revokeApiKey(keyId: string): Promise<void> {
-  await api.post(`/openalgo/apikey/${keyId}/revoke`)
+  await api.post(`/apikey/${keyId}/revoke`)
 }
 
 export async function toggleOrderMode(mode: 'live' | 'paper'): Promise<void> {
-  await api.put('/openalgo/apikey/toggle-order-mode', { mode })
+  await api.put('/apikey/toggle-order-mode', { mode })
 }
 
 // ── Latency ──────────────────────────────────────────
 
 export async function fetchLatencyStats(): Promise<LatencyStats> {
-  const { data } = await api.get('/openalgo/latency/stats')
+  const { data } = await api.get('/latency/stats')
   return data
 }
 
 export async function fetchLatencyHistory(minutes = 60): Promise<LatencyPoint[]> {
-  const { data } = await api.get('/openalgo/latency/history', { params: { minutes } })
+  const { data } = await api.get('/latency/history', { params: { minutes } })
   return data.history
 }
 
 // ── Traffic ──────────────────────────────────────────
 
 export async function fetchTrafficStats(): Promise<TrafficStats> {
-  const { data } = await api.get('/openalgo/traffic/stats')
+  const { data } = await api.get('/traffic/stats')
   return data
 }
 
 export async function fetchTrafficLogs(limit = 100, offset = 0): Promise<TrafficLog[]> {
-  const { data } = await api.get('/openalgo/traffic/logs', { params: { limit, offset } })
+  const { data } = await api.get('/traffic/logs', { params: { limit, offset } })
   return data.logs
 }
 
 export async function banIp(ip: string): Promise<void> {
-  await api.post('/openalgo/traffic/ban-ip', { ip })
+  await api.post('/traffic/ban-ip', { ip })
 }
 
 export async function unbanIp(ip: string): Promise<void> {
-  await api.post('/openalgo/traffic/unban-ip', { ip })
+  await api.post('/traffic/unban-ip', { ip })
 }
 
 // ── PnL Tracker ──────────────────────────────────────
 
 export async function fetchPnLPositions(): Promise<PnLPosition[]> {
-  const { data } = await api.get('/openalgo/pnl/positions')
-  return data.positions
+  try {
+    const { data } = await api.get('/pnltracker/data')
+    return data.positions || []
+  } catch {
+    return []
+  }
 }
 
 export async function fetchPnLHistory(): Promise<PnLPoint[]> {
-  const { data } = await api.get('/openalgo/pnl/history')
-  return data.history
+  try {
+    const { data } = await api.get('/pnltracker/data')
+    return data.history || []
+  } catch {
+    return []
+  }
 }
 
 // ── Action Center ────────────────────────────────────
 
 export async function fetchPendingOrders(): Promise<PendingOrder[]> {
-  const { data } = await api.get('/openalgo/action-center/pending')
+  const { data } = await api.get('/action-center/pending')
   return data.orders
 }
 
 export async function approveOrder(orderId: string): Promise<void> {
-  await api.post(`/openalgo/action-center/${orderId}/approve`)
+  await api.post(`/action-center/${orderId}/approve`)
 }
 
 export async function rejectOrder(orderId: string, reason?: string): Promise<void> {
-  await api.post(`/openalgo/action-center/${orderId}/reject`, { reason })
+  await api.post(`/action-center/${orderId}/reject`, { reason })
 }
 
 // ── Health ───────────────────────────────────────────
 
 export async function fetchHealthStatus(): Promise<HealthStatus> {
-  const { data } = await api.get('/openalgo/health/status')
+  const { data } = await api.get('/health/status')
   return data
 }
 
 export async function fetchHealthHistory(): Promise<HealthPoint[]> {
-  const { data } = await api.get('/openalgo/health/history')
+  const { data } = await api.get('/health/history')
   return data.history
 }
 
 // ── Master Contract ──────────────────────────────────
 
 export async function fetchMasterContractStatus(): Promise<MasterContractStatus[]> {
-  const { data } = await api.get('/openalgo/master-contract/status')
+  const { data } = await api.get('/master-contract/status')
   return data.statuses
 }
 
 export async function triggerMasterContractDownload(exchange: string): Promise<void> {
-  await api.post('/openalgo/master-contract/download', { exchange })
+  await api.post('/master-contract/download', { exchange })
 }
 
 // ── Sandbox ──────────────────────────────────────────
 
 export async function fetchSandboxConfig(): Promise<SandboxConfig> {
-  const { data } = await api.get('/openalgo/sandbox/config')
+  const { data } = await api.get('/sandbox/config')
   return data
 }
 
 export async function updateSandboxConfig(config: Partial<SandboxConfig>): Promise<void> {
-  await api.post('/openalgo/sandbox/config', config)
+  await api.post('/sandbox/config', config)
 }
 
 // ── Analyzer ─────────────────────────────────────────
 
 export async function fetchAnalyzerLogs(limit = 100, offset = 0): Promise<AnalyzerLog[]> {
-  const { data } = await api.get('/openalgo/analyzer/logs', { params: { limit, offset } })
+  const { data } = await api.get('/analyzer/logs', { params: { limit, offset } })
   return data.logs
 }
 
 export async function fetchAnalyzerLogDetail(logId: number): Promise<AnalyzerLog> {
-  const { data } = await api.get(`/openalgo/analyzer/log/${logId}`)
+  const { data } = await api.get(`/analyzer/log/${logId}`)
   return data
 }
+
 
 // ── Security Dashboard ──────────────────────────────
 

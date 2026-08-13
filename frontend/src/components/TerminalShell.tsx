@@ -16,6 +16,8 @@ import KeyboardShortcutListener from './KeyboardShortcuts'
 import OnboardingModal from './OnboardingModal'
 import StartupDiagnostic from './StartupDiagnostic'
 import ErrorBoundary from './ErrorBoundary'
+import WorkspaceNavBar from './WorkspaceNavBar'
+import QuickOrderModal from './QuickOrderModal'
 import { useBreakpoint } from '../hooks/useBreakpoint'
 import { useNewsOverlay } from './NewsOverlay'
 import { useCalendarOverlay } from './CalendarOverlay'
@@ -36,6 +38,8 @@ export default function TerminalShell() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [menuHeld, setMenuHeld] = useState(false)
+  const [quickOrderOpen, setQuickOrderOpen] = useState(false)
+
   const news = useNewsOverlay()
   const calendar = useCalendarOverlay()
   const chat = useChatOverlay()
@@ -53,8 +57,15 @@ export default function TerminalShell() {
     registerNew(navigate)
   }, [navigate, setTheme])
 
+  // Global Alt+O Quick Order Shortcut and Alt Menu
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (e.altKey && (e.key === 'o' || e.key === 'O')) {
+        e.preventDefault()
+        setQuickOrderOpen((prev) => !prev)
+        return
+      }
+
       if (e.key === 'Alt' && e.type === 'keydown' && !menuHeld) {
         e.preventDefault()
         setMenuHeld(true)
@@ -108,10 +119,12 @@ export default function TerminalShell() {
     return (
       <div className="flex h-screen bg-primary" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         <MobileLayout>
+          <WorkspaceNavBar onOpenQuickOrder={() => setQuickOrderOpen(true)} />
           <ErrorBoundary category="page">
             <Outlet />
           </ErrorBoundary>
         </MobileLayout>
+        <QuickOrderModal isOpen={quickOrderOpen} onClose={() => setQuickOrderOpen(false)} />
       </div>
     )
   }
@@ -125,9 +138,10 @@ export default function TerminalShell() {
         {showMenu && <MenuBar />}
         <GoCommandBar />
         <TabBar />
+        <WorkspaceNavBar onOpenQuickOrder={() => setQuickOrderOpen(true)} />
 
-        <main className="flex-1 overflow-y-auto bg-primary p-4">
-          <div style={{ animation: 'page-fade-in 0.2s ease' }}>
+        <main className="flex-1 overflow-y-auto bg-primary p-3">
+          <div style={{ animation: 'page-fade-in 0.15s ease' }}>
             <ErrorBoundary category="page">
               <Outlet />
             </ErrorBoundary>
@@ -137,6 +151,7 @@ export default function TerminalShell() {
         <StatusBar />
       </div>
 
+      <QuickOrderModal isOpen={quickOrderOpen} onClose={() => setQuickOrderOpen(false)} />
       <CommandPalette onThemeChange={setTheme} />
       <GlobalSymbolSearch />
       <KeyboardShortcutListener />

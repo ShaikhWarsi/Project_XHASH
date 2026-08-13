@@ -72,9 +72,13 @@ class StopLossTracker:
             stop_distance = atr * self.atr_multiplier
 
             if pos.side == OrderSide.BUY:
-                self._stop_levels[symbol] = pos.entry_price - stop_distance
+                current_stop = self._stop_levels.get(symbol, pos.entry_price - stop_distance)
+                new_stop = pos.current_price - stop_distance
+                self._stop_levels[symbol] = max(current_stop, new_stop)
             else:
-                self._stop_levels[symbol] = pos.entry_price + stop_distance
+                current_stop = self._stop_levels.get(symbol, pos.entry_price + stop_distance)
+                new_stop = pos.current_price + stop_distance
+                self._stop_levels[symbol] = min(current_stop, new_stop)
 
     def is_stopped(self, symbol: str, current_price: float, side: OrderSide = OrderSide.BUY) -> bool:
         if symbol not in self._stop_levels:

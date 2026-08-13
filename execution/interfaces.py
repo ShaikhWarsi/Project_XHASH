@@ -29,6 +29,7 @@ class OrderRecord:
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     reject_reason: str = ""
     order_id: str = ""
+    record_id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))
 
 
 class ExecutionProvider(ABC):
@@ -95,7 +96,7 @@ class OrderManager:
             record = OrderRecord(order=order, status=OrderStatus.REJECTED)
             record.reject_reason = f"Circuit breaker active for {order.symbol}"
             record.updated_at = datetime.now(timezone.utc)
-            self._orders[record.created_at.isoformat()] = record
+            self._orders[record.record_id] = record
             return record
 
         record = OrderRecord(order=order)
@@ -110,26 +111,28 @@ class OrderManager:
             else:
                 record.status = OrderStatus.SUBMITTED
                 record.order_id = order.order_id or ""
-                self.circuit_breaker.record_failure(order.symbol)
         except Exception as e:
             record.status = OrderStatus.REJECTED
             record.reject_reason = str(e)
             self.circuit_breaker.record_failure(order.symbol)
         record.updated_at = datetime.now(timezone.utc)
-        self._orders[record.order_id or record.created_at.isoformat()] = record
+        self._orders[record.record_id] = record
         return record
 
     def cancel(self, order_id: str) -> bool:
-        record = self._orders.get(order_id)
-        if record and record.status in (OrderStatus.SUBMITTED, OrderStatus.PENDING):
-            if self._executor.cancel_order(order_id):
-                record.status = OrderStatus.CANCELLED
-                record.updated_at = datetime.now(timezone.utc)
-                return True
+        for record in self._orders.values():
+            if record.order_id == order_id and record.status in (OrderStatus.SUBMITTED, OrderStatus.PENDING):
+                if self._executor.cancel_order(order_id):
+                    record.status = OrderStatus.CANCELLED
+                    record.updated_at = datetime.now(timezone.utc)
+                    return True
         return False
 
     def get_order(self, order_id: str) -> Optional[OrderRecord]:
-        return self._orders.get(order_id)
+        for record in self._orders.values():
+            if record.order_id == order_id or record.record_id == order_id:
+                return record
+        return None
 
     def get_open(self) -> list[OrderRecord]:
         return [r for r in self._orders.values() if r.status in (OrderStatus.SUBMITTED, OrderStatus.PENDING, OrderStatus.PARTIAL)]

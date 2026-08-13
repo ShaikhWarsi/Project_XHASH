@@ -111,7 +111,7 @@ class Auth(AuthBase):
     name = Column(String(255), unique=True, nullable=False)
     auth = Column(Text, nullable=False)
     feed_token = Column(Text, nullable=True)
-    broker = Column(String(20), nullable=False)
+    broker = Column(String(40), nullable=False)
     user_id = Column(String(255), nullable=True)
     is_revoked = Column(Boolean, default=False)
     secret_api_key = Column(Text, nullable=True)
@@ -137,7 +137,7 @@ class ApiKeys(AuthBase):
     api_key_hash = Column(Text, nullable=False)
     api_key_encrypted = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
-    order_mode = Column(String(20), default="auto")
+    order_mode = Column(String(40), default="auto")
 
     __table_args__ = (
         Index("idx_api_keys_order_mode", "order_mode"),
@@ -152,7 +152,7 @@ class ActiveSession(AuthBase):
     session_id = Column(String(64), unique=True, nullable=False)
     device_info = Column(String(500), nullable=True)
     ip_address = Column(String(45), nullable=True)
-    broker = Column(String(20), nullable=True)
+    broker = Column(String(40), nullable=True)
     login_time = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
     last_seen = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
 
@@ -167,9 +167,9 @@ class LoginAttempt(AuthBase):
     username = Column(String(255), nullable=False)
     ip_address = Column(String(45), nullable=True)
     device_info = Column(String(500), nullable=True)
-    status = Column(String(20), nullable=False)
-    login_type = Column(String(20), nullable=True)
-    broker = Column(String(20), nullable=True)
+    status = Column(String(40), nullable=False)
+    login_type = Column(String(40), nullable=True)
+    broker = Column(String(40), nullable=True)
     failure_reason = Column(String(255), nullable=True)
     timestamp = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
 
@@ -188,7 +188,7 @@ class PendingOrder(AuthBase):
     order_data = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
     created_at_ist = Column(String(50))
-    status = Column(String(20), default="pending")
+    status = Column(String(40), default="pending")
     approved_at = Column(DateTime(timezone=True))
     approved_at_ist = Column(String(50))
     approved_by = Column(String(255))
@@ -197,7 +197,7 @@ class PendingOrder(AuthBase):
     rejected_by = Column(String(255))
     rejected_reason = Column(Text)
     broker_order_id = Column(String(255))
-    broker_status = Column(String(20))
+    broker_status = Column(String(40))
 
     __table_args__ = (
         Index("idx_user_status", "user_id", "status"),

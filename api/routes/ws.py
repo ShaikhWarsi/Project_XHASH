@@ -21,13 +21,19 @@ router = APIRouter(prefix="/ws", tags=["websocket"])
 from .market_data_constants import POPULAR_SYMBOLS as _POPULAR_SYMBOL_DICT
 POPULAR_SYMBOLS = [s["symbol"] for s in _POPULAR_SYMBOL_DICT]
 
+try:
+    from cachetools import TTLCache
+    _price_history: TTLCache = TTLCache(maxsize=500, ttl=3600)
+    _volume_cache: TTLCache = TTLCache(maxsize=500, ttl=300)
+except ImportError:
+    _price_history: dict[str, list[float]] = {}
+    _volume_cache: dict[str, int] = {}
+
 _price_cache: dict[str, float] = {}
 _price_cache_lock = asyncio.Lock()
 _cache_last_refresh = 0.0
 _is_refreshing = False
 _CACHE_TTL = float(os.environ.get("WS_PRICE_CACHE_TTL", "60.0"))
-_price_history: dict[str, list[float]] = {}
-_volume_cache: dict[str, int] = {}
 
 
 async def _refresh_price_cache(symbols: list[str] | None = None):

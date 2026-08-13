@@ -34,6 +34,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - run: pip install -e ".[dev]"
-      - run: pip install stockstats textblob
-      - run: pytest tests/ --ignore=tests/api --ignore=tests/integrations --ignore=tests/analytics/test_skfolio_optimizer.py --ignore=tests/analytics/test_factors.py -x -q
+      - run: pip install -e ".[dev,live,llm,ml,tradingagents,mcp,cli]"
+      - run: ruff check .
+      - run: pytest tests/ --ignore=tests/integrations --ignore=tests/analytics/test_skfolio_optimizer.py --ignore=tests/analytics/test_factors.py -q

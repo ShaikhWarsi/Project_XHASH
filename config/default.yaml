@@ -1,0 +1,35 @@
+# Trading Engine Default Configuration
+
+database:
+  url: ${TRADING_ENGINE_DB_URL:-sqlite+aiosqlite:///trading_engine.db}
+
+trading:
+  default_slippage: 0.001
+  default_commission: 0.001
+  initial_capital: 1000000.0
+
+risk:
+  max_daily_loss_pct: 0.05
+  max_drawdown_pct: 0.20
+  max_position_size_pct: 0.15
+  max_concentration_pct: 0.25
+  max_leverage: 3.0
+  max_positions: 50
+
+backtest:
+  default_start_date: "2024-01-01"
+  default_timeframe: "1d"
+
+llm:
+  default_provider: openai
+  default_model: gpt-4o
+  max_retries: 3
+  rate_limit_per_min: 60
+
+data:
+  default_provider: yfinance
+  cache_ttl_seconds: 300
+
+logging:
+  level: INFO
+  format: dev

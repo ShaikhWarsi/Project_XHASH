@@ -84,7 +84,7 @@ class OrderBlockEngine(SignalEngine):
         if fvg_idx == -1:
             return []
         mitigation_level = min(df["low"].iloc[red_idx], df["low"].iloc[green_idx])
-        is_mitigated = any(df["close"].iloc[m] < mitigation_level for m in range(fvg_idx + 1, len(df)))
+        is_mitigated = any(df["close"].iloc[m] < mitigation_level for m in range(fvg_idx + 1, i + 1))
         level = (top + bottom) / 2
         return [{"type": "Bullish", "level": level, "top": top, "bottom": bottom, "mitigated": is_mitigated}]
 
@@ -111,7 +111,7 @@ class OrderBlockEngine(SignalEngine):
         if fvg_idx == -1:
             return []
         mitigation_level = max(df["high"].iloc[green_idx], df["high"].iloc[red_idx])
-        is_mitigated = any(df["close"].iloc[m] > mitigation_level for m in range(fvg_idx + 1, len(df)))
+        is_mitigated = any(df["close"].iloc[m] > mitigation_level for m in range(fvg_idx + 1, i + 1))
         level = (top + bottom) / 2
         return [{"type": "Bearish", "level": level, "top": top, "bottom": bottom, "mitigated": is_mitigated}]
 

@@ -87,10 +87,10 @@ class ScenarioEngine:
         crash_start = int(n * 0.6)
         for i in range(crash_start, n):
             factor = 1.0 + crash_pct * ((i - crash_start) / (n - crash_start))
-            df.iloc[i, df.columns.get_loc("close")] *= (1 + factor)
-            df.iloc[i, df.columns.get_loc("high")] *= (1 + factor)
-            df.iloc[i, df.columns.get_loc("low")] *= (1 + factor)
-            df.iloc[i, df.columns.get_loc("open")] *= (1 + factor)
+            df.iloc[i, df.columns.get_loc("close")] *= factor
+            df.iloc[i, df.columns.get_loc("high")] *= factor
+            df.iloc[i, df.columns.get_loc("low")] *= factor
+            df.iloc[i, df.columns.get_loc("open")] *= factor
         return df
 
     @staticmethod

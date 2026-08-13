@@ -23,8 +23,12 @@ from signals.regime.validation import compute_cluster_validation_metrics
 # ──────────────────────────────────────────────
 
 
-_WASSERSTEIN_CACHE: dict[str, float] = {}
-_WASSERSTEIN_CACHE_MAX: int = 2048
+try:
+    from cachetools import LRUCache
+    _WASSERSTEIN_CACHE: LRUCache = LRUCache(maxsize=2048)
+except ImportError:
+    _WASSERSTEIN_CACHE: dict[str, float] = {}
+    _WASSERSTEIN_CACHE_MAX: int = 2048
 
 
 def _wasserstein_cache_key(mu: np.ndarray, nu: np.ndarray, p: float) -> str:
@@ -69,7 +73,7 @@ def wasserstein_dist(mu: np.ndarray, nu: np.ndarray, p: float = 1.0) -> float:
     else:
         result = float(np.mean(diff ** p) ** (1.0 / p))
 
-    if len(_WASSERSTEIN_CACHE) >= _WASSERSTEIN_CACHE_MAX:
+    if len(_WASSERSTEIN_CACHE) >= getattr(_WASSERSTEIN_CACHE, 'maxsize', 2048):
         _WASSERSTEIN_CACHE.clear()
     _WASSERSTEIN_CACHE[key] = result
     return result

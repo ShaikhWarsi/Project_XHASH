@@ -1,0 +1,117 @@
+[
+  {
+    "id": "i1",
+    "name": "Smart Money Concepts",
+    "description": "Advanced smart money concepts including FVG, order blocks, and liquidity zones",
+    "author": "xka_team",
+    "category": "custom",
+    "downloads": 0,
+    "rating": 4.9,
+    "tags": [
+      "smart-money",
+      "fvg",
+      "order-block"
+    ],
+    "installed": false
+  },
+  {
+    "id": "i2",
+    "name": "Market Structure",
+    "description": "Automatically labels HH/HL/LH/LL market structure levels",
+    "author": "xka_team",
+    "category": "pattern",
+    "downloads": 0,
+    "rating": 4.7,
+    "tags": [
+      "structure",
+      "trend"
+    ],
+    "installed": false
+  },
+  {
+    "id": "i3",
+    "name": "Order Flow Imbalance",
+    "description": "Visualizes delta and cumulative delta for order flow analysis",
+    "author": "xka_team",
+    "category": "volume",
+    "downloads": 0,
+    "rating": 4.8,
+    "tags": [
+      "orderflow",
+      "delta"
+    ],
+    "installed": false
+  },
+  {
+    "id": "i4",
+    "name": "Auto Fibonacci",
+    "description": "Automatic Fibonacci retracement and extension levels from swing points",
+    "author": "xka_team",
+    "category": "drawing",
+    "downloads": 0,
+    "rating": 4.5,
+    "tags": [
+      "fib",
+      "auto"
+    ],
+    "installed": false
+  },
+  {
+    "id": "i5",
+    "name": "Divergence Finder",
+    "description": "Detects RSI, MACD, and stochastic divergences automatically",
+    "author": "xka_team",
+    "category": "custom",
+    "downloads": 0,
+    "rating": 4.6,
+    "tags": [
+      "divergence",
+      "rsi",
+      "macd"
+    ],
+    "installed": false
+  },
+  {
+    "id": "i6",
+    "name": "Volume Profile",
+    "description": "Visible range and fixed range volume profile with HVNs and LVNs",
+    "author": "xka_team",
+    "category": "volume",
+    "downloads": 0,
+    "rating": 4.4,
+    "tags": [
+      "volume-profile",
+      "vah",
+      "val"
+    ],
+    "installed": false
+  },
+  {
+    "id": "i7",
+    "name": "Multi-Timeframe MA",
+    "description": "Moving averages from higher timeframes overlaid on current chart",
+    "author": "xka_team",
+    "category": "overlap",
+    "downloads": 0,
+    "rating": 4.3,
+    "tags": [
+      "ma",
+      "mtf"
+    ],
+    "installed": false
+  },
+  {
+    "id": "i8",
+    "name": "GEX (Gamma Exposure)",
+    "description": "Options gamma exposure levels and support/resistance",
+    "author": "xka_team",
+    "category": "custom",
+    "downloads": 0,
+    "rating": 4.7,
+    "tags": [
+      "options",
+      "gamma"
+    ],
+    "installed": false
+  }
+]

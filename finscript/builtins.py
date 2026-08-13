@@ -141,7 +141,10 @@ class FinScriptRuntime:
         return dx.rolling(period).mean()
 
     def vwap(self) -> pd.Series:
-        return (self.volume() * self.close()).cumsum() / self.volume().cumsum()
+        vol = self.volume()
+        cum_vol = vol.cumsum()
+        cum_vol = cum_vol.replace(0, np.nan)
+        return (vol * self.close()).cumsum() / cum_vol
 
     def sar(self, acceleration: float = 0.02, maximum: float = 0.2) -> pd.Series:
         h, l = self.high().values, self.low().values
@@ -166,7 +169,7 @@ class FinScriptRuntime:
                     if h[i] > ep:
                         ep = h[i]
                         af = min(af + acceleration, maximum)
-                    sar[i] = min(sar[i], l[i - 1] if i > 1 else l[i])
+                    sar[i] = min(sar[i], l[i - 1] if i > 0 else l[i])
             else:
                 sar[i] = prev + af * (ep - prev)
                 if sar[i] < h[i]:
@@ -178,7 +181,7 @@ class FinScriptRuntime:
                     if l[i] < ep:
                         ep = l[i]
                         af = min(af + acceleration, maximum)
-                    sar[i] = max(sar[i], h[i - 1] if i > 1 else h[i])
+                    sar[i] = max(sar[i], h[i - 1] if i > 0 else h[i])
         return pd.Series(sar)
 
     def crossover(self, a: pd.Series, b: pd.Series | float) -> pd.Series:

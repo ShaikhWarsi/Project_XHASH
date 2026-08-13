@@ -70,8 +70,8 @@ class PerformanceMetrics:
         if benchmark_returns is not None and len(benchmark_returns) == len(rets) and len(rets) > 1:
             b = np.array(benchmark_returns)
             benchmark_return = float((1 + np.mean(b)) ** 252 - 1)
-            cov = np.cov(rets, b)[0, 1]
-            var_b = np.var(b)
+            cov = np.cov(rets, b, ddof=0)[0, 1]
+            var_b = np.var(b, ddof=0)
             if var_b > 0:
                 beta = cov / var_b
                 alpha = ann_return - beta * benchmark_return
@@ -98,7 +98,7 @@ class PerformanceMetrics:
         var_95 = float(np.percentile(rets, 5))
         cvar_95 = float(rets[rets <= var_95].mean()) if any(rets <= var_95) else 0.0
 
-        csum = np.cumsum(rets)
+        csum = np.cumsum(np.log1p(rets))
         eq_series = pd.Series(np.exp(csum))
         sumsq = np.sum(((eq_series / eq_series.cummax()) - 1) ** 2.0)
         ulcer = float(np.sqrt(sumsq / len(rets))) if len(rets) > 0 else 0.0

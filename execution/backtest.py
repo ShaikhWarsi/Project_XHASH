@@ -17,11 +17,17 @@ def apply_fill_to_portfolio(fill: Fill, portfolio: PortfolioState):
 
     if fill.side == OrderSide.BUY:
         portfolio.cash -= cost + comm
-        if pos:
+        if pos and pos.side == OrderSide.BUY:
             total_qty = pos.quantity + qty
             total_cost = pos.entry_price * pos.quantity + cost + comm
             pos.quantity = total_qty
             pos.entry_price = total_cost / total_qty if total_qty > 0 else 0.0
+        elif pos and pos.side == OrderSide.SHORT:
+            pos.quantity -= qty
+            realized = qty * (pos.entry_price - fill.price) - comm
+            pos.realized_pnl += realized
+            if pos.quantity <= 0:
+                del portfolio.positions[fill.symbol]
         else:
             portfolio.positions[fill.symbol] = Position(
                 symbol=fill.symbol, quantity=qty, side=OrderSide.BUY,
@@ -29,12 +35,22 @@ def apply_fill_to_portfolio(fill: Fill, portfolio: PortfolioState):
             )
     elif fill.side == OrderSide.SELL:
         portfolio.cash += cost - comm
-        if pos:
+        if pos and pos.side == OrderSide.BUY:
             pos.quantity -= qty
             realized = qty * (fill.price - pos.entry_price) - comm
             pos.realized_pnl += realized
             if pos.quantity <= 0:
                 del portfolio.positions[fill.symbol]
+        elif pos and pos.side == OrderSide.SHORT:
+            total_qty = pos.quantity + qty
+            total_cost = pos.entry_price * pos.quantity + fill.price * qty + comm
+            pos.quantity = total_qty
+            pos.entry_price = total_cost / total_qty if total_qty > 0 else 0.0
+        else:
+            portfolio.positions[fill.symbol] = Position(
+                symbol=fill.symbol, quantity=qty, side=OrderSide.SHORT,
+                entry_price=fill.price, current_price=fill.price,
+            )
     elif fill.side == OrderSide.SHORT:
         portfolio.cash += cost - comm
         if pos:
@@ -115,7 +131,7 @@ class BacktestExecutor(ExecutionProvider):
             order_id=order_id,
             symbol=order.symbol,
             side=order.side,
-            quantity=int(order.quantity),
+            quantity=order.quantity,
             price=price,
             commission=comm,
             timestamp=datetime.now(timezone.utc),
@@ -177,7 +193,7 @@ class BacktestExecutor(ExecutionProvider):
             order_id=child.order_id or "",
             symbol=child.symbol,
             side=child.side,
-            quantity=int(child.quantity),
+            quantity=child.quantity,
             price=price,
             commission=comm,
             timestamp=datetime.now(timezone.utc),

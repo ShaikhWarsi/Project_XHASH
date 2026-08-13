@@ -150,14 +150,15 @@ export function dedupGet<T = unknown>(url: string, params?: Record<string, unkno
   return p
 }
 
-let _apiKey: string | null = null
+let _apiKey: string | null = (import.meta.env.VITE_API_KEY as string) || 'dev_api_key_12345'
 
-const API_KEY_PATHS = ['/orders', '/portfolio', '/backtest', '/signals', '/hypotheses', '/config', '/strategies', '/swarm', '/agents']
+const API_KEY_EXCLUDES: string[] = ['/health', '/api/health', '/docs', '/redoc', '/openapi.json']
+
 
 api.interceptors.request.use((config) => {
   if (_apiKey && config.url) {
-    const needsAuth = API_KEY_PATHS.some((p) => config.url!.startsWith(p))
-    if (needsAuth) {
+    const isExcluded = API_KEY_EXCLUDES.some((p) => config.url!.startsWith(p))
+    if (!isExcluded) {
       config.headers.Authorization = `Bearer ${_apiKey}`
     }
   }
